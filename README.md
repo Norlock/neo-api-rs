@@ -1,5 +1,5 @@
 # NeoApi-rs
-This is a thin layer over mlua to easily call neovim functions in rust. For people that want to write neovim plugins in Rust.
+This is a thin layer over mlua to easily use the neovim api in rust.
 
 ## How to setup your Rust Neovim plugin
 ```rust
@@ -36,6 +36,17 @@ Basically you can write everything in Rust. You write a global state as static.
 After the init where you need to use blocking_write, you can use async blocks and await thanks to mlua async feature.
 
 ```rust
+#[derive(Clone)]
+pub struct AppContainer(pub Arc<RwLock<AppState>>);
+
+#[derive(Debug)]
+pub struct AppState {
+    pub some_field: bool,
+}
+
+unsafe impl Send for AppState {}
+unsafe impl Sync for AppState {}
+
 lazy_static! {
     pub static ref CONTAINER: AppContainer = AppContainer::default();
 }
@@ -44,14 +55,20 @@ lazy_static! {
 fn nvim_traveller_rs(lua: &Lua) -> LuaResult<LuaTable> {
     let module = lua.create_table()?;
 
-    let mut app = CONTAINER.0.blocking_write();
-
     module.set(
         "some_function",
         lua.create_async_function(open_navigation)?,
     )?;
 
     Ok(module)
+}
+
+async fn open_navigation(lua: &Lua, _: ()) -> LuaResult<()> {
+    let mut app = CONTAINER.0.write().await;
+
+    NeoApi::notify(lua, &app.some_field)?;
+
+    Ok(())
 }
 ```
 
