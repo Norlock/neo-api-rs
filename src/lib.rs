@@ -10,6 +10,5 @@ pub mod prelude {
 }
 
 pub mod mlua {
-    pub use mlua::prelude::*;
-    pub use mlua::lua_module;
+    pub use mlua::{prelude::*, lua_module};
 }
