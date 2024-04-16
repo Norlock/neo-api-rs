@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-mlua = { git = "https://github.com/mlua-rs/mlua", features = ["luajit", "serialize", "module", "async"] }
+mlua = { git = "https://github.com/norlock/mlua", features = ["luajit", "serialize", "module", "async"], branch="fix/lua_module" }
 serde = { version = "1.0.197", features = ["serde_derive"] }

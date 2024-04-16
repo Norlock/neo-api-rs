@@ -85,7 +85,7 @@ impl NeoApi {
     pub fn notify(lua: &mlua::Lua, display: &impl std::fmt::Debug) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        lfn.call::<String, ()>(format!("{display:?}"))
+        lfn.call::<String, ()>(format!("{display:?}\n"))
     }
 
     /**
