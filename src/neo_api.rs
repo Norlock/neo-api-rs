@@ -1,9 +1,9 @@
+use crate::buffer::Buffer;
 use crate::neo_api_types::{
-    AutoCmd, AutoCmdEvent, AutoCmdOpts, LogLevel, Mode, OpenIn, OptValueType, StdpathType,
-    Ui, WinCursor,  ExtmarkOpts
+    AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
+    StdpathType, Ui, WinCursor,
 };
 use crate::window::Window;
-use crate::buffer::Buffer;
 
 use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
@@ -162,13 +162,23 @@ impl NeoApi {
     Attributes: ~
     &emsp; not allowed when |textlock| is active or in the |cmdwin|
     */
-    pub fn set_current_win(lua: &mlua::Lua, win_id: u32) -> LuaResult<()> {
+    pub fn set_current_win(lua: &Lua, win_id: u32) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_win").eval()?;
 
         lfn.call::<u32, ()>(win_id)
     }
 
-    pub fn open_file(lua: &mlua::Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
+    /// This will create an empty buffer. Most of the time use the create_buf command
+    pub fn open_new_buf(lua: &Lua, bang: bool) -> LuaResult<()> {
+        let table = lua.create_table()?;
+        table.set("bang", bang);
+
+        let lfn: LuaFunction = lua.load(format!("vim.cmd.enew")).eval()?;
+
+        lfn.call::<LuaTable, ()>(table)
+    }
+
+    pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load(format!("vim.cmd.{open_in}")).eval()?;
 
         lfn.call::<&str, ()>(path)
@@ -240,7 +250,6 @@ impl NeoApi {
 
         lfn.call::<String, ()>(name.into())
     }
-
 
     /**
     Returns |standard-path| locations of various default files and directories.
@@ -481,8 +490,11 @@ impl NeoApi {
     }
 
     /// Creates an |autocommand| event handler, defined by `callback`
-    pub fn create_autocmd<'a>(lua: &'a Lua, events: Vec<AutoCmdEvent>, opts: AutoCmdOpts<'a>) ->
-        LuaResult<AutoCmd> {
+    pub fn create_autocmd<'a>(
+        lua: &'a Lua,
+        events: Vec<AutoCmdEvent>,
+        opts: AutoCmdOpts<'a>,
+    ) -> LuaResult<AutoCmd> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_autocmd").eval()?;
 
         let events = events.iter().map(|e| e.to_string()).collect();
