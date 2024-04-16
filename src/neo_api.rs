@@ -235,10 +235,10 @@ impl NeoApi {
         Ok(lfn.call::<&str, String>("%:p:h")?.into())
     }
 
-    pub fn set_cmd_file(lua: &Lua, name: &str) -> LuaResult<()> {
+    pub fn set_cmd_file(lua: &Lua, name: impl Into<String>) -> LuaResult<()> {
         let lfn: mlua::Function = lua.load("vim.cmd.file").eval()?;
 
-        lfn.call::<&str, ()>(name)
+        lfn.call::<String, ()>(name.into())
     }
 
 

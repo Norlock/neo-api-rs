@@ -23,7 +23,7 @@ impl Buffer {
     Attributes: ~
         not allowed when |textlock| is active or in the |cmdwin|
     */
-    pub fn set_current_buf(&self, lua: &mlua::Lua) -> LuaResult<()> {
+    pub fn set_current(&self, lua: &mlua::Lua) -> LuaResult<()> {
         NeoApi::set_current_buf(lua, self.id())
     }
 

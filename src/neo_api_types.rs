@@ -1,9 +1,9 @@
 #![allow(unused)]
-use std::fmt::{self, Display};
 use crate::buffer::Buffer;
+use crate::{neo_api::NeoApi, window::Window};
 use mlua::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use crate::{neo_api::NeoApi, window::Window};
+use std::fmt::{self, Display};
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -550,17 +550,24 @@ pub struct AutoCmdOpts<'a> {
 pub struct AutoCmdCallbackEvent<T: LuaUserData> {
     /// Autocommand id
     pub id: u32,
+
     /// Name of the triggered event |autocmd-events|
     pub event: String,
+
     /// Autocommand group id, if any
     pub group: Option<u32>,
+
     /// Expanded value of <amatch>
     pub r#match: String,
+
     /// Expanded value of <abuf>
     pub buf: u32,
+
     /// Expanded value of <afile>
     pub file: String,
+
     ///  (Any) arbitrary data passed from |nvim_exec_autocmds()|
+    /// You can use CbDataFiller type in the callback function if you don't need any data
     pub data: Option<T>,
 }
 
