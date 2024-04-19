@@ -239,7 +239,7 @@ pub enum AutoCmdGroup {
     Integer(u32),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub enum AutoCmdEvent {
     /// After adding a buffer to the buffer list.
     BufAdd,

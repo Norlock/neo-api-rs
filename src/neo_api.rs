@@ -9,7 +9,8 @@ use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
-use mlua::{Lua, Table};
+use mlua::{IntoLuaMulti, Lua, Table};
+use std::fmt;
 use std::path::PathBuf;
 
 pub struct NeoApi;
@@ -82,10 +83,40 @@ impl NeoApi {
     Parameters: ~
       • {msg}    Content of the notification to show to the user.
     */
-    pub fn notify(lua: &mlua::Lua, display: &impl std::fmt::Debug) -> LuaResult<()> {
+    pub fn notify(lua: &mlua::Lua, display: &impl fmt::Display) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        lfn.call::<String, ()>(format!("{display:?}\n"))
+        let result = display.to_string();
+
+        lfn.call::<_, ()>(result)
+    }
+
+    /**
+    Displays a notification to the user.
+
+    This function can be overridden by plugins to display notifications using
+    a custom provider (such as the system notification provider). By default,
+    writes to |:messages|.
+
+    Parameters: ~
+      • {msg}    Content of the notification to show to the user.
+    */
+    pub fn notify_dbg(lua: &mlua::Lua, debug: &impl fmt::Debug) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.notify").eval()?;
+
+        lfn.call::<_, ()>(format!("{debug:?}"))
+    }
+
+    /// Gets a human-readable representation of the given object.
+    pub fn inspect<'lua, V: IntoLua<'lua> + Clone>(lua: &'lua Lua, table: V) -> LuaResult<()> {
+        let ltb: LuaTable = lua.load("vim.inspect").eval()?;
+
+        ltb.push(table.clone())?;
+
+        let lfn: LuaFunction = ltb.get("inspect")?;
+        let result = lfn.call::<_, String>(table)?;
+
+        Self::notify(lua, &result)
     }
 
     /**
