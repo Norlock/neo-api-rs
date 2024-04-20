@@ -1,6 +1,6 @@
 use mlua::Lua;
 use once_cell::sync::Lazy;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 use crate::prelude::AutoCmdCbEvent;
 
@@ -21,7 +21,18 @@ impl CbContainer {
         cb_container.queue.push(CbArgs { ev, func });
     }
 
-    pub async fn exec(lua: &Lua) {
+    pub async fn exec<T>(lua: &Lua) {
+        let mut cb_container = CB_CONTAINER.lock().await;
+        while !cb_container.queue.is_empty() {
+            let item = cb_container.queue.remove(0);
+            (item.func)(lua, item.ev);
+        }
+    }
+
+    /// If your global state has an active lock 
+    /// This function will drop as a reminder
+    pub async fn exec_drop_lock<T>(guard: MutexGuard<'_, T>, lua: &Lua) {
+        drop(guard);
         let mut cb_container = CB_CONTAINER.lock().await;
         while !cb_container.queue.is_empty() {
             let item = cb_container.queue.remove(0);
