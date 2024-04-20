@@ -4,9 +4,9 @@ use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Buffer(u32);
+pub struct NeoBuffer(u32);
 
-impl Buffer {
+impl NeoBuffer {
     pub const ZERO: Self = Self(0);
 
     pub fn new(id: u32) -> Self {

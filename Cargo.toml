@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 mlua = { git = "https://github.com/norlock/mlua", features = ["luajit", "serialize", "module", "async"], branch="fix/lua_module" }
-serde = { version = "1.0.197", features = ["serde_derive"] }
+once_cell = "1"
+serde = { version = "1", features = ["serde_derive"] }
+tokio = { version = "1", features = ["sync"] }

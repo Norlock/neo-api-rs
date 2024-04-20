@@ -1,6 +1,6 @@
 #![allow(unused)]
-use crate::buffer::Buffer;
-use crate::{neo_api::NeoApi, window::Window};
+use crate::buffer::NeoBuffer;
+use crate::{neo_api::NeoApi, window::NeoWindow};
 use mlua::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::{self, Display};
@@ -23,8 +23,8 @@ pub enum HlMode {
 }
 
 pub enum OptValueType {
-    Window(Window),
-    Buffer(Buffer),
+    Window(NeoWindow),
+    Buffer(NeoBuffer),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -547,7 +547,7 @@ pub struct AutoCmdOpts<'a> {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct AutoCmdCallbackEvent<T: LuaUserData> {
+pub struct AutoCmdCbEvent {
     /// Autocommand id
     pub id: u32,
 
@@ -568,7 +568,7 @@ pub struct AutoCmdCallbackEvent<T: LuaUserData> {
 
     ///  (Any) arbitrary data passed from |nvim_exec_autocmds()|
     /// You can use CbDataFiller type in the callback function if you don't need any data
-    pub data: Option<T>,
+    pub data: Option<usize>,
 }
 
 /// This is a simple struct to use if you don't care about global data passed
@@ -582,10 +582,7 @@ impl LuaUserData for CbDataFiller {
     fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {}
 }
 
-impl<'a, T> FromLua<'a> for AutoCmdCallbackEvent<T>
-where
-    T: LuaUserData + DeserializeOwned,
-{
+impl<'a> FromLua<'a> for AutoCmdCbEvent {
     fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
         lua.from_value(value)
     }

@@ -1,9 +1,9 @@
-use crate::buffer::Buffer;
+use crate::buffer::NeoBuffer;
 use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
     StdpathType, Ui, WinCursor,
 };
-use crate::window::Window;
+use crate::window::NeoWindow;
 
 use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
@@ -32,7 +32,7 @@ impl NeoApi {
     See also: ~
       • buf_open_scratch
     */
-    pub fn create_buf(lua: &mlua::Lua, listed: bool, scratch: bool) -> LuaResult<Buffer> {
+    pub fn create_buf(lua: &mlua::Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
         let buf_id: u32 = lfn.call::<(bool, bool), u32>((listed, scratch))?;
 
@@ -40,7 +40,7 @@ impl NeoApi {
             return Err(LuaError::RuntimeError("Retrieved buffer 0".to_string()));
         }
 
-        Ok(Buffer::new(buf_id))
+        Ok(NeoBuffer::new(buf_id))
     }
 
     /**
@@ -174,11 +174,11 @@ impl NeoApi {
         lfn.call::<(&str, V, mlua::Table), ()>((key, value, opts))
     }
 
-    pub fn get_current_win(lua: &mlua::Lua) -> LuaResult<Window> {
+    pub fn get_current_win(lua: &mlua::Lua) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_win").eval()?;
         let win_id = lfn.call::<(), u32>(())?;
 
-        Ok(Window::new(win_id))
+        Ok(NeoWindow::new(win_id))
     }
 
     pub fn set_current_buf(lua: &mlua::Lua, buf_id: u32) -> LuaResult<()> {

@@ -6,9 +6,9 @@ use crate::{
 use mlua::prelude::{IntoLua, Lua, LuaResult};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Window(u32);
+pub struct NeoWindow(u32);
 
-impl Window {
+impl NeoWindow {
     pub const ZERO: Self = Self(0);
 
     pub fn new(id: u32) -> Self {
