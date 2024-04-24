@@ -2,6 +2,7 @@
 use mlua::prelude::{LuaResult, LuaTable, Lua, IntoLua};
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
+use crate::prelude::KeymapOpts;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NeoBuffer(u32);
@@ -15,6 +16,13 @@ impl NeoBuffer {
 
     pub fn id(&self) -> u32 {
         self.0
+    }
+
+    pub fn keymap_opts(&self, silent: bool) -> KeymapOpts {
+        KeymapOpts {
+            buffer: Some(self.0),
+            silent: Some(silent)
+        }
     }
 
     /**
@@ -141,6 +149,13 @@ impl NeoBuffer {
         lines: Vec<String>,
     ) -> mlua::Result<()> {
         NeoApi::buf_set_lines(lua, self.id(), start, end, strict_indexing, lines)
+    }
+
+
+    pub fn get_lines(
+        &self, lua: &Lua, start: i32, end: i32, strict_indexing: bool
+    ) -> LuaResult<Vec<String>> {
+        NeoApi::buf_get_lines(lua, self.id(), start, end, strict_indexing)
     }
 
     /**

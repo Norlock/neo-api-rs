@@ -1,13 +1,18 @@
 #![allow(unused)]
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use mlua::{
-    prelude::{LuaFunction, LuaResult, LuaSerializeOptions, LuaString, LuaTable, LuaValue},
+    prelude::{LuaFunction, LuaResult, LuaSerializeOptions, LuaString, LuaTable, LuaValue, LuaError},
     IntoLua, Lua, LuaSerdeExt,
 };
 use serde::Serialize;
+use tokio::sync::Mutex;
 
-use crate::prelude::{AutoCmdEvent, NeoApi};
+use crate::prelude::{AutoCmdEvent, CbContainer, KeymapOpts, Mode, NeoApi};
 
 #[derive(Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum NuiRelative {
@@ -69,12 +74,12 @@ pub struct NuiBorderText {
     pub bottom_align: NuiAlign,
 }
 
-#[derive(Debug, Serialize, Clone, Copy)]
+#[derive(Debug, Default, Serialize, Clone, Copy)]
 pub struct NuiBorderPadding {
-    pub top: u16,
-    pub left: u16,
-    pub right: u16,
-    pub bottom: u16,
+    pub top: Option<u16>,
+    pub left: Option<u16>,
+    pub right: Option<u16>,
+    pub bottom: Option<u16>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -164,68 +169,119 @@ impl<'lua> IntoLua<'lua> for NuiPopupOpts {
 }
 
 #[derive(Debug, Clone)]
-pub struct NuiPopup<'lua> {
-    pub popup: LuaTable<'lua>,
-    pub event: LuaTable<'lua>,
+pub struct NuiPopup<'lua>(pub LuaTable<'lua>);
+
+impl<'lua> Deref for NuiPopup<'lua> {
+    type Target = LuaTable<'lua>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'lua> DerefMut for NuiPopup<'lua> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 unsafe impl Sync for NuiPopup<'_> {}
 unsafe impl Send for NuiPopup<'_> {}
 
-//lazy_static! {
-
-//}
-//pub static POPUPS: HashMap<u32, NuiPopup<'static>> = HashMap::new();
-
-//pub struct NuiState {
-    //pub popups: Arc<RwLock<
-//}
-
-//pub static NUI_CONTAINER
+#[derive(Clone, Copy)]
+pub enum NuiPopupFn {
+    Close,
+}
 
 impl<'a> NuiPopup<'a> {
     pub fn mount(&self, lua: &'a Lua) -> LuaResult<()> {
-        let mount: LuaFunction = self.popup.get("mount")?;
+        let mount: LuaFunction = self.get("mount")?;
 
-        mount.call::<_, ()>(self.popup.clone())
+        mount.call::<_, ()>(self.0.clone())
     }
 
     pub fn unmount(&self, lua: &'a Lua) -> LuaResult<()> {
-        let mount: LuaFunction = self.popup.get("unmount")?;
+        let mount: LuaFunction = self.get("unmount")?;
 
-        mount.call::<_, ()>(self.popup.clone())
+        mount.call::<_, ()>(self.0.clone())
     }
 
-    pub fn close_on_leave(&'a self, lua: &'a Lua) -> LuaResult<()> {
-        let on: LuaFunction = self.popup.get("on")?;
+    pub fn on(
+        &'a self,
+        lua: &'a Lua,
+        events: &[AutoCmdEvent],
+        callback: LuaFunction<'a>,
+    ) -> LuaResult<()> {
+        let on: LuaFunction = self.get("on")?;
 
-        //let cpy_self: LuaTable<'static> = self.popup.clone();
-        //let close: LuaFunction = lua.create_function(|lua, _: ()| {
-            //let mount: LuaFunction = cpy_self.get("unmount")?;
+        let mut cmd_events = lua.create_table()?;
 
-            //mount.call::<_, ()>(cpy_self.clone())
-        //})?;
-        //on.call::<_, ()>((AutoCmdEvent::BufLeave.to_string(), close))
-        Ok(())
+        for au_cmd in events.iter() {
+            cmd_events.push(au_cmd.to_string());
+        }
+
+        on.call::<_, ()>((self.0.clone(), cmd_events, callback))
+    }
+
+    pub fn bufnr(&self, lua: &Lua) -> LuaResult<Option<u32>> {
+        self.get("bufnr")
+    }
+
+    pub fn map(
+        &'a self,
+        lua: &'a Lua,
+        mode: Mode,
+        lhs: &str,
+        rhs: LuaFunction<'a>,
+        silent: bool,
+    ) -> LuaResult<()> {
+        let bufnr = self.bufnr(lua)?;
+
+        let opts = KeymapOpts {
+            silent: Some(silent),
+            buffer: bufnr
+        };
+
+        NeoApi::set_keymap(lua, mode, lhs, rhs, opts)
     }
 }
 
-// TODO mutex rwlock for popup only
+const NUI_POPUPS: &str = "nui_popups";
+
+/// If you wish to use NuiApi please call init somewhere before using it (once)
 pub struct NuiApi;
 
 impl<'lua> NuiApi {
-    pub fn create_popup(lua: &'lua Lua, popup_opts: NuiPopupOpts) -> LuaResult<NuiPopup<'lua>> {
-        let lua_popup: LuaTable = lua.load(r#"return require("nui.popup")"#).eval()?;
-        let event: LuaTable = lua
-            .load(r#"return require("nui.utils.autocmd").event"#)
-            .eval()?;
+    pub fn init(lua: &'lua Lua) -> LuaResult<()> {
+        let globals = lua.globals();
+        globals.set(NUI_POPUPS, lua.create_table()?)
+    }
 
-        let init: LuaFunction = lua_popup.get_metatable().unwrap().get("__call")?;
+    pub fn add_popup(lua: &'lua Lua, id: &str, popup: &LuaTable) -> LuaResult<()> {
+        let popups: LuaTable = lua.globals().get(NUI_POPUPS)?;
 
-        NeoApi::inspect(lua, popup_opts.clone())?;
+        popups.set(id, popup)
+    }
 
-        let popup = init.call::<_, LuaTable>((lua_popup, popup_opts))?;
+    pub fn get_popup(lua: &'lua Lua, id: &str) -> LuaResult<NuiPopup<'lua>> {
+        let popups: LuaTable = lua.globals().get(NUI_POPUPS)?;
 
-        Ok(NuiPopup { popup, event })
+        Ok(NuiPopup(popups.get(id)?))
+    }
+
+    pub fn create_popup(
+        lua: &'lua Lua,
+        popup_opts: NuiPopupOpts,
+        popup_id: &str,
+    ) -> LuaResult<NuiPopup<'lua>> {
+        let nui_popup: LuaTable = lua.load(r#"return require("nui.popup")"#).eval()?;
+
+        let new: LuaFunction = nui_popup.get("new")?;
+
+        let popup = new.call::<_, LuaTable>((nui_popup, popup_opts))?;
+
+        Self::add_popup(lua, popup_id, &popup)?;
+
+        Ok(NuiPopup(popup))
     }
 }

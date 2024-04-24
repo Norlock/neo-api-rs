@@ -112,6 +112,31 @@ impl<'a> IntoLua<'a> for ExtmarkOpts<'a> {
     }
 }
 
+#[derive(Debug, Default, Serialize, Clone, Copy)]
+pub struct KeymapOpts {
+    pub silent: Option<bool>,
+    pub buffer: Option<u32>,
+}
+
+impl KeymapOpts {
+    pub fn new(buf_id: u32, silent: bool) -> Self {
+        Self {
+            buffer: Some(buf_id),
+            silent: Some(silent)
+        }
+    }
+}
+
+impl<'a> IntoLua<'a> for KeymapOpts {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let mut ser_opts = LuaSerializeOptions::new();
+        ser_opts.serialize_none_to_null = false;
+        ser_opts.serialize_unit_to_null = false;
+
+        lua.to_value_with(&self, ser_opts)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct WinCursor {
     row: u32,
@@ -207,6 +232,15 @@ impl Mode {
             Mode::Normal => 'n',
             Mode::Visual => 'v',
             Mode::Select => 's',
+        }
+    }
+
+    pub fn get_str(&self) -> &str {
+        match self {
+            Mode::Insert => "i",
+            Mode::Normal => "n",
+            Mode::Visual => "v",
+            Mode::Select => "s",
         }
     }
 }

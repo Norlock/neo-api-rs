@@ -3,13 +3,14 @@ use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
     StdpathType, Ui, WinCursor,
 };
+use crate::prelude::KeymapOpts;
 use crate::window::NeoWindow;
 
 use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
-use mlua::{IntoLuaMulti, Lua, Table};
+use mlua::{Lua, Table};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -107,18 +108,6 @@ impl NeoApi {
         lfn.call::<_, ()>(format!("{debug:?}"))
     }
 
-    /// Gets a human-readable representation of the given object.
-    pub fn inspect<'lua, V: IntoLua<'lua> + Clone>(lua: &'lua Lua, table: V) -> LuaResult<()> {
-        let ltb: LuaTable = lua.load("vim.inspect").eval()?;
-
-        ltb.push(table.clone())?;
-
-        let lfn: LuaFunction = ltb.get("inspect")?;
-        let result = lfn.call::<_, String>(table)?;
-
-        Self::notify(lua, &result)
-    }
-
     /**
     Displays a notification to the user.
 
@@ -132,12 +121,22 @@ impl NeoApi {
     */
     pub fn notify_level(
         lua: &mlua::Lua,
-        display: &impl std::fmt::Debug,
+        display: &impl fmt::Display,
         level: LogLevel,
     ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        lfn.call::<(String, usize), ()>((format!("{display:?}"), level as usize))
+        lfn.call::<(String, usize), ()>((display.to_string(), level as usize))
+    }
+
+    /// Gets a human-readable representation of the given object.
+    pub fn inspect<'lua, V: IntoLua<'lua>>(lua: &'lua Lua, table: V) -> LuaResult<()> {
+        let ltb: LuaTable = lua.load("vim.inspect").eval()?;
+
+        let lfn: LuaFunction = ltb.get("inspect")?;
+        let result = lfn.call::<_, String>(table)?;
+
+        Self::notify(lua, &result)
     }
 
     /**
@@ -373,19 +372,6 @@ impl NeoApi {
         ))
     }
 
-    pub fn buf_keymap_opts<'a>(
-        lua: &'a mlua::Lua,
-        silent: bool,
-        buf_id: u32,
-    ) -> mlua::Result<Table<'a>> {
-        let table = lua.create_table()?;
-
-        table.set("silent", silent)?;
-        table.set("buffer", buf_id)?;
-
-        Ok(table)
-    }
-
     /**
     Clears |namespace|d objects (highlights, |extmarks|, virtual text) from a
     region.
@@ -457,6 +443,18 @@ impl NeoApi {
         ))
     }
 
+    pub fn buf_get_lines(
+        lua: &Lua,
+        buf_id: u32,
+        start: i32,
+        end: i32,
+        strict_indexing: bool,
+    ) -> LuaResult<Vec<String>> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_get_lines").eval()?;
+
+        lfn.call::<_, _>((buf_id, start, end, strict_indexing))
+    }
+
     pub fn list_uis(lua: &mlua::Lua) -> LuaResult<Vec<Ui>> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_list_uis").eval()?;
 
@@ -506,18 +504,11 @@ impl NeoApi {
         mode: Mode,
         lhs: &'a str,
         rhs: mlua::Function,
-        keymap_opts: Table<'a>,
+        keymap_opts: KeymapOpts,
     ) -> mlua::Result<()> {
         let lfn: LuaFunction = lua.load("vim.keymap.set").eval()?;
 
-        let mode = match mode {
-            Mode::Insert => "i",
-            Mode::Normal => "n",
-            Mode::Visual => "v",
-            Mode::Select => "s",
-        };
-
-        lfn.call::<(&str, &str, mlua::Function, mlua::Table), ()>((mode, lhs, rhs, keymap_opts))
+        lfn.call::<_, ()>((mode.get_str(), lhs, rhs, keymap_opts))
     }
 
     /// Creates an |autocommand| event handler, defined by `callback`
@@ -528,10 +519,22 @@ impl NeoApi {
     ) -> LuaResult<AutoCmd> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_autocmd").eval()?;
 
-        let events = events.iter().map(|e| e.to_string()).collect();
+        let events: Vec<String> = events.iter().map(|e| e.to_string()).collect();
 
-        let id = lfn.call::<(Vec<String>, AutoCmdOpts), u32>((events, opts))?;
+        let id = lfn.call::<_, u32>((events, opts))?;
 
         Ok(AutoCmd::new(id))
+    }
+
+    pub fn set_insert_mode(lua: &Lua, insert: bool) -> LuaResult<()> {
+        if insert {
+            let lfn: LuaFunction = lua.load("vim.cmd.startinsert").eval()?;
+
+            lfn.call::<_, _>(())
+        } else {
+            let lfn: LuaFunction = lua.load("vim.cmd.stopinsert").eval()?;
+
+            lfn.call::<_, _>(())
+        }
     }
 }
