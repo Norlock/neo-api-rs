@@ -22,6 +22,46 @@ pub enum HlMode {
     Blend,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HlText {
+    pub text: String,
+    pub highlight: String,
+}
+
+impl<'a> IntoLua<'a> for HlText {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let table = lua.create_table()?;
+
+        table.push(self.text)?;
+        table.push(self.highlight)?;
+
+        Ok(LuaValue::Table(table))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TextType {
+    String(String),
+    Tuples(Vec<HlText>),
+}
+
+impl<'a> IntoLua<'a> for TextType {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        match self {
+            Self::String(str) => Ok(LuaValue::String(lua.create_string(str)?)),
+            Self::Tuples(tuples) => {
+                let out = lua.create_table()?;
+
+                for tuple in tuples.into_iter() {
+                    out.push(tuple.into_lua(lua)?);
+                }
+
+                Ok(LuaValue::Table(out))
+            }
+        }
+    }
+}
+
 pub enum OptValueType {
     Window(NeoWindow),
     Buffer(NeoBuffer),
@@ -122,7 +162,7 @@ impl KeymapOpts {
     pub fn new(buf_id: u32, silent: bool) -> Self {
         Self {
             buffer: Some(buf_id),
-            silent: Some(silent)
+            silent: Some(silent),
         }
     }
 }

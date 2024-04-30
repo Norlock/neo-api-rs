@@ -11,9 +11,11 @@ static CB_CONTAINER: Lazy<Mutex<CallBackState>> = Lazy::new(|| {
 });
 
 /// Because autocmd callbacks are invoked before returning the NeoApi function calls
-/// It can deadlock your app, hhis makes sure a queue is added which can be called
-/// at the end of any module function
+/// It can deadlock your app, this makes sure a queue is added which can be called
+/// at the end of any module function implementation
 pub struct CbContainer;
+
+pub type CbFunction = Box<dyn Fn(&Lua, AutoCmdCbEvent) -> ()>;
 
 impl CbContainer {
     pub async fn add_to_queue(func: CbFunction, ev: AutoCmdCbEvent) {
@@ -40,8 +42,6 @@ impl CbContainer {
         }
     }
 }
-
-pub type CbFunction = Box<dyn Fn(&Lua, AutoCmdCbEvent) -> ()>;
 
 pub struct CbArgs {
     pub func: CbFunction,

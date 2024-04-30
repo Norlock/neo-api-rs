@@ -12,7 +12,7 @@ use mlua::{
 use serde::Serialize;
 use tokio::sync::Mutex;
 
-use crate::prelude::{AutoCmdEvent, CbContainer, KeymapOpts, Mode, NeoApi};
+use crate::{prelude::{AutoCmdEvent, CbContainer, KeymapOpts, Mode, NeoApi}, traits::CreateTable};
 
 #[derive(Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
 pub enum NuiRelative {
@@ -58,6 +58,31 @@ impl NuiSize {
             }
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SeperatorOpts {
+    pub char: Option<String>,
+    pub text_align: Option<NuiAlign>,
+}
+
+pub enum MenuItemType {
+    Seperator(Option<SeperatorOpts>),
+    Item(Option<Arc<dyn CreateTable>>),
+}
+
+pub struct MenuItem {
+    pub item_type: MenuItemType,
+    pub text: String,
+}
+
+pub struct MenuOpts {
+    pub lines: Vec<MenuItem>,
+    pub max_height: Option<u32>,
+    pub min_height: Option<u32>,
+    pub max_width: Option<u32>,
+    pub min_width: Option<u32>,
+    pub keymaps: HashMap<String, Vec<String>>,
 }
 
 #[derive(Debug, Clone, Copy)]
