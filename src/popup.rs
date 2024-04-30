@@ -131,6 +131,7 @@ pub enum PopupSize {
     Percentage(f32),
 }
 
+#[derive(Default)]
 pub struct WinOptions {
     //  width: Window width (in character cells). Minimum of 1.
     pub width: Option<PopupSize>,
