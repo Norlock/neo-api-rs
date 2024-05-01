@@ -1,8 +1,8 @@
 #![allow(unused)]
-use mlua::prelude::{LuaResult, LuaTable, Lua, IntoLua};
+use mlua::prelude::{LuaResult, LuaTable, LuaFunction, Lua, IntoLua};
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
-use crate::prelude::KeymapOpts;
+use crate::prelude::{KeymapOpts, Mode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NeoBuffer(u32);
@@ -23,6 +23,10 @@ impl NeoBuffer {
             buffer: Some(self.0),
             silent: Some(silent)
         }
+    }
+
+    pub fn set_keymap<'a>(&self, lua: &'a Lua, mode: Mode, lhs: &str, rhs: LuaFunction<'a>) -> LuaResult<()> {
+        NeoApi::set_keymap(lua, mode, lhs, rhs, self.keymap_opts(true))
     }
 
     /**

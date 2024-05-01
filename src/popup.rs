@@ -126,7 +126,7 @@ impl fmt::Display for PopupSplit {
 
 #[derive(Debug, Clone, Copy)]
 pub enum PopupSize {
-    Fixed(u32),
+    Fixed(i32),
     /// Between 0 and 1
     Percentage(f32),
 }
@@ -176,7 +176,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_width = width;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_width = (ui.width as f32 * percentage).round() as u32;
+                    raw_width = (ui.width as f32 * percentage).round() as i32;
                 }
             }
         }
@@ -187,7 +187,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_height = height;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_height = (ui.height as f32 * percentage).round() as u32;
+                    raw_height = (ui.height as f32 * percentage).round() as i32;
                 }
             }
         }
@@ -198,7 +198,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_row = row;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_row = ((ui.height - raw_height) as f32 * percentage) as u32;
+                    raw_row = ((ui.height as i32 - raw_height) as f32 * percentage) as i32;
                 }
             }
         }
@@ -209,7 +209,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_col = col;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_col = ((ui.width - raw_width) as f32 * percentage) as u32;
+                    raw_col = ((ui.width as i32 - raw_width) as f32 * percentage) as i32;
                 }
             }
         }

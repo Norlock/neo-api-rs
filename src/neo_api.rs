@@ -214,37 +214,6 @@ impl NeoApi {
         lfn.call::<&str, ()>(path)
     }
 
-    /**
-    Gets the (1,0)-indexed, buffer-relative cursor position for a given window
-    (different windows showing the same buffer have independent cursor
-    positions). |api-indexing|
-
-    Parameters: ~
-    &nbsp; • {window}  Window handle, or 0 for current window
-
-    See also: ~
-    &nbsp; • |getcurpos()|
-    */
-    pub fn win_get_cursor(lua: &Lua, win_id: u32) -> LuaResult<WinCursor> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_win_get_cursor").eval()?;
-
-        lfn.call::<u32, WinCursor>(win_id)
-    }
-
-    /**
-    Sets the (1,0)-indexed cursor position in the window. |api-indexing| This
-    scrolls the window even if it is not the current one.
-
-    Parameters: ~
-      • Window handle, or 0 for current window
-      • WinCursor
-    */
-    pub fn win_set_cursor(lua: &Lua, win_id: u32, cursor: WinCursor) -> LuaResult<()> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_win_set_cursor").eval()?;
-
-        lfn.call::<(u32, WinCursor), ()>((win_id, cursor))
-    }
-
     pub fn set_cwd(lua: &Lua, path: &PathBuf) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_dir").eval()?;
 
@@ -514,7 +483,7 @@ impl NeoApi {
     /// Creates an |autocommand| event handler, defined by `callback`
     pub fn create_autocmd<'a>(
         lua: &'a Lua,
-        events: Vec<AutoCmdEvent>,
+        events: &[AutoCmdEvent],
         opts: AutoCmdOpts<'a>,
     ) -> LuaResult<AutoCmd> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_autocmd").eval()?;
