@@ -1,8 +1,8 @@
 use std::fmt;
 
-use crate::prelude::{HlText, NeoApi, NeoWindow, TextType};
+use crate::prelude::{NeoApi, NeoWindow, TextType};
 use mlua::{
-    prelude::{LuaResult, LuaFunction, LuaTable, LuaValue},
+    prelude::{LuaResult, LuaFunction, LuaValue},
     IntoLua, Lua,
 };
 use serde::Serialize;

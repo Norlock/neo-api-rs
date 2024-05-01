@@ -1,7 +1,7 @@
 use crate::buffer::NeoBuffer;
 use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
-    StdpathType, Ui, WinCursor,
+    StdpathType, Ui,
 };
 use crate::prelude::KeymapOpts;
 use crate::window::NeoWindow;
@@ -10,7 +10,7 @@ use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
-use mlua::{Lua, Table};
+use mlua::{Lua};
 use std::fmt;
 use std::path::PathBuf;
 
