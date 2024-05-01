@@ -399,11 +399,11 @@ impl NeoApi {
         start: i32,
         end: i32,
         strict_indexing: bool,
-        lines: Vec<String>,
+        lines: &[String],
     ) -> mlua::Result<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_lines").eval()?;
 
-        lfn.call::<(u32, i32, i32, bool, Vec<String>), ()>((
+        lfn.call::<_, ()>((
             buf_id,
             start,
             end,

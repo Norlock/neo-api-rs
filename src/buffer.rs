@@ -150,7 +150,7 @@ impl NeoBuffer {
         start: i32,
         end: i32,
         strict_indexing: bool,
-        lines: Vec<String>,
+        lines: &[String],
     ) -> mlua::Result<()> {
         NeoApi::buf_set_lines(lua, self.id(), start, end, strict_indexing, lines)
     }
