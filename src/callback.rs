@@ -47,11 +47,11 @@ pub struct CbArgs<T> {
 pub struct CallBackQueue<T>(Vec<CbArgs<T>>);
 
 impl<T> CallBackQueue<T> {
-    pub fn push(&mut self, func: CbFunction<T>, ev: AutoCmdCbEvent) {
+    fn push(&mut self, func: CbFunction<T>, ev: AutoCmdCbEvent) {
         self.0.push(CbArgs { ev, func });
     }
 
-    pub fn exec(&mut self, state: &mut T, lua: &Lua) {
+    fn exec(&mut self, state: &mut T, lua: &Lua) {
         while !self.0.is_empty() {
             let item = self.0.remove(0);
             // Execute the callback
