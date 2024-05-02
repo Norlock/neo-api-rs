@@ -2,17 +2,16 @@ mod buffer;
 mod callback;
 mod neo_api;
 mod neo_api_types;
-mod plugin_nui;
-mod window;
 mod popup;
+mod traits;
+mod window;
 
-pub mod traits;
-
-pub mod prelude {
-    pub use crate::{
-        buffer::*, callback::*, neo_api::*, neo_api_types::*, plugin_nui::*, window::*, popup::*
-    };
-
-}
+pub use buffer::*;
+pub use callback::*;
+pub use neo_api::*;
+pub use neo_api_types::*; 
+pub use popup::*;
+pub use traits::*;
+pub use window::*;
 
 pub use mlua;

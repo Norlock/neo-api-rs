@@ -2,7 +2,7 @@
 use mlua::prelude::{LuaResult, LuaTable, LuaFunction, Lua, IntoLua};
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
-use crate::prelude::{KeymapOpts, Mode};
+use crate::{KeymapOpts, Mode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NeoBuffer(u32);

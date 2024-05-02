@@ -3,14 +3,14 @@ use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
     StdpathType, Ui,
 };
-use crate::prelude::KeymapOpts;
 use crate::window::NeoWindow;
+use crate::KeymapOpts;
 
+use mlua::Lua;
 use mlua::{
     prelude::{LuaError, LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
-use mlua::{Lua};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -403,13 +403,7 @@ impl NeoApi {
     ) -> mlua::Result<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_lines").eval()?;
 
-        lfn.call::<_, ()>((
-            buf_id,
-            start,
-            end,
-            strict_indexing,
-            lines,
-        ))
+        lfn.call::<_, ()>((buf_id, start, end, strict_indexing, lines))
     }
 
     pub fn buf_get_lines(

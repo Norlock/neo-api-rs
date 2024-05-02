@@ -3,7 +3,8 @@ use crate::{
     neo_api::NeoApi,
     neo_api_types::{OptValueType, WinCursor},
 };
-use mlua::prelude::{IntoLua, Lua, LuaResult, LuaFunction};
+
+use mlua::prelude::{IntoLua, Lua, LuaFunction, LuaResult};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NeoWindow(u32);
@@ -50,7 +51,6 @@ impl NeoWindow {
 
         lfn.call::<_, ()>((self.id(), cursor))
     }
-
 
     /**
     Gets the (1,0)-indexed, buffer-relative cursor position for a given window

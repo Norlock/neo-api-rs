@@ -1,11 +1,11 @@
-use std::fmt;
+use crate::{NeoApi, NeoWindow, TextType};
 
-use crate::prelude::{NeoApi, NeoWindow, TextType};
 use mlua::{
-    prelude::{LuaResult, LuaFunction, LuaValue},
+    prelude::{LuaFunction, LuaResult, LuaValue},
     IntoLua, Lua,
 };
 use serde::Serialize;
+use std::fmt;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum PopupRelative {
@@ -239,7 +239,6 @@ impl<'a> IntoLua<'a> for WinOptions {
 
         out.set("noautocmd", self.noautocmd)?;
 
-
         Ok(LuaValue::Table(out))
     }
 }
@@ -247,7 +246,12 @@ impl<'a> IntoLua<'a> for WinOptions {
 pub struct NeoPopup;
 
 impl NeoPopup {
-    pub fn open_win(lua: &Lua, buf_id: u32, enter: bool, config: WinOptions) -> LuaResult<NeoWindow> {
+    pub fn open_win(
+        lua: &Lua,
+        buf_id: u32,
+        enter: bool,
+        config: WinOptions,
+    ) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_open_win").eval()?;
 
         let win_id = lfn.call::<_, u32>((buf_id, enter, config.into_lua(lua)?))?;

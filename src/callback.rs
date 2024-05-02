@@ -1,62 +1,70 @@
+use crate::AutoCmdCbEvent;
 use mlua::Lua;
-use once_cell::sync::Lazy;
-use tokio::sync::{Mutex, MutexGuard};
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
+use mlua::prelude::LuaResult;
 
-use crate::prelude::AutoCmdCbEvent;
+pub const fn create_callback_container<T>() -> OnceLock<Mutex<CallBackQueue<T>>> {
+    OnceLock::new()
+}
 
-static CB_CONTAINER: Lazy<Mutex<CallBackState>> = Lazy::new(|| {
-    let cb_state = CallBackState::default();
+pub trait InitCBQueue<T> {
+    fn init(&self);
+    fn push(&self, func: CbFunction<T>, ev: AutoCmdCbEvent) -> LuaResult<()>;
+    fn exec(&self, state: &mut T, lua: &Lua) -> LuaResult<()>;
+}
 
-    Mutex::new(cb_state)
-});
+impl<T> InitCBQueue<T> for OnceLock<Mutex<CallBackQueue<T>>> {
+    fn init(&self) {
+        let _ = self.set(Mutex::new(CallBackQueue::default()));
+    }
+
+    fn push(&self, func: CbFunction<T>, ev: AutoCmdCbEvent) -> LuaResult<()> {
+        let mut queue = self.get().unwrap().blocking_lock();
+        queue.push(func, ev);
+
+        Ok(())
+    }
+
+    fn exec(&self, state: &mut T, lua: &Lua) -> LuaResult<()> {
+        let mut queue = self.get().unwrap().blocking_lock();
+        queue.exec(state, lua);
+
+        Ok(())
+    }
+}
+
+pub type CbFunction<T> = Box<dyn Fn(&Lua, &mut T, AutoCmdCbEvent) -> ()>;
+
+pub struct CbArgs<T> {
+    pub func: CbFunction<T>,
+    pub ev: AutoCmdCbEvent,
+}
 
 /// Because autocmd callbacks are invoked before returning the NeoApi function calls
 /// It can deadlock your app, this makes sure a queue is added which can be called
 /// at the end of any module function implementation
-pub struct CbContainer;
+pub struct CallBackQueue<T>(Vec<CbArgs<T>>);
 
-pub type CbFunction = Box<dyn Fn(&Lua, AutoCmdCbEvent) -> ()>;
-
-impl CbContainer {
-    pub async fn add_to_queue(func: CbFunction, ev: AutoCmdCbEvent) {
-        let mut cb_container = CB_CONTAINER.lock().await;
-        cb_container.queue.push(CbArgs { ev, func });
+impl<T> CallBackQueue<T> {
+    pub fn push(&mut self, func: CbFunction<T>, ev: AutoCmdCbEvent) {
+        self.0.push(CbArgs { ev, func });
     }
 
-    pub async fn exec<T>(lua: &Lua) {
-        let mut cb_container = CB_CONTAINER.lock().await;
-        while !cb_container.queue.is_empty() {
-            let item = cb_container.queue.remove(0);
-            (item.func)(lua, item.ev);
-        }
-    }
-
-    /// If your global state has an active lock 
-    /// This function will drop as a reminder
-    pub async fn exec_drop_lock<T>(guard: MutexGuard<'_, T>, lua: &Lua) {
-        drop(guard);
-        let mut cb_container = CB_CONTAINER.lock().await;
-        while !cb_container.queue.is_empty() {
-            let item = cb_container.queue.remove(0);
-            (item.func)(lua, item.ev);
+    pub fn exec(&mut self, state: &mut T, lua: &Lua) {
+        while !self.0.is_empty() {
+            let item = self.0.remove(0);
+            // Execute the callback
+            (item.func)(lua, state, item.ev);
         }
     }
 }
 
-pub struct CbArgs {
-    pub func: CbFunction,
-    pub ev: AutoCmdCbEvent,
-}
+unsafe impl<T> Send for CallBackQueue<T> {}
+unsafe impl<T> Sync for CallBackQueue<T> {}
 
-pub struct CallBackState {
-    pub queue: Vec<CbArgs>,
-}
-
-unsafe impl Send for CallBackState {}
-unsafe impl Sync for CallBackState {}
-
-impl Default for CallBackState {
+impl<T> Default for CallBackQueue<T> {
     fn default() -> Self {
-        Self { queue: vec![] }
+        Self(vec![])
     }
 }
