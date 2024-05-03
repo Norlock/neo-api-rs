@@ -1,4 +1,4 @@
-use crate::{NeoApi, NeoWindow, TextType};
+use crate::{NeoApi, NeoBuffer, NeoWindow, TextType};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
@@ -243,9 +243,17 @@ impl<'a> IntoLua<'a> for WinOptions {
     }
 }
 
-pub struct NeoPopup;
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NeoPopup {
+    pub win: NeoWindow,
+    pub buf: NeoBuffer,
+}
 
 impl NeoPopup {
+    pub fn new(win: NeoWindow, buf: NeoBuffer) -> Self {
+        Self { win, buf }
+    }
+
     pub fn open_win(
         lua: &Lua,
         buf_id: u32,
