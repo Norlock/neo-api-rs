@@ -28,6 +28,12 @@ pub struct HlText {
     pub highlight: String,
 }
 
+impl HlText {
+    pub fn new<IntoStr: Into<String>>(text: IntoStr, highlight: IntoStr) -> Self {
+        Self { text: text.into(), highlight: highlight.into() }
+    }
+}
+
 impl<'a> IntoLua<'a> for HlText {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
         let table = lua.create_table()?;
