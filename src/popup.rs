@@ -1,11 +1,18 @@
-use crate::{NeoApi, NeoBuffer, NeoWindow, TextType};
+use crate::{
+    AutoCmdCbEvent, AutoCmdEvent, BufferDeleteOpts, HlText, NeoApi, NeoBuffer, NeoWindow, TextType,
+    RUNTIME,
+};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
     IntoLua, Lua,
 };
 use serde::Serialize;
-use std::fmt;
+use std::{
+    fmt::{self, Display},
+    thread::{self, sleep},
+    time::Duration,
+};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum PopupRelative {
@@ -133,28 +140,124 @@ pub enum PopupSize {
 
 #[derive(Default)]
 pub struct WinOptions {
-    //  width: Window width (in character cells). Minimum of 1.
+    /// width: Window width (in character cells). Minimum of 1.
     pub width: Option<PopupSize>,
+    /// height: Window height (in character cells). Minimum of 1.
     pub height: Option<PopupSize>,
+    /// col: Column position in units of "screen cell width", may be fractional.
     pub col: Option<PopupSize>,
+    /// row: Row position in units of "screen cell height", may be fractional.
     pub row: Option<PopupSize>,
+    /**
+    relative: Sets the window layout to "floating", placed at (row,col) coordinates relative to:
+    • "editor" The global editor grid
+    • "win" Window given by the `win` field, or currentwindow.
+    • "cursor" Cursor position in current window.
+    • "mouse" Mouse position
+    */
     pub relative: PopupRelative,
     pub buf_pos: Option<(u32, u32)>,
+    ///  win: |window-ID| window to split, or relative window when creating a float (relative="win").
     pub win: Option<u32>,
     pub anchor: Anchor,
-    pub focusable: bool,
+    /**
+      focusable: Enable focus by user actions (wincmds, mouse
+      events). Defaults to true. Non-focusable windows can be
+      entered by |nvim_set_current_win()|.
+    */
+    pub focusable: Option<bool>,
     pub external: bool,
+    /**
+      zindex: Stacking order. floats with higher `zindex` go on
+      top on floats with lower indices. Must be larger than
+      zero. The following screen elements have hard-coded
+      z-indices:
+      • 100: insert completion popupmenu
+      • 200: message scrollback
+      • 250: cmdline completion popupmenu (when
+      wildoptions+=pum) The default value for floats are 50.
+      In general, values below 100 are recommended, unless
+      there is a good reason to overshadow builtin elements.
+    */
     pub zindex: u32,
+    /**
+      style: (optional) Configure the appearance of the window.
+      Currently only supports one value:
+      • "minimal" Nvim will display the window with many UI
+      options disabled. This is useful when displaying a
+      temporary float where the text should not be edited.
+      Disables 'number', 'relativenumber', 'cursorline',
+      'cursorcolumn', 'foldcolumn', 'spell' and 'list'
+      options. 'signcolumn' is changed to `auto` and
+      'colorcolumn' is cleared. 'statuscolumn' is changed to
+      empty. The end-of-buffer region is hidden by setting
+      `eob` flag of 'fillchars' to a space char, and clearing
+      the |hl-EndOfBuffer| region in 'winhighlight'.
+    */
     pub style: Option<PopupStyle>,
+    /**
+      border: Style of (optional) window border. This can either
+      be a string or an array. The string values are
+      • "none": No border (default).
+      • "single": A single line box.
+      • "double": A double line box.
+      • "rounded": Like "single", but with rounded corners
+      ("╭" etc.).
+      • "solid": Adds padding by a single whitespace cell.
+      • "shadow": A drop shadow effect by blending with the
+      background.
+      • If it is an array, it should have a length of eight or
+      any divisor of eight. The array will specify the eight
+      chars building up the border in a clockwise fashion
+      starting with the top-left corner. As an example, the
+      double box style could be specified as: >
+      [ "╔", "═" ,"╗", "║", "╝", "═", "╚", "║" ].
+      <
+      If the number of chars are less than eight, they will be
+      repeated. Thus an ASCII border could be specified as >
+      [ "/", "-", \"\\\\\", "|" ],
+
+      or all chars the same as >
+      [ "x" ].
+
+      An empty string can be used to turn off a specific border,
+      for instance, >
+      [ "", "", "", ">", "", "", "", "<" ]
+
+      will only make vertical borders but not horizontal ones.
+      By default, `FloatBorder` highlight is used, which links
+      to `WinSeparator` when not defined. It could also be
+      specified by character: >
+      [ ["+", "MyCorner"], ["x", "MyBorder"] ].
+    */
     pub border: PopupBorder,
+    /**
+      title: Title (optional) in window border, string or list.
+      List should consist of `[text, highlight]` tuples. If
+      string, the default highlight group is `FloatTitle`.
+    */
     pub title: Option<TextType>,
+    /**
+      title_pos: Title position. Must be set with `title`
+      option. Value can be one of "left", "center", or "right".
+      Default is `"left"`.
+    */
     pub title_pos: PopupAlign,
+    /**
+      footer: Footer (optional) in window border, string or
+      list. List should consist of `[text, highlight]` tuples.
+      If string, the default highlight group is `FloatFooter`.
+    */
     pub footer: Option<TextType>,
     pub footer_pos: PopupAlign,
     pub noautocmd: bool,
+    /// fixed: If true when anchor is NW or SW, the float window
+    /// would be kept fixed even if the window would be truncated.
     pub fixed: bool,
     pub hide: bool,
+    /// vertical: Split vertically |:vertical|.
     pub vertical: bool,
+    /// split: Split direction: "left", "right", "above", "below".
     pub split: PopupSplit,
 }
 
@@ -220,12 +323,16 @@ impl<'a> IntoLua<'a> for WinOptions {
         out.set("row", raw_row)?;
         out.set("col", raw_col)?;
         out.set("anchor", self.anchor.to_string())?;
+        out.set("border", self.border.to_string())?;
+        out.set("noautocmd", self.noautocmd)?;
 
         if let Some(style) = self.style {
             out.set("style", style.to_string())?;
         }
 
-        out.set("border", self.border.to_string())?;
+        if let Some(focusable) = self.focusable {
+            out.set("focusable", focusable)?;
+        }
 
         if let Some(title) = self.title {
             out.set("title", title.into_lua(lua)?)?;
@@ -237,8 +344,6 @@ impl<'a> IntoLua<'a> for WinOptions {
             out.set("footer_pos", self.footer_pos.to_string())?;
         }
 
-        out.set("noautocmd", self.noautocmd)?;
-
         Ok(LuaValue::Table(out))
     }
 }
@@ -247,6 +352,30 @@ impl<'a> IntoLua<'a> for WinOptions {
 pub struct NeoPopup {
     pub win: NeoWindow,
     pub buf: NeoBuffer,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PopupLevel {
+    Succes,
+    Error,
+    Neutral,
+}
+
+impl Display for PopupLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Error => f.write_str("DiagnosticSignError"),
+            Self::Succes => f.write_str("DiagnosticSignOk"),
+            Self::Neutral => f.write_str("Normal"),
+        }
+    }
+}
+
+pub struct PopupNotify {
+    pub level: PopupLevel,
+    pub title: String,
+    pub messages: Vec<String>,
+    pub duration: Duration,
 }
 
 impl NeoPopup {
@@ -265,5 +394,48 @@ impl NeoPopup {
         let win_id = lfn.call::<_, u32>((buf_id, enter, config.into_lua(lua)?))?;
 
         Ok(NeoWindow::new(win_id))
+    }
+
+    pub fn notify(lua: &Lua, options: PopupNotify) -> LuaResult<()> {
+        let popup_buf = NeoApi::create_buf(lua, false, true)?;
+
+        popup_buf.set_lines(lua, 0, -1, false, &options.messages)?;
+
+        let popup_win = Self::open_win(
+            lua,
+            popup_buf.id(),
+            false,
+            WinOptions {
+                relative: PopupRelative::Editor,
+                width: Some(PopupSize::Fixed(25)),
+                height: Some(PopupSize::Fixed(options.messages.len() as i32)),
+                col: Some(PopupSize::Fixed(1000)),
+                row: Some(PopupSize::Fixed(0)),
+                style: Some(PopupStyle::Minimal),
+                border: PopupBorder::Rounded,
+                title: Some(TextType::Tuples(vec![HlText::new(
+                    options.title,
+                    options.level.to_string(),
+                )])),
+                title_pos: PopupAlign::Left,
+                noautocmd: false,
+                ..Default::default()
+            },
+        )?;
+
+        let close_popup = lua.create_function(move |lua, _:()| {
+            popup_win.close(lua, true)
+        })?;
+
+        NeoApi::delay(lua, 3000, close_popup)?;
+
+        //lua.load("neo_popup_notify_close(...)").call(popup_win.id())?;
+
+
+        //if let Err(err) = delay_fn.call::<_, ()>((popup_win.id(), close_popup)) {
+            //NeoApi::notify(lua, &err)?;
+        //}
+
+        Ok(())
     }
 }

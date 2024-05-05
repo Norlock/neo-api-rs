@@ -1,8 +1,8 @@
 #![allow(unused)]
-use mlua::prelude::{LuaResult, LuaTable, LuaFunction, Lua, IntoLua};
+use mlua::prelude::{LuaResult, LuaTable, LuaValue, LuaFunction, Lua, IntoLua};
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
-use crate::{KeymapOpts, Mode};
+use crate::{BufferDeleteOpts, KeymapOpts, Mode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NeoBuffer(u32);
@@ -51,8 +51,11 @@ impl NeoBuffer {
                   • force: Force deletion and ignore unsaved changes.
                   • unload: Unloaded only, do not delete. See |:bunload|
     */
-    pub fn delete<'a>(&self, lua: &'a Lua, opts: Option<LuaTable<'a>>) -> LuaResult<()> {
-        NeoApi::buf_delete(lua, self.id(), opts)
+    pub fn delete<'a>(&self, lua: &'a Lua, opts: BufferDeleteOpts) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_delete").eval()?;
+
+        // Bug in nvim API, it won't allow opts not being passed, so create an empty table
+        lfn.call::<_, ()>((self.id(), opts))
     }
 
     /**
@@ -213,4 +216,3 @@ impl NeoBuffer {
         NeoApi::buf_clear_namespace(lua, self.id(), ns_id, start, end)
     }
 }
-

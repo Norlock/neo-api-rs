@@ -33,9 +33,9 @@ impl NeoApi {
     See also: ~
       • buf_open_scratch
     */
-    pub fn create_buf(lua: &mlua::Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
+    pub fn create_buf(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
-        let buf_id: u32 = lfn.call::<(bool, bool), u32>((listed, scratch))?;
+        let buf_id: u32 = lfn.call::<_, u32>((listed, scratch))?;
 
         if buf_id == 0 {
             return Err(LuaError::RuntimeError("Retrieved buffer 0".to_string()));
@@ -44,34 +44,21 @@ impl NeoApi {
         Ok(NeoBuffer::new(buf_id))
     }
 
-    /**
-    nvim_buf_delete({buffer}, {opts})
-    Deletes the buffer. See |:bwipeout|
+    pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
+        let fn_str = r#"
+            function(timeout, callback)
+                local timer = vim.uv.new_timer()
+                timer:start(timeout, 0, vim.schedule_wrap(callback))
+            end
+        "#;
 
-    Attributes: ~
-        not allowed when |textlock| is active or in the |cmdwin|
+        let lfn: LuaFunction = lua.load(fn_str).eval()?;
 
-    Parameters: ~
-      • {buffer}  Buffer handle, or 0 for current buffer
-      • {opts}    Optional parameters. Keys:
-                  • force: Force deletion and ignore unsaved changes.
-                  • unload: Unloaded only, do not delete. See |:bunload|
-    */
-    pub fn buf_delete<'a>(
-        lua: &'a mlua::Lua,
-        buf_id: u32,
-        opts: Option<LuaTable<'a>>,
-    ) -> LuaResult<()> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_delete").eval()?;
+        NeoApi::notify(lua, &"KOMT HIER")?;
 
-        // Bug in nvim API, it won't allow opts not being passed, so create an empty table
-        let opts = if opts.is_none() {
-            lua.create_table()?
-        } else {
-            opts.unwrap()
-        };
+        lfn.call((ms, callback))
 
-        lfn.call::<(u32, LuaTable), ()>((buf_id, opts))
+        //lfn.call((ms, callback))
     }
 
     /**

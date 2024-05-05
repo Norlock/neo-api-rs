@@ -30,7 +30,10 @@ pub struct HlText {
 
 impl HlText {
     pub fn new<IntoStr: Into<String>>(text: IntoStr, highlight: IntoStr) -> Self {
-        Self { text: text.into(), highlight: highlight.into() }
+        Self {
+            text: text.into(),
+            highlight: highlight.into(),
+        }
     }
 }
 
@@ -174,6 +177,22 @@ impl KeymapOpts {
 }
 
 impl<'a> IntoLua<'a> for KeymapOpts {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let mut ser_opts = LuaSerializeOptions::new();
+        ser_opts.serialize_none_to_null = false;
+        ser_opts.serialize_unit_to_null = false;
+
+        lua.to_value_with(&self, ser_opts)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Default)]
+pub struct BufferDeleteOpts {
+    pub force: bool,
+    pub unload: bool,
+}
+
+impl<'a> IntoLua<'a> for BufferDeleteOpts {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
         let mut ser_opts = LuaSerializeOptions::new();
         ser_opts.serialize_none_to_null = false;
