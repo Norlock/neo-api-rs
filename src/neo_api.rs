@@ -12,7 +12,7 @@ use mlua::{
     IntoLua,
 };
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct NeoApi;
 
@@ -54,11 +54,7 @@ impl NeoApi {
 
         let lfn: LuaFunction = lua.load(fn_str).eval()?;
 
-        NeoApi::notify(lua, &"KOMT HIER")?;
-
         lfn.call((ms, callback))
-
-        //lfn.call((ms, callback))
     }
 
     /**
@@ -92,7 +88,7 @@ impl NeoApi {
     pub fn notify_dbg(lua: &mlua::Lua, debug: &impl fmt::Debug) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        lfn.call::<_, ()>(format!("{debug:?}"))
+        lfn.call(format!("{debug:?}"))
     }
 
     /**
@@ -107,13 +103,13 @@ impl NeoApi {
       • {level}  A log level
     */
     pub fn notify_level(
-        lua: &mlua::Lua,
+        lua: &Lua,
         display: &impl fmt::Display,
         level: LogLevel,
     ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        lfn.call::<(String, usize), ()>((display.to_string(), level as usize))
+        lfn.call((display.to_string(), level as usize))
     }
 
     /// Gets a human-readable representation of the given object.
@@ -157,12 +153,12 @@ impl NeoApi {
             OptValueType::Buffer(buffer) => opts.set("buf", buffer.id())?,
         }
 
-        lfn.call::<(&str, V, mlua::Table), ()>((key, value, opts))
+        lfn.call((key, value, opts))
     }
 
     pub fn get_current_win(lua: &mlua::Lua) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_win").eval()?;
-        let win_id = lfn.call::<(), u32>(())?;
+        let win_id = lfn.call(())?;
 
         Ok(NeoWindow::new(win_id))
     }
@@ -170,7 +166,7 @@ impl NeoApi {
     pub fn set_current_buf(lua: &mlua::Lua, buf_id: u32) -> LuaResult<()> {
         let lfn: mlua::Function = lua.load("vim.api.nvim_set_current_buf").eval()?;
 
-        lfn.call::<u32, ()>(buf_id)
+        lfn.call(buf_id)
     }
 
     /**
@@ -182,7 +178,7 @@ impl NeoApi {
     pub fn set_current_win(lua: &Lua, win_id: u32) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_win").eval()?;
 
-        lfn.call::<u32, ()>(win_id)
+        lfn.call(win_id)
     }
 
     /// This will create an empty buffer. Most of the time use the create_buf command
@@ -190,51 +186,51 @@ impl NeoApi {
         let table = lua.create_table()?;
         table.set("bang", bang);
 
-        let lfn: LuaFunction = lua.load(format!("vim.cmd.enew")).eval()?;
+        let lfn: LuaFunction = lua.load("vim.cmd.enew").eval()?;
 
-        lfn.call::<LuaTable, ()>(table)
+        lfn.call(table)
     }
 
     pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load(format!("vim.cmd.{open_in}")).eval()?;
 
-        lfn.call::<&str, ()>(path)
+        lfn.call(path)
     }
 
-    pub fn set_cwd(lua: &Lua, path: &PathBuf) -> LuaResult<()> {
+    pub fn set_cwd(lua: &Lua, path: &Path) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_dir").eval()?;
 
-        lfn.call::<String, ()>(path.to_string_lossy().to_string())
+        lfn.call(path.to_string_lossy().to_string())
     }
 
-    pub fn get_cwd(lua: &mlua::Lua) -> LuaResult<PathBuf> {
+    pub fn get_cwd(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.getcwd").eval()?;
 
-        Ok(lfn.call::<(), String>(())?.into())
+        Ok(lfn.call::<_, String>(())?.into())
     }
 
-    pub fn get_filepath(lua: &mlua::Lua) -> LuaResult<PathBuf> {
+    pub fn get_filepath(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        Ok(lfn.call::<&str, String>("%:p")?.into())
+        Ok(lfn.call::<_, String>("%:p")?.into())
     }
 
-    pub fn get_filename(lua: &mlua::Lua) -> LuaResult<String> {
+    pub fn get_filename(lua: &Lua) -> LuaResult<String> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        lfn.call::<&str, String>("%:p:t")
+        lfn.call::<_, String>("%:p:t")
     }
 
-    pub fn get_filedir(lua: &mlua::Lua) -> LuaResult<PathBuf> {
+    pub fn get_filedir(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        Ok(lfn.call::<&str, String>("%:p:h")?.into())
+        Ok(lfn.call::<_, String>("%:p:h")?.into())
     }
 
     pub fn set_cmd_file(lua: &Lua, name: impl Into<String>) -> LuaResult<()> {
         let lfn: mlua::Function = lua.load("vim.cmd.file").eval()?;
 
-        lfn.call::<String, ()>(name.into())
+        lfn.call::<_, ()>(name.into())
     }
 
     /**
@@ -250,10 +246,10 @@ impl NeoApi {
     run           String   Run directory: temporary, local storage for sockets, named pipes, etc.
     state         String   Session state directory: storage for file drafts, swap, undo, |shada|.
     */
-    pub fn stdpath(lua: &mlua::Lua, stdpath: StdpathType) -> LuaResult<PathBuf> {
+    pub fn stdpath(lua: &Lua, stdpath: StdpathType) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.stdpath").eval()?;
 
-        Ok(lfn.call::<String, String>(stdpath.to_string())?.into())
+        Ok(lfn.call::<_, String>(stdpath.to_string())?.into())
     }
 
     /**
@@ -272,10 +268,10 @@ impl NeoApi {
     Return: ~
         Namespace id
     */
-    pub fn create_namespace(lua: &mlua::Lua, ns: &str) -> LuaResult<u32> {
+    pub fn create_namespace(lua: &Lua, ns: &str) -> LuaResult<u32> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_namespace").eval()?;
 
-        lfn.call::<&str, u32>(ns)
+        lfn.call::<_, u32>(ns)
     }
 
     /**
@@ -313,7 +309,7 @@ impl NeoApi {
         The ns_id that was used
     */
     pub fn buf_add_highlight(
-        lua: &mlua::Lua,
+        lua: &Lua,
         buf_id: u32,
         ns_id: i32,
         hl_group: &str,
@@ -323,9 +319,7 @@ impl NeoApi {
     ) -> LuaResult<i32> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_add_highlight").eval()?;
 
-        lfn.call::<(u32, i32, &str, usize, u32, i32), i32>((
-            buf_id, ns_id, hl_group, line, col_start, col_end,
-        ))
+        lfn.call((buf_id, ns_id, hl_group, line, col_start, col_end))
     }
 
     /**
@@ -343,15 +337,15 @@ impl NeoApi {
                       clear to end of buffer.
     */
     pub fn buf_clear_namespace(
-        lua: &mlua::Lua,
+        lua: &Lua,
         buf_id: u32,
         ns_id: i32,
         start: u32,
         end: i32,
-    ) -> mlua::Result<()> {
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
 
-        lfn.call::<(u32, i32, u32, i32), ()>((buf_id, ns_id, start, end))
+        lfn.call((buf_id, ns_id, start, end))
     }
 
     /**
@@ -381,13 +375,13 @@ impl NeoApi {
       • |nvim_buf_set_text()|
     */
     pub fn buf_set_lines(
-        lua: &mlua::Lua,
+        lua: &Lua,
         buf_id: u32,
         start: i32,
         end: i32,
         strict_indexing: bool,
         lines: &[String],
-    ) -> mlua::Result<()> {
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_lines").eval()?;
 
         lfn.call::<_, ()>((buf_id, start, end, strict_indexing, lines))
@@ -402,13 +396,13 @@ impl NeoApi {
     ) -> LuaResult<Vec<String>> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_get_lines").eval()?;
 
-        lfn.call::<_, _>((buf_id, start, end, strict_indexing))
+        lfn.call((buf_id, start, end, strict_indexing))
     }
 
     pub fn list_uis(lua: &mlua::Lua) -> LuaResult<Vec<Ui>> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_list_uis").eval()?;
 
-        lfn.call::<(), Vec<Ui>>(())
+        lfn.call(())
     }
 
     /**
@@ -435,8 +429,8 @@ impl NeoApi {
       • {col}     Column where to place the mark, 0-based. |api-indexing|
       • {opts}    Optional parameters.
     */
-    pub fn buf_set_extmark<'a>(
-        lua: &'a mlua::Lua,
+    pub fn buf_set_extmark(
+        lua: &Lua,
         buf_id: u32,
         ns_id: u32,
         line: u32,
@@ -446,7 +440,7 @@ impl NeoApi {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_extmark").eval()?;
         let opts: LuaValue = opts.into_lua(lua)?;
 
-        lfn.call::<(u32, u32, u32, u32, LuaValue), ()>((buf_id, ns_id, line, col, opts))
+        lfn.call::<_, ()>((buf_id, ns_id, line, col, opts))
     }
 
     pub fn set_keymap<'a>(
@@ -480,11 +474,11 @@ impl NeoApi {
         if insert {
             let lfn: LuaFunction = lua.load("vim.cmd.startinsert").eval()?;
 
-            lfn.call::<_, _>(())
+            lfn.call(())
         } else {
             let lfn: LuaFunction = lua.load("vim.cmd.stopinsert").eval()?;
 
-            lfn.call::<_, _>(())
+            lfn.call(())
         }
     }
 }

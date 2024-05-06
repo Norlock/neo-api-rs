@@ -1,6 +1,5 @@
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, BufferDeleteOpts, HlText, NeoApi, NeoBuffer, NeoWindow, TextType,
-    RUNTIME,
+    HlText, NeoApi, NeoBuffer, NeoWindow, TextType,
 };
 
 use mlua::{
@@ -10,7 +9,6 @@ use mlua::{
 use serde::Serialize;
 use std::{
     fmt::{self, Display},
-    thread::{self, sleep},
     time::Duration,
 };
 
@@ -427,15 +425,6 @@ impl NeoPopup {
             popup_win.close(lua, true)
         })?;
 
-        NeoApi::delay(lua, 3000, close_popup)?;
-
-        //lua.load("neo_popup_notify_close(...)").call(popup_win.id())?;
-
-
-        //if let Err(err) = delay_fn.call::<_, ()>((popup_win.id(), close_popup)) {
-            //NeoApi::notify(lua, &err)?;
-        //}
-
-        Ok(())
+        NeoApi::delay(lua, 3000, close_popup)
     }
 }

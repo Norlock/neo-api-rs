@@ -194,11 +194,7 @@ pub struct BufferDeleteOpts {
 
 impl<'a> IntoLua<'a> for BufferDeleteOpts {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        let mut ser_opts = LuaSerializeOptions::new();
-        ser_opts.serialize_none_to_null = false;
-        ser_opts.serialize_unit_to_null = false;
-
-        lua.to_value_with(&self, ser_opts)
+        lua.to_value(&self)
     }
 }
 

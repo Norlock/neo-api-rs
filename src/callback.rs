@@ -34,7 +34,7 @@ impl<T> InitCBQueue<T> for OnceLock<Mutex<CallBackQueue<T>>> {
     }
 }
 
-pub type CbFunction<T> = Box<dyn Fn(&Lua, &mut T, AutoCmdCbEvent) -> ()>;
+pub type CbFunction<T> = Box<dyn Fn(&Lua, &mut T, AutoCmdCbEvent)>;
 
 pub struct CbArgs<T> {
     pub func: CbFunction<T>,

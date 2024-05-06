@@ -51,7 +51,7 @@ impl NeoBuffer {
                   • force: Force deletion and ignore unsaved changes.
                   • unload: Unloaded only, do not delete. See |:bunload|
     */
-    pub fn delete<'a>(&self, lua: &'a Lua, opts: BufferDeleteOpts) -> LuaResult<()> {
+    pub fn delete(&self, lua: &Lua, opts: BufferDeleteOpts) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_delete").eval()?;
 
         // Bug in nvim API, it won't allow opts not being passed, so create an empty table
