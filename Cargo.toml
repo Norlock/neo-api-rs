@@ -8,5 +8,4 @@ edition = "2021"
 [dependencies]
 mlua = { git = "https://github.com/mlua-rs/mlua", features = ["luajit", "serialize", "module", "async"] }
 serde = { version = "1", features = ["serde_derive"] }
-tokio = { version = "1", features = ["full"] }
 once_cell = "1"

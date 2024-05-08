@@ -25,15 +25,15 @@ static CONTAINER: Lazy<Mutex<HashMap<NeoBuffer, NeoFuzzy>>> =
 
 #[derive(Debug)]
 pub struct NeoFuzzy {
-    //pub command: Command,
     pub pop_cmd: NeoPopup,
     pub pop_out: NeoPopup,
+    //pub pop_bat: NeoPopup,
     pub cwd: PathBuf,
     pub args: Vec<String>,
-    pub cmd: String, //pub pop_bat: NeoPopup,
-                     // Win command
-                     // Win choices
-                     // Win preview
+    pub cmd: String,
+    // Win command
+    // Win choices
+    // Win preview
 }
 
 pub enum FilesSearch {
@@ -152,13 +152,12 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
 
 // TODO async search & sync loading
 fn exec_search(lua: &Lua, fuzzy: &NeoFuzzy, text: &str) -> LuaResult<()> {
-    NeoApi::notify(lua, &"Komthierr")?;
-
-    let cmd = Command::new("fd")
+    let cmd = Command::new(&fuzzy.cmd)
         .current_dir(&fuzzy.cwd)
-        .args([text])
+        .args(&fuzzy.args)
+        .arg(text)
         .output()
-        .expect("fd failed to run");
+        .expect("Command failed to run");
 
     if cmd.status.success() {
         let result = String::from_utf8_lossy(&cmd.stdout);

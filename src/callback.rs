@@ -1,7 +1,7 @@
 use crate::AutoCmdCbEvent;
 use mlua::Lua;
 use std::sync::OnceLock;
-use tokio::sync::Mutex;
+use std::sync::Mutex;
 use mlua::prelude::LuaResult;
 
 pub const fn create_callback_container<T>() -> OnceLock<Mutex<CallBackQueue<T>>> {
@@ -20,14 +20,14 @@ impl<T> InitCBQueue<T> for OnceLock<Mutex<CallBackQueue<T>>> {
     }
 
     fn push(&self, func: CbFunction<T>, ev: AutoCmdCbEvent) -> LuaResult<()> {
-        let mut queue = self.get().unwrap().blocking_lock();
+        let mut queue = self.get().unwrap().lock().unwrap();
         queue.push(func, ev);
 
         Ok(())
     }
 
     fn exec(&self, state: &mut T, lua: &Lua) -> LuaResult<()> {
-        let mut queue = self.get().unwrap().blocking_lock();
+        let mut queue = self.get().unwrap().lock().unwrap();
         queue.exec(state, lua);
 
         Ok(())
