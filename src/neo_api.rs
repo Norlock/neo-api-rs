@@ -426,7 +426,16 @@ impl NeoApi {
     ) -> mlua::Result<()> {
         let lfn: LuaFunction = lua.load("vim.keymap.set").eval()?;
 
-        lfn.call::<_, ()>((mode.get_str(), lhs, rhs, keymap_opts))
+        lfn.call((mode.get_str(), lhs, rhs, keymap_opts))
+    }
+
+    pub fn create_augroup(lua: &Lua, name: &str, clear: bool) -> LuaResult<u32> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_create_augroup").eval()?;
+
+        let opts = lua.create_table()?;
+        opts.set("clear", clear)?;
+
+        lfn.call((name, opts))
     }
 
     /// Creates an |autocommand| event handler, defined by `callback`

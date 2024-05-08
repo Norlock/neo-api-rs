@@ -656,7 +656,7 @@ pub struct AutoCmdCbEvent {
     pub r#match: String,
 
     /// Expanded value of <abuf>
-    pub buf: u32,
+    pub buf: Option<u32>,
 
     /// Expanded value of <afile>
     pub file: String,

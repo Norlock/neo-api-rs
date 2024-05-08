@@ -4,7 +4,7 @@ use crate::neo_api_types::{ExtmarkOpts, OptValueType};
 use crate::{BufferDeleteOpts, KeymapOpts, Mode};
 use mlua::prelude::{IntoLua, Lua, LuaError, LuaFunction, LuaResult, LuaTable, LuaValue};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NeoBuffer(u32);
 
 impl NeoBuffer {
@@ -40,8 +40,17 @@ impl NeoBuffer {
         Self(id)
     }
 
+    /// Don't retrieve
     pub fn id(&self) -> u32 {
         self.0
+    }
+
+    pub fn get_current_buf(lua: &Lua) -> LuaResult<NeoBuffer> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_buf").eval()?;
+
+        let buf_id = lfn.call(())?;
+
+        Ok(NeoBuffer::new(buf_id))
     }
 
     pub fn keymap_opts(&self, silent: bool) -> KeymapOpts {

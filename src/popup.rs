@@ -2,7 +2,7 @@ use crate::{HlText, NeoApi, NeoBuffer, NeoWindow, TextType};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
-    IntoLua, Lua,
+    FromLua, IntoLua, Lua,
 };
 use serde::Serialize;
 use std::{
@@ -348,6 +348,36 @@ impl<'a> IntoLua<'a> for WinOptions {
 pub struct NeoPopup {
     pub win: NeoWindow,
     pub buf: NeoBuffer,
+}
+
+impl<'a> IntoLua<'a> for NeoPopup {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let out = lua.create_table()?;
+        out.set("win", self.win.id())?;
+        out.set("buf", self.buf.id())?;
+
+        Ok(LuaValue::Table(out))
+    }
+}
+
+impl<'a> FromLua<'a> for NeoPopup {
+    fn from_lua(value: LuaValue<'a>, _lua: &'a Lua) -> LuaResult<Self> {
+        if let LuaValue::Table(table) = value {
+            let win_id = table.get("win")?;
+            let buf_id = table.get("buf")?;
+
+            Ok(NeoPopup {
+                win: NeoWindow::new(win_id),
+                buf: NeoBuffer::new(buf_id),
+            })
+        } else {
+            Err(mlua::Error::FromLuaConversionError {
+                from: value.type_name(),
+                to: "NeoPopup",
+                message: None,
+            })
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
