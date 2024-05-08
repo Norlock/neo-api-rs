@@ -13,8 +13,7 @@ use std::{
 };
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, Mode, NeoApi, NeoBuffer, NeoPopup, PopupSize, PopupSplit,
-    PopupStyle, TextType,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoWindow, PopupSize, PopupSplit, PopupStyle, TextType
 };
 
 static CONTAINER: Lazy<Mutex<HashMap<NeoBuffer, NeoFuzzy>>> =
@@ -68,16 +67,30 @@ impl NeoFuzzy {
 
         NeoApi::set_insert_mode(lua, true)?;
 
+        let group = NeoApi::create_augroup(lua, "neo-fuzzy", false)?;
+
         NeoApi::create_autocmd(
             lua,
             &[AutoCmdEvent::TextChangedI],
             crate::AutoCmdOpts {
                 callback: lua.create_function(aucmd_text_changed)?,
                 buffer: Some(pop_cmd.buf.id()),
-                // TODO add group
-                group: None,
+                group: Some(AutoCmdGroup::Integer(group)),
                 pattern: vec![],
                 once: false,
+                desc: None,
+            },
+        )?;
+
+        NeoApi::create_autocmd(
+            lua,
+            &[AutoCmdEvent::BufLeave],
+            crate::AutoCmdOpts {
+                callback: lua.create_function(close_fuzzy_aucmd)?,
+                buffer: Some(pop_cmd.buf.id()),
+                group: Some(AutoCmdGroup::Integer(group)),
+                pattern: vec![],
+                once: true,
                 desc: None,
             },
         )?;
@@ -139,14 +152,18 @@ impl NeoFuzzy {
 }
 
 fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
-    let container = CONTAINER.lock().unwrap();
+    NeoWindow::CURRENT.close(lua, true)
+}
 
-    let buffer = NeoBuffer::get_current_buf(&lua)?;
-    let fuzzy = container.get(&buffer).unwrap();
+fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
+    let mut container = CONTAINER.lock().unwrap();
 
-    fuzzy.pop_cmd.win.close(lua, true)?;
-    // TODO close other popups in autocmd
+    let buffer = NeoBuffer::new(ev.buf.unwrap());
+    let fuzzy = container.remove(&buffer).unwrap();
+
     fuzzy.pop_out.win.close(lua, true)?;
+    fuzzy.pop_cmd.win.close(lua, false)?;
+
     NeoApi::set_insert_mode(lua, false)
 }
 
