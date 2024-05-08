@@ -1,6 +1,4 @@
-use crate::{
-    HlText, NeoApi, NeoBuffer, NeoWindow, TextType,
-};
+use crate::{HlText, NeoApi, NeoBuffer, NeoWindow, TextType};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
@@ -377,35 +375,39 @@ pub struct PopupNotify {
 }
 
 impl NeoPopup {
-    pub fn new(win: NeoWindow, buf: NeoBuffer) -> Self {
-        Self { win, buf }
+    /// This will create and open the popup, using `open_win` is also fine
+    pub fn open(lua: &Lua, buf: NeoBuffer, enter: bool, config: WinOptions) -> LuaResult<Self> {
+        let win = Self::open_win(lua, &buf, enter, config)?;
+        Ok(Self { win, buf })
     }
 
+    /// This will create the popup win.
     pub fn open_win(
         lua: &Lua,
-        buf_id: u32,
+        buf: &NeoBuffer,
         enter: bool,
         config: WinOptions,
     ) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_open_win").eval()?;
 
-        let win_id = lfn.call::<_, u32>((buf_id, enter, config.into_lua(lua)?))?;
+        let win_id = lfn.call::<_, u32>((buf.id(), enter, config.into_lua(lua)?))?;
 
         Ok(NeoWindow::new(win_id))
     }
 
     pub fn notify(lua: &Lua, options: PopupNotify) -> LuaResult<()> {
-        let popup_buf = NeoApi::create_buf(lua, false, true)?;
+        let popup_buf = NeoBuffer::create(lua, false, true)?;
 
+        let width = 50;
         popup_buf.set_lines(lua, 0, -1, false, &options.messages)?;
 
         let popup_win = Self::open_win(
             lua,
-            popup_buf.id(),
+            &popup_buf,
             false,
             WinOptions {
                 relative: PopupRelative::Editor,
-                width: Some(PopupSize::Fixed(25)),
+                width: Some(PopupSize::Fixed(width)),
                 height: Some(PopupSize::Fixed(options.messages.len() as i32)),
                 col: Some(PopupSize::Fixed(1000)),
                 row: Some(PopupSize::Fixed(0)),
@@ -413,7 +415,7 @@ impl NeoPopup {
                 border: PopupBorder::Rounded,
                 title: Some(TextType::Tuples(vec![HlText::new(
                     options.title,
-                    options.level.to_string(),
+                    format!(" {} ", options.level.to_string()),
                 )])),
                 title_pos: PopupAlign::Left,
                 noautocmd: false,
@@ -421,10 +423,8 @@ impl NeoPopup {
             },
         )?;
 
-        let close_popup = lua.create_function(move |lua, _:()| {
-            popup_win.close(lua, true)
-        })?;
+        let close_popup = lua.create_function(move |lua, _: ()| popup_win.close(lua, true))?;
 
-        NeoApi::delay(lua, 3000, close_popup)
+        NeoApi::delay(lua, options.duration.as_millis() as u32, close_popup)
     }
 }

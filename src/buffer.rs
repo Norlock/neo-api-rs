@@ -1,14 +1,40 @@
 #![allow(unused)]
-use mlua::prelude::{LuaResult, LuaTable, LuaValue, LuaFunction, Lua, IntoLua};
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
 use crate::{BufferDeleteOpts, KeymapOpts, Mode};
+use mlua::prelude::{IntoLua, Lua, LuaError, LuaFunction, LuaResult, LuaTable, LuaValue};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NeoBuffer(u32);
 
 impl NeoBuffer {
     pub const ZERO: Self = Self(0);
+
+    /**
+    Creates a new, empty, unnamed buffer.
+
+    Parameters: ~
+      • {listed}   Sets 'buflisted'
+      • {scratch}  Creates a "throwaway" |scratch-buffer| for temporary work
+                   (always 'nomodified'). Also sets 'nomodeline' on the
+                   buffer.
+
+    Return: ~
+        Buffer handle, or 0 on error
+
+    See also: ~
+      • buf_open_scratch
+    */
+    pub fn create(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
+        let buf_id: u32 = lfn.call::<_, u32>((listed, scratch))?;
+
+        if buf_id == 0 {
+            return Err(LuaError::RuntimeError("Buffer not created".to_string()));
+        }
+
+        Ok(NeoBuffer::new(buf_id))
+    }
 
     pub fn new(id: u32) -> Self {
         Self(id)
@@ -21,11 +47,17 @@ impl NeoBuffer {
     pub fn keymap_opts(&self, silent: bool) -> KeymapOpts {
         KeymapOpts {
             buffer: Some(self.0),
-            silent: Some(silent)
+            silent: Some(silent),
         }
     }
 
-    pub fn set_keymap<'a>(&self, lua: &'a Lua, mode: Mode, lhs: &str, rhs: LuaFunction<'a>) -> LuaResult<()> {
+    pub fn set_keymap<'a>(
+        &self,
+        lua: &'a Lua,
+        mode: Mode,
+        lhs: &str,
+        rhs: LuaFunction<'a>,
+    ) -> LuaResult<()> {
         NeoApi::set_keymap(lua, mode, lhs, rhs, self.keymap_opts(true))
     }
 
@@ -158,9 +190,12 @@ impl NeoBuffer {
         NeoApi::buf_set_lines(lua, self.id(), start, end, strict_indexing, lines)
     }
 
-
     pub fn get_lines(
-        &self, lua: &Lua, start: i32, end: i32, strict_indexing: bool
+        &self,
+        lua: &Lua,
+        start: i32,
+        end: i32,
+        strict_indexing: bool,
     ) -> LuaResult<Vec<String>> {
         NeoApi::buf_get_lines(lua, self.id(), start, end, strict_indexing)
     }

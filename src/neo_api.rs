@@ -18,32 +18,6 @@ pub struct NeoApi;
 
 #[allow(unused)]
 impl NeoApi {
-    /**
-    Creates a new, empty, unnamed buffer.
-
-    Parameters: ~
-      • {listed}   Sets 'buflisted'
-      • {scratch}  Creates a "throwaway" |scratch-buffer| for temporary work
-                   (always 'nomodified'). Also sets 'nomodeline' on the
-                   buffer.
-
-    Return: ~
-        Buffer handle, or 0 on error
-
-    See also: ~
-      • buf_open_scratch
-    */
-    pub fn create_buf(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
-        let buf_id: u32 = lfn.call::<_, u32>((listed, scratch))?;
-
-        if buf_id == 0 {
-            return Err(LuaError::RuntimeError("Retrieved buffer 0".to_string()));
-        }
-
-        Ok(NeoBuffer::new(buf_id))
-    }
-
     pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
         let fn_str = r#"
             function(timeout, callback)
