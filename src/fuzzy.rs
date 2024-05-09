@@ -13,7 +13,8 @@ use std::{
 };
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoWindow, PopupSize, PopupSplit, PopupStyle, TextType
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, Mode, NeoApi, NeoBuffer,
+    NeoPopup, NeoWindow, PopupSize, PopupSplit, PopupStyle, TextType,
 };
 
 static CONTAINER: Lazy<Mutex<HashMap<NeoBuffer, NeoFuzzy>>> =
@@ -169,10 +170,23 @@ fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
 
 // TODO async search & sync loading
 fn exec_search(lua: &Lua, fuzzy: &NeoFuzzy, text: &str) -> LuaResult<()> {
+    let regex = text.replace('/', "\\/").replace('.', "\\.");
+    let mut out = String::new();
+
+    for char in regex.chars() {
+        out.push(char);
+
+        if char.is_alphanumeric() {
+            out.push_str(".*");
+        }
+    }
+
+    NeoApi::notify(lua, &out)?;
+
     let cmd = Command::new(&fuzzy.cmd)
         .current_dir(&fuzzy.cwd)
         .args(&fuzzy.args)
-        .arg(text)
+        .arg(out)
         .output()
         .expect("Command failed to run");
 
@@ -196,10 +210,10 @@ fn aucmd_text_changed(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     NeoApi::notify(lua, &format!("even kijken {}", buf_id))?;
 
     let buf = NeoBuffer::new(buf_id);
-    let text = &buf.get_lines(lua, 0, 1, false)?[0];
+    let text = NeoApi::get_current_line(lua)?;
 
     let fuzziers = CONTAINER.lock().unwrap();
     let fuzzy = fuzziers.get(&buf).unwrap();
 
-    exec_search(lua, fuzzy, text)
+    exec_search(lua, fuzzy, &text)
 }

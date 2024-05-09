@@ -40,12 +40,16 @@ impl NeoApi {
     Parameters: ~
       • {msg}    Content of the notification to show to the user.
     */
-    pub fn notify(lua: &mlua::Lua, display: &impl fmt::Display) -> LuaResult<()> {
+    pub fn notify(lua: &Lua, display: &impl fmt::Display) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
-        let result = display.to_string();
+        lfn.call(display.to_string())
+    }
 
-        lfn.call::<_, ()>(result)
+    pub fn get_current_line(lua: &Lua) -> LuaResult<String> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_line").eval()?;
+
+        lfn.call(())
     }
 
     /**
