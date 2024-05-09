@@ -40,7 +40,6 @@ impl NeoBuffer {
         Self(id)
     }
 
-    /// Don't retrieve
     pub fn id(&self) -> u32 {
         self.0
     }
@@ -160,7 +159,9 @@ impl NeoBuffer {
         col_start: u32,
         col_end: i32,
     ) -> LuaResult<i32> {
-        NeoApi::buf_add_highlight(lua, self.0, ns_id, hl_group, line, col_start, col_end)
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_add_highlight").eval()?;
+
+        lfn.call((self.id(), ns_id, hl_group, line, col_start, col_end))
     }
 
     /**
@@ -196,7 +197,9 @@ impl NeoBuffer {
         strict_indexing: bool,
         lines: &[String],
     ) -> mlua::Result<()> {
-        NeoApi::buf_set_lines(lua, self.id(), start, end, strict_indexing, lines)
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_lines").eval()?;
+
+        lfn.call((self.id(), start, end, strict_indexing, lines))
     }
 
     pub fn get_lines(
@@ -206,7 +209,9 @@ impl NeoBuffer {
         end: i32,
         strict_indexing: bool,
     ) -> LuaResult<Vec<String>> {
-        NeoApi::buf_get_lines(lua, self.id(), start, end, strict_indexing)
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_get_lines").eval()?;
+
+        lfn.call((self.id(), start, end, strict_indexing))
     }
 
     /**
@@ -257,6 +262,8 @@ impl NeoBuffer {
                       clear to end of buffer.
     */
     pub fn clear_namespace(&self, lua: &Lua, ns_id: i32, start: u32, end: i32) -> LuaResult<()> {
-        NeoApi::buf_clear_namespace(lua, self.id(), ns_id, start, end)
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
+
+        lfn.call((self.id(), ns_id, start, end))
     }
 }

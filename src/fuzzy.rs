@@ -23,6 +23,8 @@ static CONTAINER: Lazy<Mutex<HashMap<NeoBuffer, NeoFuzzy>>> =
 //  rg --no-heading --line-number . | rg -e NeoPop -e open
 // rg --files | rg -e "e.*des.*ini.*"
 
+// On match highlight with 'DiagnosticOk'
+
 #[derive(Debug)]
 pub struct NeoFuzzy {
     pub pop_cmd: NeoPopup,
@@ -31,6 +33,8 @@ pub struct NeoFuzzy {
     pub cwd: PathBuf,
     pub args: Vec<String>,
     pub cmd: String,
+
+    pub selected_idx: usize,
     // Win command
     // Win choices
     // Win preview
@@ -136,6 +140,7 @@ impl NeoFuzzy {
                 cwd,
                 args,
                 cmd,
+                selected_idx: 0,
             },
         );
 
