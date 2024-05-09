@@ -60,16 +60,20 @@ impl NeoWindow {
     Parameters: ~
       • {window}  Window handle, or 0 for current window
 
-    Return: ~
-        (row, col) tuple
-
     See also: ~
       • |getcurpos()|
     */
     pub fn get_cursor(&self, lua: &Lua) -> LuaResult<WinCursor> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_get_cursor").eval()?;
 
-        lfn.call::<_, WinCursor>((self.id()))
+        lfn.call((self.id()))
+    }
+
+    /// Adds the namespace scope to the window.
+    pub fn add_ns(&self, lua: &Lua, ns_id: u32) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_win_add_ns").eval()?;
+
+        lfn.call((self.id(), ns_id))
     }
 
     /**
@@ -78,12 +82,6 @@ impl NeoWindow {
 
     Attributes: ~
         not allowed when |textlock| is active
-
-    Parameters: ~
-      • {window}  Window handle, or 0 for current window
-      • {force}   Behave like `:close!` The last window of a buffer with
-                  unwritten changes can be closed. The buffer will become
-                  hidden, even if 'hidden' is not set.
     */
     pub fn close(&self, lua: &Lua, force: bool) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_close").eval()?;

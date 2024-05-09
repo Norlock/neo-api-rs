@@ -36,6 +36,12 @@ impl NeoBuffer {
         Ok(NeoBuffer::new(buf_id))
     }
 
+    pub fn delete_namespace(&self, lua: &Lua, ns_id: u32, line_start: u32, line_end: i32) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
+
+        lfn.call((self.id(), ns_id, line_start, line_end))
+    }
+
     pub fn new(id: u32) -> Self {
         Self(id)
     }
@@ -214,6 +220,26 @@ impl NeoBuffer {
         lfn.call((self.id(), start, end, strict_indexing))
     }
 
+    pub fn line_count(
+        &self,
+        lua: &Lua
+    ) -> LuaResult<usize> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_line_count").eval()?;
+
+        lfn.call(self.id())
+    }
+
+    pub fn call<'a>(
+        &self, 
+        lua: &'a Lua,
+        cb: LuaFunction<'a>
+    ) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_call").eval()?;
+
+        lfn.call((self.id(), cb))
+    }
+
+
     /**
     Creates or updates an |extmark|.
 
@@ -243,7 +269,7 @@ impl NeoBuffer {
         ns_id: u32,
         line: u32,
         col: u32,
-        opts: ExtmarkOpts<'a>,
+        opts: ExtmarkOpts,
     ) -> LuaResult<()> {
         NeoApi::buf_set_extmark(lua, self.id(), ns_id, line, col, opts)
     }

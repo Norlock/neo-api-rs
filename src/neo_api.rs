@@ -168,6 +168,10 @@ impl NeoApi {
         lfn.call(table)
     }
 
+    pub fn run_cmd(lua: &Lua, cmd: &str) -> LuaResult<()> {
+        lua.load(format!("vim.cmd[[{}]]", cmd)).exec()
+    }
+
     pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load(format!("vim.cmd.{open_in}")).eval()?;
 
@@ -227,28 +231,6 @@ impl NeoApi {
         let lfn: LuaFunction = lua.load("vim.fn.stdpath").eval()?;
 
         Ok(lfn.call::<_, String>(stdpath.to_string())?.into())
-    }
-
-    /**
-    Creates a new namespace or gets an existing one.
-
-    Namespaces are used for buffer highlights and virtual text, see
-    |nvim_buf_add_highlight()| and |nvim_buf_set_extmark()|.
-
-    Namespaces can be named or anonymous. If `name` matches an existing
-    namespace, the associated id is returned. If `name` is an empty string a
-    new, anonymous namespace is created.
-
-    Parameters: ~
-      • {name}  Namespace name or empty string
-
-    Return: ~
-        Namespace id
-    */
-    pub fn create_namespace(lua: &Lua, ns: &str) -> LuaResult<u32> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_create_namespace").eval()?;
-
-        lfn.call::<_, u32>(ns)
     }
 
     pub fn list_uis(lua: &mlua::Lua) -> LuaResult<Vec<Ui>> {

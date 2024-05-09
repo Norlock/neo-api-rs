@@ -1,4 +1,4 @@
-use crate::{HlText, NeoApi, NeoBuffer, NeoWindow, TextType};
+use crate::{HLText, NeoApi, NeoBuffer, NeoWindow, TextType};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
@@ -443,7 +443,7 @@ impl NeoPopup {
                 row: Some(PopupSize::Fixed(0)),
                 style: Some(PopupStyle::Minimal),
                 border: PopupBorder::Rounded,
-                title: Some(TextType::Tuples(vec![HlText::new(
+                title: Some(TextType::Tuples(vec![HLText::new(
                     options.title,
                     format!(" {} ", options.level.to_string()),
                 )])),
