@@ -109,7 +109,7 @@ impl NeoFuzzy {
             let mut out = Vec::new();
 
             for (i, line) in result.lines().enumerate() {
-                let score = levenshtein(text, line); 
+                let score = levenshtein(text, line);
                 out.push((score, line.to_string()));
             }
 
@@ -117,7 +117,15 @@ impl NeoFuzzy {
 
             let lines: Vec<String> = out.into_iter().map(|k| k.1).collect();
 
-            self.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+            if 300 <= lines.len() {
+                self.pop_out
+                    .buf
+                    .set_lines(lua, 0, -1, false, &lines[..300])?;
+            } else {
+                self.pop_out
+                    .buf
+                    .set_lines(lua, 0, -1, false, &lines)?;
+            }
             self.add_highlight(lua)?;
         }
 
@@ -380,6 +388,7 @@ fn aucmd_text_changed(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     Ok(())
 }
 
+// TODO split on path
 pub fn levenshtein(a: &str, b: &str) -> usize {
     let mut result = 0;
 
