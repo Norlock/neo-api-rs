@@ -76,6 +76,16 @@ impl NeoWindow {
         lfn.call((self.id(), ns_id))
     }
 
+    pub fn call<'a>(
+        &self, 
+        lua: &'a Lua,
+        cb: LuaFunction<'a>
+    ) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_win_call").eval()?;
+
+        lfn.call((self.id(), cb))
+    }
+
     /**
     nvim_win_close({window}, {force})                           *nvim_win_close()*
     Closes the window (like |:close| with a |window-ID|).

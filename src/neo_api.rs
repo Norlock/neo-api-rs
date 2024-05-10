@@ -3,7 +3,7 @@ use crate::neo_api_types::{
     StdpathType, Ui,
 };
 use crate::window::NeoWindow;
-use crate::KeymapOpts;
+use crate::{CmdOpts, KeymapOpts};
 
 use mlua::Lua;
 use mlua::{
@@ -18,16 +18,9 @@ pub struct NeoApi;
 #[allow(unused)]
 impl NeoApi {
     pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
-        let fn_str = r#"
-            function(timeout, callback)
-                local timer = vim.uv.new_timer()
-                timer:start(timeout, 0, vim.schedule_wrap(callback))
-            end
-        "#;
+        let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
 
-        let lfn: LuaFunction = lua.load(fn_str).eval()?;
-
-        lfn.call((ms, callback))
+        lfn.call((callback, ms))
     }
 
     /**
@@ -79,11 +72,7 @@ impl NeoApi {
       • {msg}    Content of the notification to show to the user.
       • {level}  A log level
     */
-    pub fn notify_level(
-        lua: &Lua,
-        display: &impl fmt::Display,
-        level: LogLevel,
-    ) -> LuaResult<()> {
+    pub fn notify_level(lua: &Lua, display: &impl fmt::Display, level: LogLevel) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.notify").eval()?;
 
         lfn.call((display.to_string(), level as usize))
@@ -168,8 +157,11 @@ impl NeoApi {
         lfn.call(table)
     }
 
-    pub fn run_cmd(lua: &Lua, cmd: &str) -> LuaResult<()> {
-        lua.load(format!("vim.cmd[[{}]]", cmd)).exec()
+    pub fn cmd(lua: &Lua, opts: CmdOpts<'_>) -> LuaResult<()> {
+        let cmd = format!("vim.cmd.{}", opts.cmd);
+        let lfn: LuaFunction = lua.load(cmd).eval()?;
+
+        lfn.call((opts))
     }
 
     pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {

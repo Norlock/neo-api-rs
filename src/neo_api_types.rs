@@ -902,3 +902,86 @@ impl<'a> IntoLua<'a> for AutoCmdOpts<'a> {
         Ok(LuaValue::Table(table))
     }
 }
+
+#[derive(Default, Clone)]
+pub struct CmdOptsMagic {
+    pub bar: bool,
+    pub file: bool,
+}
+
+#[derive(Default, Clone)]
+pub struct CmdOptsModsFilter<'a> {
+    pub force: bool,
+    pub pattern: &'a str,
+}
+
+#[derive(Clone)]
+pub struct CmdOptsMods<'a> {
+    pub browse: bool,
+    pub confirm: bool,
+    pub emsg_silent: bool,
+    pub filter: CmdOptsModsFilter<'a>,
+    pub hide: bool,
+    pub horizontal: bool,
+    pub keepalt: bool,
+    pub keepjumps: bool,
+    pub keepmarks: bool,
+    pub keeppatterns: bool,
+    pub lockmarks: bool,
+    pub noautocmd: bool,
+    pub noswapfile: bool,
+    pub sandbox: bool,
+    pub silent: bool,
+    pub split: &'a str,
+    pub tab: i32, // -1
+    pub unsilent: bool,
+    pub verbose: i32, // -1
+    pub vertical: bool,
+}
+
+impl Default for CmdOptsMods<'_> {
+    fn default() -> Self {
+        Self {
+            browse: false,
+            confirm: false,
+            emsg_silent: false,
+            filter: CmdOptsModsFilter::default(),
+            hide: false,
+            horizontal: false,
+            keepalt: false,
+            keepjumps: false,
+            keepmarks: false,
+            keeppatterns: false,
+            lockmarks: false,
+            noautocmd: false,
+            noswapfile: false,
+            sandbox: false,
+            silent: false,
+            split: "",
+            tab: -1,
+            unsilent: false,
+            verbose: -1,
+            vertical: false,
+        }
+    }
+}
+
+impl<'lua, 'opts> IntoLua<'lua> for CmdOpts<'opts> {
+    fn into_lua(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
+        let out = lua.create_table()?;
+        out.set("cmd", self.cmd)?;
+        out.set("args", self.args)?;
+        out.set("bang", self.bang)?;
+
+        Ok(LuaValue::Table(out))
+    }
+        
+}
+
+#[derive(Clone)]
+pub struct CmdOpts<'a> {
+    pub cmd: &'a str,
+    pub args: &'a [&'a str],
+    pub bang: bool,
+}
+

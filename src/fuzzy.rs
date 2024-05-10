@@ -13,8 +13,9 @@ use std::{
 };
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, HLOpts, Mode, NeoApi, NeoBuffer,
-    NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupSize, PopupSplit, PopupStyle, TextType,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, CmdOpts, HLOpts, Mode, NeoApi,
+    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupSize, PopupSplit, PopupStyle,
+    TextType,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -249,7 +250,9 @@ impl NeoFuzzy {
     }
 
     fn add_highlight(&self, lua: &Lua) -> LuaResult<()> {
-        self.pop_out.buf.delete_namespace(lua, self.ns_id, 0, -1)?;
+        self.pop_out
+            .buf
+            .clear_namespace(lua, self.ns_id as i32, 0, -1)?;
 
         self.pop_out.buf.add_highlight(
             lua,
@@ -269,18 +272,39 @@ fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
 
     if let Some(fuzzy) = fuzzy.as_mut() {
         let len = fuzzy.pop_out.buf.line_count(lua)?;
+        let mut jump_line = false;
 
         match move_sel {
             Move::Up => {
                 if 0 < fuzzy.selected_idx {
-                    fuzzy.selected_idx -= 1
+                    fuzzy.selected_idx -= 1;
+                    jump_line = true;
                 }
             }
             Move::Down => {
                 if fuzzy.selected_idx + 1 < len {
                     fuzzy.selected_idx += 1;
+                    jump_line = true;
                 }
             }
+        }
+
+        if jump_line {
+            let sel_idx = fuzzy.selected_idx;
+
+            fuzzy.pop_out.win.call(
+                lua,
+                lua.create_function(move |lua, _: ()| {
+                    NeoApi::cmd(
+                        lua,
+                        CmdOpts {
+                            cmd: "normal",
+                            bang: true,
+                            args: &[&format!("{}G", sel_idx + 1)],
+                        },
+                    )
+                })?,
+            )?;
         }
 
         fuzzy.add_highlight(lua)?;

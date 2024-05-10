@@ -36,12 +36,6 @@ impl NeoBuffer {
         Ok(NeoBuffer::new(buf_id))
     }
 
-    pub fn delete_namespace(&self, lua: &Lua, ns_id: u32, line_start: u32, line_end: i32) -> LuaResult<()> {
-        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
-
-        lfn.call((self.id(), ns_id, line_start, line_end))
-    }
-
     pub fn new(id: u32) -> Self {
         Self(id)
     }
@@ -82,7 +76,9 @@ impl NeoBuffer {
         not allowed when |textlock| is active or in the |cmdwin|
     */
     pub fn set_current(&self, lua: &mlua::Lua) -> LuaResult<()> {
-        NeoApi::set_current_buf(lua, self.id())
+        let lfn: mlua::Function = lua.load("vim.api.nvim_set_current_buf").eval()?;
+
+        lfn.call(self.id())
     }
 
     /**
@@ -220,25 +216,17 @@ impl NeoBuffer {
         lfn.call((self.id(), start, end, strict_indexing))
     }
 
-    pub fn line_count(
-        &self,
-        lua: &Lua
-    ) -> LuaResult<usize> {
+    pub fn line_count(&self, lua: &Lua) -> LuaResult<usize> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_line_count").eval()?;
 
         lfn.call(self.id())
     }
 
-    pub fn call<'a>(
-        &self, 
-        lua: &'a Lua,
-        cb: LuaFunction<'a>
-    ) -> LuaResult<()> {
+    pub fn call<'a>(&self, lua: &'a Lua, cb: LuaFunction<'a>) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_call").eval()?;
 
         lfn.call((self.id(), cb))
     }
-
 
     /**
     Creates or updates an |extmark|.
@@ -287,9 +275,9 @@ impl NeoBuffer {
       • {line_end}    End of range of lines to clear (exclusive) or -1 to
                       clear to end of buffer.
     */
-    pub fn clear_namespace(&self, lua: &Lua, ns_id: i32, start: u32, end: i32) -> LuaResult<()> {
+    pub fn clear_namespace(&self, lua: &Lua, ns_id: i32, line_start: u32, line_end: i32) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
 
-        lfn.call((self.id(), ns_id, start, end))
+        lfn.call((self.id(), ns_id, line_start, line_end))
     }
 }

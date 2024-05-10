@@ -246,7 +246,11 @@ pub struct WinOptions {
     */
     pub footer: Option<TextType>,
     pub footer_pos: PopupAlign,
+
+    /// noautocmd: If true then all autocommands are blocked for
+    /// the duration of the call.
     pub noautocmd: bool,
+
     /// fixed: If true when anchor is NW or SW, the float window
     /// would be kept fixed even if the window would be truncated.
     pub fixed: bool,
@@ -428,7 +432,6 @@ impl NeoPopup {
     pub fn notify(lua: &Lua, options: PopupNotify) -> LuaResult<()> {
         let popup_buf = NeoBuffer::create(lua, false, true)?;
 
-        let width = 50;
         popup_buf.set_lines(lua, 0, -1, false, &options.messages)?;
 
         let popup_win = Self::open_win(
@@ -437,7 +440,7 @@ impl NeoPopup {
             false,
             WinOptions {
                 relative: PopupRelative::Editor,
-                width: Some(PopupSize::Fixed(width)),
+                width: Some(PopupSize::Fixed(50)),
                 height: Some(PopupSize::Fixed(options.messages.len() as i32)),
                 col: Some(PopupSize::Fixed(1000)),
                 row: Some(PopupSize::Fixed(0)),
@@ -445,13 +448,13 @@ impl NeoPopup {
                 border: PopupBorder::Rounded,
                 title: Some(TextType::Tuples(vec![HLText::new(
                     options.title,
-                    format!(" {} ", options.level.to_string()),
+                    options.level.to_string(),
                 )])),
                 title_pos: PopupAlign::Left,
-                noautocmd: false,
                 ..Default::default()
             },
         )?;
+
 
         let close_popup = lua.create_function(move |lua, _: ()| popup_win.close(lua, true))?;
 
