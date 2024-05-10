@@ -5,6 +5,7 @@ use mlua::{
     IntoLua,
 };
 use once_cell::sync::Lazy;
+use std::process::Stdio;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -57,33 +58,59 @@ pub enum Move {
 
 impl NeoFuzzy {
     fn exec_search(&self, lua: &Lua, text: &str) -> LuaResult<()> {
-        let regex = text.replace('/', "\\/").replace('.', "\\.");
-        let mut out = String::new();
+        let text = text.replace('/', "\\/").replace('.', "\\.");
 
-        for char in regex.chars() {
-            out.push(char);
+        let out;
 
-            if char.is_alphanumeric() {
-                out.push_str(".*");
+        if text.is_empty() {
+            out = Command::new(&self.cmd)
+                .current_dir(&self.cwd)
+                .args(&self.args)
+                .output()?;
+        } else {
+            let mut regex = String::from(".*");
+
+            for char in text.chars() {
+                if char.is_lowercase() {
+                    regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
+                } else {
+                    regex.push(char);
+                }
+
+                if char != '\\' {
+                    regex.push_str(".*");
+                }
             }
+
+            NeoApi::notify(lua, &regex)?;
+
+            let fd_cmd = Command::new(&self.cmd)
+                .current_dir(&self.cwd)
+                .args(&self.args)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+
+            let rg_cmd = Command::new("rg")
+                .args(["--regexp", &regex])
+                .stdin(Stdio::from(fd_cmd.stdout.unwrap()))
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+
+            out = rg_cmd.wait_with_output()?;
         }
 
-        NeoApi::notify(lua, &out)?;
-
-        let cmd = Command::new(&self.cmd)
-            .current_dir(&self.cwd)
-            .args(&self.args)
-            .arg(out)
-            .output()
-            .expect("Command failed to run");
-
-        if cmd.status.success() {
-            let result = String::from_utf8_lossy(&cmd.stdout);
+        if out.status.success() {
+            let result = String::from_utf8_lossy(&out.stdout);
 
             let mut out = Vec::new();
 
-            for line in result.lines() {
+            for (i, line) in result.lines().enumerate() {
                 out.push(line.to_string());
+                if i + 1 == 300 {
+                    break;
+                }
             }
 
             self.pop_out.buf.set_lines(lua, 0, -1, false, &out)?;
