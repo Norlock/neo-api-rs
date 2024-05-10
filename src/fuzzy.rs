@@ -6,6 +6,7 @@ use mlua::{
 };
 use once_cell::sync::Lazy;
 use std::process::Stdio;
+use std::time::Instant;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -23,11 +24,6 @@ const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 
 static CONTAINER: Lazy<Mutex<Option<NeoFuzzy>>> = Lazy::new(|| Mutex::new(None));
-
-//  rg --no-heading --line-number . | rg -e NeoPop -e open
-// rg --files | rg -e "e.*des.*ini.*"
-
-// On match highlight with 'DiagnosticOk'
 
 #[derive(Debug)]
 pub struct NeoFuzzy {
@@ -63,6 +59,8 @@ impl NeoFuzzy {
         let sanitized = text.replace('/', "\\/").replace('.', "\\.");
 
         let out;
+
+        let instant = Instant::now();
 
         if sanitized.is_empty() {
             out = Command::new(&self.cmd)
@@ -116,6 +114,8 @@ impl NeoFuzzy {
             out.sort_by_key(|k| k.0);
 
             let lines: Vec<String> = out.into_iter().map(|k| k.1).collect();
+
+            NeoApi::notify(lua, &format!("time: {}ms", instant.elapsed().as_millis()));
 
             if 300 <= lines.len() {
                 self.pop_out
@@ -374,7 +374,6 @@ fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
 // TODO async search & sync loading
 fn aucmd_text_changed(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     let buf_id = ev.buf.unwrap();
-    NeoApi::notify(lua, &format!("even kijken {}", buf_id))?;
 
     let buf = NeoBuffer::new(buf_id);
     let text = NeoApi::get_current_line(lua)?;

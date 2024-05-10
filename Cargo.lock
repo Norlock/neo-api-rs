@@ -65,6 +65,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -111,6 +120,7 @@ dependencies = [
 name = "neo-api-rs"
 version = "0.1.0"
 dependencies = [
+ "macros",
  "mlua",
  "once_cell",
  "serde",
