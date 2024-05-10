@@ -57,12 +57,14 @@ pub enum Move {
 }
 
 impl NeoFuzzy {
-    fn exec_search(&self, lua: &Lua, text: &str) -> LuaResult<()> {
-        let text = text.replace('/', "\\/").replace('.', "\\.");
+    fn exec_search(&mut self, lua: &Lua, text: &str) -> LuaResult<()> {
+        self.selected_idx = 0;
+
+        let sanitized = text.replace('/', "\\/").replace('.', "\\.");
 
         let out;
 
-        if text.is_empty() {
+        if sanitized.is_empty() {
             out = Command::new(&self.cmd)
                 .current_dir(&self.cwd)
                 .args(&self.args)
@@ -70,7 +72,7 @@ impl NeoFuzzy {
         } else {
             let mut regex = String::from(".*");
 
-            for char in text.chars() {
+            for char in sanitized.chars() {
                 if char.is_lowercase() {
                     regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
                 } else {
@@ -107,13 +109,15 @@ impl NeoFuzzy {
             let mut out = Vec::new();
 
             for (i, line) in result.lines().enumerate() {
-                out.push(line.to_string());
-                if i + 1 == 300 {
-                    break;
-                }
+                let score = levenshtein(text, line); 
+                out.push((score, line.to_string()));
             }
 
-            self.pop_out.buf.set_lines(lua, 0, -1, false, &out)?;
+            out.sort_by_key(|k| k.0);
+
+            let lines: Vec<String> = out.into_iter().map(|k| k.1).collect();
+
+            self.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
             self.add_highlight(lua)?;
         }
 
@@ -252,7 +256,7 @@ impl NeoFuzzy {
             }
         };
 
-        let fuzzy = NeoFuzzy {
+        let mut fuzzy = NeoFuzzy {
             pop_cmd,
             pop_out,
             cwd,
@@ -367,11 +371,69 @@ fn aucmd_text_changed(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     let buf = NeoBuffer::new(buf_id);
     let text = NeoApi::get_current_line(lua)?;
 
-    let fuzzy = CONTAINER.lock().unwrap();
+    let mut fuzzy = CONTAINER.lock().unwrap();
 
-    if let Some(fuzzy) = fuzzy.as_ref() {
+    if let Some(fuzzy) = fuzzy.as_mut() {
         fuzzy.exec_search(lua, &text)?;
     }
 
     Ok(())
+}
+
+pub fn levenshtein(a: &str, b: &str) -> usize {
+    let mut result = 0;
+
+    /* Shortcut optimizations / degenerate cases. */
+    if a == b {
+        return result;
+    }
+
+    let length_a = a.len();
+    let length_b = b.len();
+
+    if length_a == 0 {
+        return length_b;
+    } else if length_b == 0 {
+        return length_a;
+    }
+
+    /* Initialize the vector.
+     *
+     * This is why it’s fast, normally a matrix is used,
+     * here we use a single vector. */
+    let mut cache: Vec<usize> = (1..).take(length_a).collect();
+    let mut distance_a;
+    let mut distance_b;
+
+    /* Loop. */
+    for (index_b, code_b) in b.chars().enumerate() {
+        result = index_b;
+        distance_a = index_b;
+
+        for (index_a, code_a) in a.chars().enumerate() {
+            distance_b = if code_a == code_b {
+                distance_a
+            } else {
+                distance_a + 1
+            };
+
+            distance_a = cache[index_a];
+
+            result = if distance_a > result {
+                if distance_b > result {
+                    result + 1
+                } else {
+                    distance_b
+                }
+            } else if distance_b > distance_a {
+                distance_a + 1
+            } else {
+                distance_b
+            };
+
+            cache[index_a] = result;
+        }
+    }
+
+    result
 }
