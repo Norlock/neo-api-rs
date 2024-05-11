@@ -16,8 +16,8 @@ use std::{
 
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, CmdOpts, HLOpts, Mode, NeoApi,
-    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupSize, PopupSplit, PopupStyle,
-    TextType,
+    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupSplit,
+    PopupStyle, TextType,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -29,16 +29,13 @@ static CONTAINER: Lazy<Mutex<Option<NeoFuzzy>>> = Lazy::new(|| Mutex::new(None))
 pub struct NeoFuzzy {
     pub pop_cmd: NeoPopup,
     pub pop_out: NeoPopup,
-    //pub pop_bat: NeoPopup,
+    pub pop_bat: NeoPopup,
     pub cwd: PathBuf,
     pub args: Vec<String>,
     pub cmd: String,
 
     pub selected_idx: usize,
     pub ns_id: u32,
-    // Win command
-    // Win choices
-    // Win preview
 }
 
 pub enum FilesSearch {
@@ -122,9 +119,7 @@ impl NeoFuzzy {
                     .buf
                     .set_lines(lua, 0, -1, false, &lines[..300])?;
             } else {
-                self.pop_out
-                    .buf
-                    .set_lines(lua, 0, -1, false, &lines)?;
+                self.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
             }
             self.add_highlight(lua)?;
         }
@@ -187,16 +182,72 @@ impl NeoFuzzy {
 
         NeoTheme::set_hl_ns(lua, ns_id)?;
 
+        let ui = &NeoApi::list_uis(lua)?[0];
+
+        let pop_cmd_row = ui.height - 6;
+        let pop_cmd_col = 4;
+        let pop_cmd_height = 1;
+        let pop_cmd_width = if ui.width % 2 == 0 {
+            ui.width - 8
+        } else {
+            ui.width - 9
+        };
+
+        let out_bat_height = (pop_cmd_row - 4);
+        let out_width = pop_cmd_width /  2;
+        let out_bat_row = 2;
+        let out_col = pop_cmd_col;
+        let bat_width = out_width - 2;
+        let bat_col = pop_cmd_col + out_width + 2;
+
         let pop_cmd = NeoPopup::open(
             lua,
             NeoBuffer::create(lua, false, true)?,
             true,
             crate::WinOptions {
-                width: Some(PopupSize::Percentage(1.0)),
-                height: Some(PopupSize::Fixed(1)),
-                row: Some(PopupSize::Fixed(1000)),
+                width: Some(PopupSize::Fixed(pop_cmd_width)),
+                height: Some(PopupSize::Fixed(pop_cmd_height)),
+                row: Some(PopupSize::Fixed(pop_cmd_row)),
+                col: Some(PopupSize::Fixed(pop_cmd_col)),
+                relative: PopupRelative::Editor,
                 border: PopupBorder::Single,
+                style: Some(PopupStyle::Minimal),
                 title: Some(TextType::String("Search for directory".to_string())),
+                ..Default::default()
+            },
+        )?;
+
+        let pop_out = NeoPopup::open(
+            lua,
+            NeoBuffer::create(lua, false, true)?,
+            false,
+            crate::WinOptions {
+                width: Some(PopupSize::Fixed(out_width)),
+                height: Some(PopupSize::Fixed(out_bat_height)),
+                row: Some(PopupSize::Fixed(out_bat_row)),
+                col: Some(PopupSize::Fixed(out_col)),
+                relative: PopupRelative::Editor,
+                border: crate::PopupBorder::Single,
+                focusable: Some(false),
+                style: Some(PopupStyle::Minimal),
+
+                ..Default::default()
+            },
+        )?;
+
+        let pop_bat = NeoPopup::open(
+            lua,
+            NeoBuffer::create(lua, false, true)?,
+            false,
+            crate::WinOptions {
+                width: Some(PopupSize::Fixed(bat_width)),
+                height: Some(PopupSize::Fixed(out_bat_height)),
+                row: Some(PopupSize::Fixed(out_bat_row)),
+                col: Some(PopupSize::Fixed(bat_col)),
+                relative: PopupRelative::Editor,
+                border: crate::PopupBorder::Single,
+                focusable: Some(false),
+                style: Some(PopupStyle::Minimal),
                 ..Default::default()
             },
         )?;
@@ -232,22 +283,6 @@ impl NeoFuzzy {
             },
         )?;
 
-        let pop_out = NeoPopup::open(
-            lua,
-            NeoBuffer::create(lua, false, true)?,
-            false,
-            crate::WinOptions {
-                width: Some(PopupSize::Percentage(0.5)),
-                height: Some(PopupSize::Percentage(0.8)),
-                win: Some(pop_cmd.win.id()),
-                split: PopupSplit::Above,
-                border: crate::PopupBorder::Single,
-                focusable: Some(false),
-                style: Some(PopupStyle::Minimal),
-                ..Default::default()
-            },
-        )?;
-
         let mut container = CONTAINER.lock().unwrap();
 
         let cmd = "fd".to_string();
@@ -267,6 +302,7 @@ impl NeoFuzzy {
         let mut fuzzy = NeoFuzzy {
             pop_cmd,
             pop_out,
+            pop_bat,
             cwd,
             args,
             cmd,
@@ -362,8 +398,9 @@ fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     let buffer = NeoBuffer::new(ev.buf.unwrap());
 
     if let Some(fuzzy) = container.as_ref() {
-        fuzzy.pop_out.win.close(lua, true)?;
+        fuzzy.pop_out.win.close(lua, false)?;
         fuzzy.pop_cmd.win.close(lua, false)?;
+        fuzzy.pop_bat.win.close(lua, false)?;
     }
 
     *container = None;

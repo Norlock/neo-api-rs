@@ -48,11 +48,11 @@ impl<'a> IntoLua<'a> for HLText {
     }
 }
 
-pub trait VecToLua<'a> {
+pub trait ParseToLua<'a> {
     fn parse(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>>;
 }
 
-impl<'a, T> VecToLua<'a> for Vec<T>
+impl<'a, T> ParseToLua<'a> for Vec<T>
 where
     T: IntoLua<'a>,
 {
@@ -746,6 +746,12 @@ pub struct AutoCmdCbEvent {
     pub data: Option<usize>,
 }
 
+impl<'a> FromLua<'a> for AutoCmdCbEvent {
+    fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
+        lua.from_value(value)
+    }
+}
+
 impl<'a> IntoLua<'a> for AutoCmdOpts<'a> {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
         let table = lua.create_table()?;
@@ -848,7 +854,6 @@ impl<'lua, 'opts> IntoLua<'lua> for CmdOpts<'opts> {
 
         Ok(LuaValue::Table(out))
     }
-        
 }
 
 #[derive(Clone)]
@@ -857,4 +862,3 @@ pub struct CmdOpts<'a> {
     pub args: &'a [&'a str],
     pub bang: bool,
 }
-

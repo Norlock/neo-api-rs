@@ -129,7 +129,7 @@ impl fmt::Display for PopupSplit {
 
 #[derive(Debug, Clone, Copy)]
 pub enum PopupSize {
-    Fixed(i32),
+    Fixed(u32),
     /// Between 0 and 1
     Percentage(f32),
 }
@@ -279,7 +279,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_width = width;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_width = (ui.width as f32 * percentage).round() as i32;
+                    raw_width = (ui.width as f32 * percentage) as u32;
                 }
             }
         }
@@ -290,7 +290,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_height = height;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_height = (ui.height as f32 * percentage).round() as i32;
+                    raw_height = (ui.height as f32 * percentage) as u32;
                 }
             }
         }
@@ -301,7 +301,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_row = row;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_row = ((ui.height as i32 - raw_height) as f32 * percentage) as i32;
+                    raw_row = (ui.height as f32  * percentage) as u32;
                 }
             }
         }
@@ -312,7 +312,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_col = col;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_col = ((ui.width as i32 - raw_width) as f32 * percentage) as i32;
+                    raw_col = (ui.width as f32 * percentage) as u32;
                 }
             }
         }
@@ -424,7 +424,7 @@ impl NeoPopup {
     ) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_open_win").eval()?;
 
-        let win_id = lfn.call::<_, u32>((buf.id(), enter, config.into_lua(lua)?))?;
+        let win_id = lfn.call((buf.id(), enter, config))?;
 
         Ok(NeoWindow::new(win_id))
     }
@@ -441,7 +441,7 @@ impl NeoPopup {
             WinOptions {
                 relative: PopupRelative::Editor,
                 width: Some(PopupSize::Fixed(50)),
-                height: Some(PopupSize::Fixed(options.messages.len() as i32)),
+                height: Some(PopupSize::Fixed(options.messages.len() as u32)),
                 col: Some(PopupSize::Fixed(1000)),
                 row: Some(PopupSize::Fixed(0)),
                 style: Some(PopupStyle::Minimal),
