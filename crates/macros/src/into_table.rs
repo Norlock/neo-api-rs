@@ -23,7 +23,7 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                     if let Some(value) = self.#field_name {
                                         out.set(stringify!(#field_name), value)?;
                                     }
-                                })
+                                });
                             } else if field_type == "Vec" {
                                 table_fields.push(quote! {
                                     let mut lua_arr = lua.create_table()?;
@@ -33,7 +33,7 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                     }
 
                                     out.set(stringify!(#field_name), lua_arr)?;
-                                })
+                                });
                             }  else {
                                 table_fields.push(quote! {
                                     out.set(stringify!(#field_name), self.#field_name)?;

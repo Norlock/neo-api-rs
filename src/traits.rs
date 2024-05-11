@@ -1,8 +1,5 @@
 use std::sync::{Mutex, MutexGuard};
 
-use macros::{IntoEnumSC, IntoTable};
-use mlua::Lua;
-
 pub trait FastLock<T> {
     fn fast_lock(&self) -> MutexGuard<'_, T>;
 }

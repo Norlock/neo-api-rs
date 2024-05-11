@@ -1,13 +1,16 @@
 use convert_case::{Case, Casing};
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
-pub fn into_enum(input: proc_macro::TokenStream, casing: Case) -> proc_macro::TokenStream {
+pub fn into_enum(input: proc_macro::TokenStream, casing: Option<Case>) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
     let enum_name = &input.ident;
 
     fn invalid_enum() {
+        // TODO either all variants 1 field or no fields
+        // 1 field will use value of field as lua value
+        // no field will use to_string() as lua value
         panic!("Enum my not contain any fields (impl IntoLua manually)");
     }
 
@@ -20,10 +23,15 @@ pub fn into_enum(input: proc_macro::TokenStream, casing: Case) -> proc_macro::To
             }
 
             let variant = &variant.ident;
-            let variant_value = format_ident!("{}", variant.to_string().to_case(casing));
+
+            let variant_value = if let Some(casing) = casing {
+                variant.to_string().to_case(casing)
+            } else {
+                variant.to_string()
+            };
 
             variants.push(quote! {
-                Self::#variant => f.write_str(stringify!(#variant_value)),
+                Self::#variant => f.write_str(#variant_value),
             });
         }
     }
@@ -80,6 +88,5 @@ mod tests {
     #[test]
     fn test_macro() {
         // TODO write test
-
     }
 }
