@@ -194,7 +194,7 @@ impl NeoFuzzy {
         };
 
         let out_bat_height = (pop_cmd_row - 4);
-        let out_width = pop_cmd_width /  2;
+        let out_width = pop_cmd_width / 2;
         let out_bat_row = 2;
         let out_col = pop_cmd_col;
         let bat_width = out_width - 2;
@@ -315,7 +315,11 @@ impl NeoFuzzy {
 
         *container = Some(fuzzy);
 
-        // Preview buf
+        let interval = lua.create_function(|lua: &Lua, _: ()| {
+            NeoApi::notify(lua, &"timer called")?;
+            Ok(())
+        })?;
+        NeoApi::start_interval(lua, "fuzzy", 300, interval)?;
 
         Ok(())
     }
@@ -402,6 +406,8 @@ fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
         fuzzy.pop_cmd.win.close(lua, false)?;
         fuzzy.pop_bat.win.close(lua, false)?;
     }
+
+    NeoApi::stop_interval(lua, "fuzzy")?;
 
     *container = None;
 

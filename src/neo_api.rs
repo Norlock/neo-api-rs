@@ -7,7 +7,7 @@ use crate::{CmdOpts, KeymapOpts};
 
 use mlua::Lua;
 use mlua::{
-    prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
+    prelude::{LuaFunction, LuaResult, LuaTable, LuaUserData, LuaUserDataMethods, LuaValue},
     IntoLua,
 };
 use std::fmt;
@@ -15,12 +15,54 @@ use std::path::{Path, PathBuf};
 
 pub struct NeoApi;
 
+//pub struct UvTimer;
+
+//impl LuaUserData for UvTimer {
+//fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
+//methods.add_method_mut("start", |lua: &Lua, this, value: (u32| u32| u32| {
+//this.0 += value;
+//Ok(())
+//});
+//}
+//}
+
 #[allow(unused)]
 impl NeoApi {
     pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
 
         lfn.call((callback, ms))
+    }
+
+    pub fn schedule_wrap<'a>(lua: &'a Lua, callback: LuaFunction<'a>) -> LuaResult<LuaFunction<'a>> {
+        let lfn: LuaFunction = lua.load("vim.schedule_wrap").eval()?;
+
+        lfn.call(callback)
+    }
+
+    
+
+    /// timer_id will be prefixed with neo_timer_ and stored in globals.
+    pub fn start_interval(lua: &Lua, timer_id: &str,ms: u32,  callback: LuaFunction<'_>) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.uv.new_timer").eval()?;
+
+        let timer: LuaValue = lfn.call(())?;
+
+        let lfn: LuaFunction = lua.load("vim.uv.timer_start").eval()?;
+
+        let callback = Self::schedule_wrap(lua, callback)?;
+
+        lua.globals().set(format!("neo_timer_{timer_id}"), timer.clone())?;
+
+        lfn.call((timer, ms, ms, callback))
+    }
+
+    pub fn stop_interval(lua: &Lua, timer_id: &str) -> LuaResult<()> {
+        let timer: LuaValue = lua.globals().get(format!("neo_timer_{timer_id}"))?;
+
+        let lfn: LuaFunction = lua.load("vim.uv.timer_stop").eval()?;
+
+        lfn.call(timer)
     }
 
     /**
