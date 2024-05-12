@@ -7,24 +7,13 @@ use crate::{CmdOpts, KeymapOpts};
 
 use mlua::Lua;
 use mlua::{
-    prelude::{LuaFunction, LuaResult, LuaTable, LuaUserData, LuaUserDataMethods, LuaValue},
+    prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
 use std::fmt;
 use std::path::{Path, PathBuf};
 
 pub struct NeoApi;
-
-//pub struct UvTimer;
-
-//impl LuaUserData for UvTimer {
-//fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {
-//methods.add_method_mut("start", |lua: &Lua, this, value: (u32| u32| u32| {
-//this.0 += value;
-//Ok(())
-//});
-//}
-//}
 
 #[allow(unused)]
 impl NeoApi {
