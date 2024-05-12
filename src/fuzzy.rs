@@ -5,40 +5,46 @@ use mlua::{
     IntoLua,
 };
 use once_cell::sync::Lazy;
+use std::io::BufReader;
+use std::process::ExitStatus;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 use std::{process::Stdio, time::Instant};
-use tokio::io;
+use tokio::io::{self, AsyncWriteExt};
 use tokio::join;
 use tokio::process::*;
 use tokio::runtime::Runtime;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLockReadGuard, TryLockError};
 use tokio::sync::RwLock;
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, CmdOpts, FastLock, HLOpts, Mode,
-    NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize,
-    PopupSplit, PopupStyle, TextType,
+    callback, AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, CmdOpts, FastLock,
+    HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative,
+    PopupSize, PopupSplit, PopupStyle, TextType,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 
 struct FuzzyContainer {
-    lines: RwLock<Vec<String>>,
+    all_lines: RwLock<String>,
+    cached_lines: RwLock<Vec<String>>,
+    rt: RwLock<Runtime>,
     fuzzy: Mutex<Option<NeoFuzzy>>,
-    rt: Mutex<Runtime>,
+    update_results: RwLock<bool>,
 }
 
 unsafe impl Send for FuzzyContainer {}
 unsafe impl Sync for FuzzyContainer {}
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
-    lines: RwLock::new(vec![]),
+    all_lines: RwLock::new(String::new()),
+    cached_lines: RwLock::new(vec![]),
     fuzzy: Mutex::new(None),
-    rt: Mutex::new(tokio::runtime::Runtime::new().unwrap()),
+    rt: RwLock::new(tokio::runtime::Runtime::new().unwrap()),
+    update_results: RwLock::new(false),
 });
 
 #[derive(Debug)]
@@ -65,6 +71,7 @@ pub enum Move {
     Down,
 }
 
+// TODO optimization to query from cached lines
 async fn exec_search(
     cwd: PathBuf,
     cmd: String,
@@ -73,14 +80,46 @@ async fn exec_search(
 ) -> tokio::io::Result<()> {
     let sanitized = search_query.replace('/', "\\/").replace('.', "\\.");
 
-    let out;
+    let has_lines = !CONTAINER.all_lines.read().await.is_empty();
 
-    if sanitized.is_empty() {
-        out = Command::new(cmd)
+    async fn sort_lines(lines: &str, search_query: &str) {
+        let mut new_lines = Vec::new();
+
+        for (i, line) in lines.lines().enumerate() {
+            let score = levenshtein(&search_query, line);
+            new_lines.push((score, line.to_string()));
+        }
+
+        new_lines.sort_by_key(|k| k.0);
+        let new_lines = new_lines.into_iter().map(|k| k.1);
+
+        let mut cached_lines = CONTAINER.cached_lines.write().await;
+        cached_lines.clear();
+
+        for (i, line) in new_lines.enumerate() {
+            cached_lines.push(line);
+
+            if 300 == i + 1 {
+                break;
+            }
+        }
+
+        *CONTAINER.update_results.write().await = true;
+    }
+
+    if !has_lines {
+        let out = Command::new(cmd)
             .current_dir(cwd)
             .args(args)
             .output()
             .await?;
+
+        if out.status.success() {
+            let mut lines = CONTAINER.all_lines.write().await;
+            *lines = String::from_utf8_lossy(&out.stdout).to_string();
+
+            sort_lines(&lines, "").await;
+        }
     } else {
         let mut regex = String::from(".*");
 
@@ -96,49 +135,28 @@ async fn exec_search(
             }
         }
 
-        let mut fd_cmd = Command::new(cmd)
-            .current_dir(cwd)
-            .args(args)
-            .stdout(Stdio::piped())
-            .spawn()?;
-
-        let rg_stdin: Stdio = fd_cmd
-            .stdout
-            .take()
-            .unwrap()
-            .try_into()
-            .expect("failed to convert to Stdio");
-
-        let rg_cmd = Command::new("rg")
+        let mut rg_proc = Command::new("rg")
             .args(["--regexp", &regex])
-            .stdin(rg_stdin)
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
 
-        let (fd_result, tr_output) = join!(fd_cmd.wait(), rg_cmd.wait_with_output());
+        let mut stdin = rg_proc.stdin.take().unwrap();
 
-        if fd_result.is_err() {
-            return Err(io::Error::new(io::ErrorKind::Interrupted, "Cmd fd failed"));
+        tokio::spawn(async move {
+            let lines = CONTAINER.all_lines.read().await;
+            stdin.write_all(lines.as_bytes()).await.unwrap();
+            drop(stdin);
+        });
+
+        let out = rg_proc.wait_with_output().await?;
+
+        if out.status.success() {
+            let lines = String::from_utf8_lossy(&out.stdout);
+
+            sort_lines(&lines, search_query).await;
         }
-
-        out = tr_output.expect("failed to await tr");
-    }
-
-    if out.status.success() {
-        let result = String::from_utf8_lossy(&out.stdout);
-
-        let mut out = Vec::new();
-
-        for (i, line) in result.lines().enumerate() {
-            let score = levenshtein(&search_query, line);
-            out.push((score, line.to_string()));
-        }
-
-        out.sort_by_key(|k| k.0);
-
-        let mut lines = CONTAINER.lines.write().await;
-        *lines = out.into_iter().map(|k| k.1).collect();
     }
 
     Ok(())
@@ -292,7 +310,7 @@ impl NeoFuzzy {
             lua,
             &[AutoCmdEvent::BufLeave],
             crate::AutoCmdOpts {
-                callback: lua.create_function(close_fuzzy_aucmd)?,
+                callback: lua.create_function(aucmd_close_fuzzy)?,
                 buffer: Some(pop_cmd.buf.id()),
                 group: Some(AutoCmdGroup::Integer(group)),
                 pattern: vec![],
@@ -300,8 +318,6 @@ impl NeoFuzzy {
                 desc: None,
             },
         )?;
-
-        let mut container = CONTAINER.fuzzy.lock().await;
 
         let cmd = "fd".to_string();
 
@@ -330,20 +346,22 @@ impl NeoFuzzy {
 
         fuzzy.add_keymaps(lua)?;
 
-        let rt = CONTAINER.rt.lock().await;
+        let rt = CONTAINER.rt.read().await;
         let cwd = fuzzy.cwd.clone();
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
+
+        let mut container = CONTAINER.fuzzy.lock().await;
+        *container = Some(fuzzy);
+        drop(container);
 
         rt.spawn(async move {
             exec_search(cwd, cmd, args, "").await;
         });
 
-        *container = Some(fuzzy);
+        let interval = lua.create_function(interval_write_out)?;
 
-        let interval = lua.create_async_function(read_to_out)?;
-
-        NeoApi::start_interval(lua, "fuzzy", 100, interval)?;
+        NeoApi::start_interval(lua, "fuzzy", 32, interval)?;
 
         Ok(())
     }
@@ -370,20 +388,22 @@ impl NeoFuzzy {
     }
 }
 
-async fn read_to_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let fuzzy = CONTAINER.fuzzy.lock().await;
-    let lines = CONTAINER.lines.read().await;
-
-    if let Some(fuzzy) = fuzzy.as_ref() {
-        if 300 <= lines.len() {
-            let _ = fuzzy
-                .pop_out
-                .buf
-                .set_lines(lua, 0, -1, false, &lines[..300]);
-        } else {
-            let _ = fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines);
+fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
+    if let Ok(update) = CONTAINER.update_results.try_read() {
+        if !*update {
+            return Ok(());
         }
-        let _ = fuzzy.add_highlight(lua);
+    } else {
+        return Ok(());
+    }
+
+    if let Ok(lines) = CONTAINER.cached_lines.try_read() {
+        if let Ok(lock) = CONTAINER.fuzzy.try_lock() {
+            if let Some(fuzzy) = lock.as_ref() {
+                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                fuzzy.add_highlight(lua)?;
+            }
+        }
     }
 
     Ok(())
@@ -439,7 +459,7 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
     NeoWindow::CURRENT.close(lua, true)
 }
 
-fn close_fuzzy_aucmd(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
+fn aucmd_close_fuzzy(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     let mut container = CONTAINER.fuzzy.blocking_lock();
 
     let buffer = NeoBuffer::new(ev.buf.unwrap());
@@ -468,7 +488,7 @@ async fn aucmd_text_changed(lua: &Lua, ev: AutoCmdCbEvent) -> LuaResult<()> {
     if let Some(fuzzy) = fuzzy.as_mut() {
         fuzzy.selected_idx = 0;
 
-        let rt = CONTAINER.rt.lock().await;
+        let rt = CONTAINER.rt.read().await;
         let cwd = fuzzy.cwd.clone();
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
