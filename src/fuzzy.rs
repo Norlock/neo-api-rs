@@ -16,8 +16,8 @@ use tokio::io::{self, AsyncWriteExt};
 use tokio::join;
 use tokio::process::*;
 use tokio::runtime::Runtime;
-use tokio::sync::{Mutex, RwLockReadGuard, TryLockError};
 use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLockReadGuard, TryLockError};
 
 use crate::{
     callback, AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, BufferDeleteOpts, CmdOpts, FastLock,
@@ -33,7 +33,12 @@ struct FuzzyContainer {
     cached_lines: RwLock<Vec<String>>,
     rt: RwLock<Runtime>,
     fuzzy: Mutex<Option<NeoFuzzy>>,
-    update_results: RwLock<bool>,
+    query_meta: RwLock<QueryMeta>,
+}
+
+struct QueryMeta {
+    last_search: String,
+    update_results: bool,
 }
 
 unsafe impl Send for FuzzyContainer {}
@@ -44,7 +49,10 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     cached_lines: RwLock::new(vec![]),
     fuzzy: Mutex::new(None),
     rt: RwLock::new(tokio::runtime::Runtime::new().unwrap()),
-    update_results: RwLock::new(false),
+    query_meta: RwLock::new(QueryMeta {
+        update_results: false,
+        last_search: "".to_string(),
+    }),
 });
 
 #[derive(Debug)]
@@ -104,7 +112,9 @@ async fn exec_search(
             }
         }
 
-        *CONTAINER.update_results.write().await = true;
+        let mut query = CONTAINER.query_meta.write().await;
+        query.update_results = true;
+        query.last_search = search_query.to_string();
     }
 
     if !has_lines {
@@ -144,9 +154,19 @@ async fn exec_search(
 
         let mut stdin = rg_proc.stdin.take().unwrap();
 
+        let query_len = search_query.len();
+
         tokio::spawn(async move {
-            let lines = CONTAINER.all_lines.read().await;
-            stdin.write_all(lines.as_bytes()).await.unwrap();
+            let query_meta = CONTAINER.query_meta.read().await;
+
+            if query_meta.last_search.len() < query_len {
+                let lines = CONTAINER.cached_lines.read().await;
+                stdin.write_all(lines.join("\n").as_bytes()).await.unwrap();
+            } else {
+                let lines = CONTAINER.all_lines.read().await;
+                stdin.write_all(lines.as_bytes()).await.unwrap();
+            }
+
             drop(stdin);
         });
 
@@ -389,8 +409,8 @@ impl NeoFuzzy {
 }
 
 fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    if let Ok(update) = CONTAINER.update_results.try_read() {
-        if !*update {
+    if let Ok(query) = CONTAINER.query_meta.try_read() {
+        if !query.update_results {
             return Ok(());
         }
     } else {
