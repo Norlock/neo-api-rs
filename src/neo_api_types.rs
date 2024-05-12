@@ -1,12 +1,13 @@
 #![allow(unused)]
 use crate::buffer::NeoBuffer;
 use crate::{neo_api::NeoApi, window::NeoWindow};
+use macros::{IntoEnum, IntoEnumSC, IntoTable};
 use mlua::prelude::*;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize};
 use std::fmt::{self, Display};
 use std::ops;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoEnumSC)]
 pub enum VirtTextPos {
     Eol,
     Overlay,
@@ -14,34 +15,11 @@ pub enum VirtTextPos {
     Inline,
 }
 
-impl<'a> IntoLua<'a> for VirtTextPos {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        let res = match self {
-            Self::Eol => "eol",
-            Self::Overlay => "overlay",
-            Self::RightAlign => "right_align",
-            Self::Inline => "inline",
-        };
-
-        Ok(LuaValue::String(lua.create_string(res)?))
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, IntoEnumSC)]
 pub enum HLMode {
     Replace,
     Combine,
     Blend,
-}
-
-impl Display for HLMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Blend => f.write_str("blend"),
-            Self::Combine => f.write_str("combine"),
-            Self::Replace => f.write_str("replace"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,11 +48,11 @@ impl<'a> IntoLua<'a> for HLText {
     }
 }
 
-pub trait VecToLua<'a> {
+pub trait ParseToLua<'a> {
     fn parse(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>>;
 }
 
-impl<'a, T> VecToLua<'a> for Vec<T>
+impl<'a, T> ParseToLua<'a> for Vec<T>
 where
     T: IntoLua<'a>,
 {
@@ -119,7 +97,7 @@ pub enum LogLevel {
     Off = 5,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, IntoEnumSC)]
 pub enum StdpathType {
     /// Cache directory: arbitrary temporary storage for plugins, etc.
     Cache,
@@ -133,21 +111,6 @@ pub enum StdpathType {
     Run,
     /// Session state directory: storage for file drafts, swap, undo, |shada|.
     State,
-}
-
-impl std::fmt::Display for StdpathType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let str = match self {
-            Self::Config => "config",
-            Self::Cache => "cache",
-            Self::Data => "data",
-            Self::Log => "log",
-            Self::Run => "run",
-            Self::State => "state",
-        };
-
-        f.write_str(str)
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -170,7 +133,7 @@ impl Display for OpenIn {
 }
 
 /// Pleas help to add more and test
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, IntoTable)]
 pub struct ExtmarkOpts {
     // virt_lines : virtual lines to add next to this mark This
     // should be an array over lines, where each line in turn is
@@ -300,59 +263,7 @@ pub struct ExtmarkOpts {
     pub virt_lines_above: Option<bool>,
 }
 
-impl<'a> IntoLua<'a> for ExtmarkOpts {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        let out = lua.create_table()?;
-
-        if let Some(id) = self.id {
-            out.set("id", id)?;
-        }
-
-        if let Some(end_row) = self.end_row {
-            out.set("end_row", end_row)?;
-        }
-
-        if let Some(end_col) = self.end_col {
-            out.set("end_col", end_col)?;
-        }
-
-        if let Some(hl_eol) = self.hl_eol {
-            out.set("hl_eol", hl_eol)?;
-        }
-
-        if let Some(hl_mode) = self.hl_mode {
-            out.set("hl_mode", hl_mode.to_string())?;
-        }
-
-        if let Some(hl_group) = self.hl_group {
-            out.set("hl_group", hl_group)?;
-        }
-
-        if let Some(virt_text) = self.virt_text {
-            out.set("virt_text", virt_text)?;
-        }
-
-        if let Some(virt_text_pos) = self.virt_text_pos {
-            out.set("virt_text_pos", virt_text_pos)?;
-        }
-
-        if let Some(value) = self.virt_text_win_col {
-            out.set("virt_text_win_col", value)?;
-        }
-
-        if let Some(value) = self.virt_text_repeat_linebreak {
-            out.set("virt_text_repeat_linebreak", value)?;
-        }
-
-        if let Some(value) = self.virt_lines_above {
-            out.set("virt_lines_above", value)?;
-        }
-
-        Ok(LuaValue::Table(out))
-    }
-}
-
-#[derive(Debug, Default, Serialize, Clone, Copy)]
+#[derive(Debug, Default, IntoTable, Clone, Copy)]
 pub struct KeymapOpts {
     pub silent: Option<bool>,
     pub buffer: Option<u32>,
@@ -367,29 +278,13 @@ impl KeymapOpts {
     }
 }
 
-impl<'a> IntoLua<'a> for KeymapOpts {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        let mut ser_opts = LuaSerializeOptions::new();
-        ser_opts.serialize_none_to_null = false;
-        ser_opts.serialize_unit_to_null = false;
-
-        lua.to_value_with(&self, ser_opts)
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Default)]
+#[derive(Debug, Clone, Copy, IntoTable, Default)]
 pub struct BufferDeleteOpts {
     pub force: bool,
     pub unload: bool,
 }
 
-impl<'a> IntoLua<'a> for BufferDeleteOpts {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        lua.to_value(&self)
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct WinCursor {
     row: u32,
     pub column: u32,
@@ -446,7 +341,7 @@ impl<'a> IntoLua<'a> for WinCursor {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Ui {
     pub chan: u32,
     pub ext_cmdline: bool,
@@ -525,7 +420,7 @@ pub enum AutoCmdGroup {
     Integer(u32),
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, IntoEnum, PartialEq, Eq)]
 pub enum AutoCmdEvent {
     /// After adding a buffer to the buffer list.
     BufAdd,
@@ -793,12 +688,6 @@ pub enum AutoCmdEvent {
     WinScrolled,
 }
 
-impl Display for AutoCmdEvent {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&format!("{self:?}"))
-    }
-}
-
 #[derive(Debug)]
 pub struct AutoCmdOpts<'a> {
     /// Autocommand group name or id to match against.
@@ -855,17 +744,6 @@ pub struct AutoCmdCbEvent {
     ///  (Any) arbitrary data passed from |nvim_exec_autocmds()|
     /// You can use CbDataFiller type in the callback function if you don't need any data
     pub data: Option<usize>,
-}
-
-/// This is a simple struct to use if you don't care about global data passed
-/// from |nvim_exec_autocmds()|. Otherwise create your custom struct.
-#[derive(Debug, Clone, Deserialize)]
-pub struct CbDataFiller;
-
-impl LuaUserData for CbDataFiller {
-    fn add_fields<'lua, F: LuaUserDataFields<'lua, Self>>(fields: &mut F) {}
-
-    fn add_methods<'lua, M: LuaUserDataMethods<'lua, Self>>(methods: &mut M) {}
 }
 
 impl<'a> FromLua<'a> for AutoCmdCbEvent {
@@ -970,12 +848,12 @@ impl<'lua, 'opts> IntoLua<'lua> for CmdOpts<'opts> {
     fn into_lua(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
         let out = lua.create_table()?;
         out.set("cmd", self.cmd)?;
+        // TODO make IntoTable complient to this structure
         out.set("args", self.args)?;
         out.set("bang", self.bang)?;
 
         Ok(LuaValue::Table(out))
     }
-        
 }
 
 #[derive(Clone)]
@@ -984,4 +862,3 @@ pub struct CmdOpts<'a> {
     pub args: &'a [&'a str],
     pub bang: bool,
 }
-

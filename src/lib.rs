@@ -6,8 +6,7 @@ mod popup;
 mod window;
 mod fuzzy;
 mod theme;
-
-use std::sync::{Mutex, MutexGuard};
+mod traits;
 
 pub use buffer::*;
 pub use callback::*;
@@ -17,15 +16,7 @@ pub use popup::*;
 pub use window::*;
 pub use fuzzy::*;
 pub use theme::*;
+pub use traits::*;
 
 pub use mlua;
 
-pub trait FastLock<T> {
-    fn fast_lock(&self) -> MutexGuard<'_, T>;
-}
-
-impl<T> FastLock<T> for Mutex<T> {
-    fn fast_lock(&self) -> MutexGuard<'_, T> {
-        self.lock().unwrap()
-    }
-}
