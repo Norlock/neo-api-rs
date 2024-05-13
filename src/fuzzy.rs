@@ -490,20 +490,15 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
 
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     let query_meta = CONTAINER.query_meta.try_read();
+    let fuzzy = CONTAINER.fuzzy.try_read();
 
-    if query_meta.is_err() {
+    if query_meta.is_err() || fuzzy.is_err() {
         return Ok(());
     }
 
     let query = query_meta.unwrap();
 
     if query.update_results {
-        let fuzzy = CONTAINER.fuzzy.try_read();
-
-        if fuzzy.is_err() {
-            return Ok(());
-        }
-
         if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
                 fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines);
