@@ -1,6 +1,8 @@
 use proc_macro2::Span;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
+
+use crate::common::sanitize_field_string;
 
 pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -9,48 +11,26 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut table_fields: Vec<proc_macro2::TokenStream> = vec![];
 
-    //fn recursively(
-    //field_name: &syn::Ident,
-    //segment: &PathSegment,
-    //previous: Option<proc_macro2::TokenStream>,
-    //) -> proc_macro2::TokenStream {
-    //let field_type = &segment.ident;
-    //if field_type == "Option" {
-    //quote! {
-    //if let Some(value) = self.#field_name {
-    //out.set(stringify!(#field_name), value)?;
-    //}
-    //}
-    //} else if field_type == "Vec" {
-    //quote! {
-    //out.set(stringify!(#field_name),
-    //self.#field_name.parse(lua)?)?;
-    //}
-    //} else {
-    //quote! {
-    //out.set(stringify!(#field_name), self.#field_name)?;
-    //}
-    //}
-    //}
-
     if let syn::Data::Struct(data_struct) = &input.data {
         match &data_struct.fields {
             syn::Fields::Named(named_fields) => {
                 for field in named_fields.named.iter() {
                     let field_name = &field.ident;
+                    let field_str = sanitize_field_string(field_name.as_ref().unwrap().to_string());
 
                     if let syn::Type::Path(path_type) = &field.ty {
                         for segment in path_type.path.segments.iter() {
                             let field_type = &segment.ident;
+
                             if field_type == "Option" {
                                 table_fields.push(quote! {
                                     if let Some(value) = self.#field_name {
-                                        out.set(stringify!(#field_name), value)?;
+                                        out.set(#field_str, value)?;
                                     }
                                 });
                             } else {
                                 table_fields.push(quote! {
-                                    out.set(stringify!(#field_name), self.#field_name)?;
+                                    out.set(#field_str, self.#field_name)?;
                                 });
                             }
                         }
@@ -71,15 +51,19 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let expand;
 
+    let into_lua_body = quote! {
+        let out = lua.create_table()?;
+
+        #table_fields
+
+        Ok(mlua::Value::Table(out))
+    };
+
     if generics.is_empty() {
         expand = quote! {
             impl<'a> mlua::IntoLua<'a> for #struct_name {
                 fn into_lua(self, lua: &'a Lua) -> mlua::Result<mlua::Value<'a>> {
-                    let out = lua.create_table()?;
-
-                    #table_fields
-
-                    Ok(mlua::Value::Table(out))
+                    #into_lua_body
                 }
             }
         };
@@ -96,11 +80,7 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         expand = quote! {
             impl<#generics> mlua::IntoLua<#lt> for #struct_name<#generics> {
                 fn into_lua(self, lua: &#lt Lua) -> mlua::Result<mlua::Value<#lt>> {
-                    let out = lua.create_table()?;
-
-                    #table_fields
-
-                    Ok(mlua::Value::Table(out))
+                    #into_lua_body
                 }
             }
         };

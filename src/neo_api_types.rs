@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::buffer::NeoBuffer;
 use crate::{neo_api::NeoApi, window::NeoWindow};
-use macros::{IntoEnum, IntoEnumSC, IntoTable};
+use macros::{FromTable, IntoEnum, IntoEnumSC, IntoTable};
 use mlua::prelude::*;
 use serde::{de::DeserializeOwned, Deserialize};
 use std::fmt::{self, Display};
@@ -341,7 +341,7 @@ impl<'a> IntoLua<'a> for WinCursor {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, FromTable, Clone)]
 pub struct Ui {
     pub chan: u32,
     pub ext_cmdline: bool,
@@ -392,14 +392,14 @@ impl Mode {
     }
 }
 
-impl<'lua> FromLua<'lua> for Ui {
-    fn from_lua(
-        value: LuaValue<'lua>,
-        lua: &'lua mlua::prelude::Lua,
-    ) -> mlua::prelude::LuaResult<Self> {
-        lua.from_value(value)
-    }
-}
+//impl<'lua> FromLua<'lua> for Ui {
+    //fn from_lua(
+        //value: LuaValue<'lua>,
+        //lua: &'lua mlua::prelude::Lua,
+    //) -> mlua::prelude::LuaResult<Self> {
+        //lua.from_value(value)
+    //}
+//}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AutoCmd(u32);
