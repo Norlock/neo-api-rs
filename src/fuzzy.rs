@@ -6,6 +6,8 @@ use mlua::{
 };
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
+use std::fmt;
+use std::future::Future;
 use std::io::BufReader;
 use std::process::ExitStatus;
 use std::{
@@ -36,6 +38,18 @@ struct FuzzyContainer {
     fuzzy: RwLock<Option<NeoFuzzy>>,
     query_meta: RwLock<QueryMeta>,
     preview: RwLock<Vec<String>>,
+}
+
+pub trait FuzzyConfig: Send + Sync {
+    fn cwd(&self, lua: &Lua) -> PathBuf;
+    fn search_type(&self) -> FilesSearch;
+    fn on_enter(&self, lua: &Lua, item: PathBuf);
+}
+
+impl fmt::Debug for dyn FuzzyConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -70,6 +84,8 @@ pub struct NeoFuzzy {
 
     pub selected_idx: usize,
     pub ns_id: u32,
+
+    pub config: Box<dyn FuzzyConfig>,
 }
 
 pub enum FilesSearch {
@@ -110,29 +126,51 @@ impl NeoFuzzy {
     }
 
     pub fn add_keymaps(&self, lua: &Lua) -> LuaResult<()> {
-        self.pop_cmd.buf.set_keymap(
+        let buf = self.pop_cmd.buf;
+
+        buf.set_keymap(
             lua,
             Mode::Insert,
             "<Up>",
             lua.create_async_function(|lua, _: ()| move_selection(lua, Move::Up))?,
         )?;
 
-        self.pop_cmd.buf.set_keymap(
+        buf.set_keymap(
             lua,
             Mode::Insert,
             "<Down>",
             lua.create_async_function(|lua, _: ()| move_selection(lua, Move::Down))?,
         )?;
 
-        self.pop_cmd.buf.set_keymap(
+        buf.set_keymap(
             lua,
             Mode::Insert,
             "<Esc>",
             lua.create_function(close_fuzzy)?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<Enter>",
+            lua.create_async_function(Self::open_item)?,
         )
     }
 
-    pub async fn files(lua: &Lua, cwd: PathBuf, search_type: FilesSearch) -> LuaResult<()> {
+    pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
+        let mut fuzzy = CONTAINER.fuzzy.write().await;
+
+        if let Some(fuzzy) = fuzzy.as_mut() {
+            let cached_lines = CONTAINER.cached_lines.read().await;
+            let selected = fuzzy.cwd.join(cached_lines[fuzzy.selected_idx].as_str());
+            NeoWindow::CURRENT.close(lua, true)?;
+            fuzzy.config.on_enter(lua, selected);
+        }
+
+        Ok(())
+    }
+
+    pub async fn files(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
         Self::add_hl_groups(lua)?;
 
         let ns_id = NeoTheme::create_namespace(lua, "NeoFuzzy")?;
@@ -244,8 +282,9 @@ impl NeoFuzzy {
         )?;
 
         let cmd = "fd".to_string();
+        let cwd = config.cwd(lua);
 
-        let args = match search_type {
+        let args = match config.search_type() {
             FilesSearch::All => {
                 vec![]
             }
@@ -266,6 +305,7 @@ impl NeoFuzzy {
             cmd,
             selected_idx: 0,
             ns_id,
+            config,
         };
 
         fuzzy.add_keymaps(lua)?;
@@ -340,7 +380,6 @@ impl NeoFuzzy {
     }
 }
 
-// TODO optimization to query from cached lines
 async fn exec_search(
     cwd: &Path,
     cmd: String,
@@ -354,7 +393,7 @@ async fn exec_search(
     async fn sort_lines(lines: &str, search_query: &str) {
         let mut new_lines = Vec::new();
 
-        for (i, line) in lines.lines().enumerate() {
+        for line in lines.lines() {
             let score = levenshtein(&search_query, line);
             new_lines.push((score, line.to_string()));
         }
@@ -417,15 +456,8 @@ async fn exec_search(
         let query_len = search_query.len();
 
         tokio::spawn(async move {
-            let query_meta = CONTAINER.query_meta.read().await;
-
-            if query_meta.last_search.len() < query_len {
-                let lines = CONTAINER.cached_lines.read().await;
-                stdin.write_all(lines.join("\n").as_bytes()).await.unwrap();
-            } else {
-                let lines = CONTAINER.all_lines.read().await;
-                stdin.write_all(lines.as_bytes()).await.unwrap();
-            }
+            let lines = CONTAINER.all_lines.read().await;
+            stdin.write_all(lines.as_bytes()).await.unwrap();
 
             drop(stdin);
         });

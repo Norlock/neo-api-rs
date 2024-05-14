@@ -301,7 +301,7 @@ impl<'a> IntoLua<'a> for WinOptions {
                     raw_row = row;
                 }
                 PopupSize::Percentage(percentage) => {
-                    raw_row = (ui.height as f32  * percentage) as u32;
+                    raw_row = (ui.height as f32 * percentage) as u32;
                 }
             }
         }
@@ -454,7 +454,6 @@ impl NeoPopup {
                 ..Default::default()
             },
         )?;
-
 
         let close_popup = lua.create_function(move |lua, _: ()| popup_win.close(lua, true))?;
 

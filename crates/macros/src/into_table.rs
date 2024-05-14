@@ -1,4 +1,5 @@
-use quote::quote;
+use proc_macro2::Span;
+use quote::{format_ident, quote};
 use syn::{parse_macro_input, DeriveInput};
 
 pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -66,22 +67,44 @@ pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let table_fields = proc_macro2::TokenStream::from_iter(table_fields);
 
-    let lifetimes = input.generics.lifetimes();
-    for lifetime in lifetimes {
-        println!("{}", lifetime.lifetime);
-    }
+    let generics = &input.generics.params;
 
-    let expand = quote! {
-        impl<'a> mlua::IntoLua<'a> for #struct_name {
-            fn into_lua(self, lua: &'a Lua) -> mlua::Result<mlua::Value<'a>> {
-                let out = lua.create_table()?;
+    let expand;
 
-                #table_fields
+    if generics.is_empty() {
+        expand = quote! {
+            impl<'a> mlua::IntoLua<'a> for #struct_name {
+                fn into_lua(self, lua: &'a Lua) -> mlua::Result<mlua::Value<'a>> {
+                    let out = lua.create_table()?;
 
-                Ok(mlua::Value::Table(out))
+                    #table_fields
+
+                    Ok(mlua::Value::Table(out))
+                }
             }
+        };
+    } else {
+        let lt;
+        let param = generics.first().unwrap();
+
+        if let syn::GenericParam::Lifetime(ltp) = param {
+            lt = ltp.clone();
+        } else {
+            lt = syn::LifetimeParam::new(syn::Lifetime::new("'lua", Span::call_site()));
         }
-    };
+
+        expand = quote! {
+            impl<#generics> mlua::IntoLua<#lt> for #struct_name<#generics> {
+                fn into_lua(self, lua: &#lt Lua) -> mlua::Result<mlua::Value<#lt>> {
+                    let out = lua.create_table()?;
+
+                    #table_fields
+
+                    Ok(mlua::Value::Table(out))
+                }
+            }
+        };
+    }
 
     expand.into()
 }

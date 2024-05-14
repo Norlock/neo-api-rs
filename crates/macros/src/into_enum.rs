@@ -11,7 +11,7 @@ pub fn into_enum(input: proc_macro::TokenStream, casing: Option<Case>) -> proc_m
         // TODO either all variants 1 field or no fields
         // 1 field will use value of field as lua value
         // no field will use to_string() as lua value
-        panic!("Enum my not contain any fields (impl IntoLua manually)");
+        panic!("Enum may not contain any fields, implement it manually");
     }
 
     let mut variants = Vec::new();

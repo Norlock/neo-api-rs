@@ -2,11 +2,18 @@ use convert_case::Case;
 
 mod into_enum;
 mod into_table;
+mod from_table;
 
 /// A simple into table function (yet), for complex structures create your own into lua function
 #[proc_macro_derive(IntoTable)]
 pub fn into_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     into_table::into_table(input)
+}
+
+/// A simple into table function (yet), for complex structures create your own into lua function
+#[proc_macro_derive(FromTable)]
+pub fn from_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    from_table::from_table(input)
 }
 
 /// Into enum (copy field name to string)

@@ -6,7 +6,6 @@ This is a thin layer over mlua to easily use the neovim api in rust.
 Cargo new --lib (your-plugin-name)
 cd (your-plugin-name)
 cargo add --git https://github.com/norlock/neo-api-rs
-cargo add serde serde_json lazy-static (tokio or any other async crate) 
 ```
 
 Add crate-type in the Cargo.toml:
