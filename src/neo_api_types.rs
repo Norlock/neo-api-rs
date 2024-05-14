@@ -1,11 +1,8 @@
-#![allow(unused)]
 use crate::buffer::NeoBuffer;
-use crate::{neo_api::NeoApi, window::NeoWindow};
+use crate::window::NeoWindow;
 use macros::{FromTable, IntoEnum, IntoEnumSC, IntoTable};
 use mlua::prelude::*;
-use serde::{de::DeserializeOwned, Deserialize};
 use std::fmt::{self, Display};
-use std::ops;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IntoEnumSC)]
 pub enum VirtTextPos {
@@ -60,7 +57,7 @@ where
         let out = lua.create_table()?;
 
         for tuple in self.into_iter() {
-            out.push(tuple.into_lua(lua)?);
+            out.push(tuple.into_lua(lua)?)?;
         }
 
         Ok(LuaValue::Table(out))
@@ -284,7 +281,7 @@ pub struct BufferDeleteOpts {
     pub unload: bool,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct WinCursor {
     row: u32,
     pub column: u32,
@@ -316,7 +313,7 @@ impl WinCursor {
 }
 
 impl<'a> FromLua<'a> for WinCursor {
-    fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
+    fn from_lua(value: LuaValue<'a>, _lua: &'a Lua) -> LuaResult<Self> {
         match value {
             LuaValue::Table(table) => {
                 let row: u32 = table.get(1)?;
@@ -334,8 +331,8 @@ impl<'a> FromLua<'a> for WinCursor {
 impl<'a> IntoLua<'a> for WinCursor {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
         let table = lua.create_table()?;
-        table.set(1, self.row);
-        table.set(2, self.column);
+        table.set(1, self.row)?;
+        table.set(2, self.column)?;
 
         Ok(LuaValue::Table(table))
     }
@@ -721,37 +718,6 @@ pub struct AutoCmdOpts<'a> {
     pub once: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct AutoCmdCbEvent {
-    /// Autocommand id
-    pub id: u32,
-
-    /// Name of the triggered event |autocmd-events|
-    pub event: String,
-
-    /// Autocommand group id, if any
-    pub group: Option<u32>,
-
-    /// Expanded value of <amatch>
-    pub r#match: String,
-
-    /// Expanded value of <abuf>
-    pub buf: Option<u32>,
-
-    /// Expanded value of <afile>
-    pub file: String,
-
-    ///  (Any) arbitrary data passed from |nvim_exec_autocmds()|
-    /// You can use CbDataFiller type in the callback function if you don't need any data
-    pub data: Option<usize>,
-}
-
-impl<'a> FromLua<'a> for AutoCmdCbEvent {
-    fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
-        lua.from_value(value)
-    }
-}
-
 impl<'a> IntoLua<'a> for AutoCmdOpts<'a> {
     fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
         let table = lua.create_table()?;
@@ -779,6 +745,31 @@ impl<'a> IntoLua<'a> for AutoCmdOpts<'a> {
 
         Ok(LuaValue::Table(table))
     }
+}
+
+#[derive(Debug, Clone, FromTable)]
+pub struct AutoCmdCbEvent {
+    /// Autocommand id
+    pub id: u32,
+
+    /// Name of the triggered event |autocmd-events|
+    pub event: String,
+
+    /// Autocommand group id, if any
+    pub group: Option<u32>,
+
+    /// Expanded value of <amatch>
+    pub r#match: String,
+
+    /// Expanded value of <abuf>
+    pub buf: Option<u32>,
+
+    /// Expanded value of <afile>
+    pub file: String,
+
+    ///  (Any) arbitrary data passed from |nvim_exec_autocmds()|
+    /// You can use CbDataFiller type in the callback function if you don't need any data
+    pub data: Option<usize>,
 }
 
 #[derive(Default, Clone)]

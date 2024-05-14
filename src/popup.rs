@@ -4,7 +4,6 @@ use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
     FromLua, IntoLua, Lua,
 };
-use serde::Serialize;
 use std::{
     fmt::{self, Display},
     time::Duration,
@@ -106,8 +105,7 @@ impl fmt::Display for PopupAlign {
     }
 }
 
-#[derive(Debug, Default, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum PopupSplit {
     #[default]
     Left,

@@ -1,7 +1,7 @@
-use crate::mlua::prelude::{Lua, LuaFunction, LuaResult, LuaSerializeOptions, LuaValue};
-use mlua::{IntoLua, LuaSerdeExt};
+use crate::mlua::prelude::{Lua, LuaFunction, LuaResult};
+use macros::IntoTable;
 
-#[derive(Clone, Debug, Default, serde::Serialize)]
+#[derive(Clone, Debug, Default, IntoTable)]
 pub struct HLOpts {
     /// color name or "#RRGGBB"
     pub fg: Option<String>,
@@ -36,16 +36,6 @@ pub struct HLOpts {
     pub ctermbg: Option<String>,
     // pub cterm todo
     pub force: bool,
-}
-
-impl<'a> IntoLua<'a> for HLOpts {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
-        let mut ser_opts = LuaSerializeOptions::new();
-        ser_opts.serialize_none_to_null = false;
-        ser_opts.serialize_unit_to_null = false;
-
-        lua.to_value_with(&self, ser_opts)
-    }
 }
 
 pub struct NeoTheme;
