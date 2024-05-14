@@ -19,6 +19,7 @@ use crate::{
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
+const AUCMD_GRP: &str = "neo-fuzzy";
 
 struct FuzzyContainer {
     all_lines: RwLock<String>,
@@ -147,17 +148,15 @@ impl NeoFuzzy {
     }
 
     pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
-        NeoApi::stop_interval(lua, "fuzzy")?;
-
         let fuzzy = CONTAINER.fuzzy.read().await;
 
         let fuzzy = fuzzy.as_ref().unwrap();
-        let lock = fuzzy.config.clone();
+        let fz_config = fuzzy.config.clone();
         let cached_lines = CONTAINER.cached_lines.read().await;
         let selected = fuzzy.cwd.join(cached_lines[fuzzy.selected_idx].as_str());
         fuzzy.pop_cmd.win.close(lua, false)?;
 
-        lock.on_enter(lua, selected)?;
+        fz_config.on_enter(lua, selected)?;
 
         Ok(())
     }
@@ -242,16 +241,15 @@ impl NeoFuzzy {
         pop_cmd.buf.set_current(lua)?;
         NeoApi::set_insert_mode(lua, true)?;
 
-        let group = NeoApi::create_augroup(lua, "neo-fuzzy", false)?;
+        let group = NeoApi::create_augroup(lua, AUCMD_GRP, false)?;
 
         let callback = lua.create_async_function(aucmd_text_changed)?;
-        let test = NeoApi::schedule_wrap(lua, callback)?;
 
         NeoApi::create_autocmd(
             lua,
             &[AutoCmdEvent::TextChangedI],
             crate::AutoCmdOpts {
-                callback: test,
+                callback,
                 buffer: Some(pop_cmd.buf.id()),
                 group: Some(AutoCmdGroup::Integer(group)),
                 pattern: vec![],
@@ -264,7 +262,7 @@ impl NeoFuzzy {
             lua,
             &[AutoCmdEvent::BufLeave],
             crate::AutoCmdOpts {
-                callback: lua.create_function(aucmd_close_fuzzy)?,
+                callback: lua.create_async_function(aucmd_close_fuzzy)?,
                 buffer: Some(pop_cmd.buf.id()),
                 group: Some(AutoCmdGroup::Integer(group)),
                 pattern: vec![],
@@ -595,8 +593,8 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
     NeoWindow::CURRENT.close(lua, true)
 }
 
-fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
-    let container = CONTAINER.fuzzy.blocking_read();
+async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
+    let container = CONTAINER.fuzzy.read().await;
 
     if let Some(fuzzy) = container.as_ref() {
         fuzzy.pop_out.win.close(lua, false)?;
@@ -604,6 +602,7 @@ fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         fuzzy.pop_preview.win.close(lua, false)?;
     }
 
+    NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
     NeoApi::stop_interval(lua, "fuzzy")?;
     NeoApi::set_insert_mode(lua, false)
 }

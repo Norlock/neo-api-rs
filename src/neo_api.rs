@@ -322,6 +322,12 @@ impl NeoApi {
         lfn.call((name, opts))
     }
 
+    pub fn del_augroup_by_name(lua: &Lua, name: &str) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_del_augroup_by_name").eval()?;
+
+        lfn.call(name)
+    }
+
     /// Creates an |autocommand| event handler, defined by `callback`
     pub fn create_autocmd<'a>(
         lua: &'a Lua,
