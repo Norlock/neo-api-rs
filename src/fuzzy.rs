@@ -3,6 +3,7 @@ use mlua::Lua;
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::fmt;
+use std::io::IoSlice;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
@@ -392,15 +393,11 @@ async fn exec_search(
         let new_lines = new_lines.into_iter().map(|k| k.1);
 
         let mut cached_lines = CONTAINER.cached_lines.write().await;
-        cached_lines.clear();
+        *cached_lines = new_lines.collect();
 
-        for (i, line) in new_lines.enumerate() {
-            cached_lines.push(line);
-
-            if 300 == i + 1 {
-                break;
-            }
-        }
+        //for line in new_lines {
+        //cached_lines.push(line);
+        //}
 
         let mut query = CONTAINER.query_meta.write().await;
         query.last_search = search_query.to_string();
@@ -419,6 +416,9 @@ async fn exec_search(
 
             sort_lines(&lines, "").await;
         }
+    } else if search_query.is_empty() {
+        let lines = CONTAINER.all_lines.read().await;
+        sort_lines(&lines, "").await;
     } else {
         let mut regex = String::from(".*");
 
@@ -443,9 +443,18 @@ async fn exec_search(
 
         let mut stdin = rg_proc.stdin.take().unwrap();
 
+        let search_qry_len = search_query.len();
+
         tokio::spawn(async move {
-            let lines = CONTAINER.all_lines.read().await;
-            stdin.write_all(lines.as_bytes()).await.unwrap();
+            let meta = CONTAINER.query_meta.read().await;
+
+            if meta.last_search.len() < search_qry_len {
+                let lines = CONTAINER.cached_lines.read().await;
+                stdin.write_all(lines.join("\n").as_bytes()).await.unwrap();
+            } else {
+                let lines = CONTAINER.all_lines.read().await;
+                stdin.write_all(lines.as_bytes()).await.unwrap();
+            }
 
             drop(stdin);
         });
@@ -521,7 +530,14 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     if query.update_results {
         if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
-                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                if 300 <= lines.len() {
+                    fuzzy
+                        .pop_out
+                        .buf
+                        .set_lines(lua, 0, -1, false, &lines[..300])?;
+                } else {
+                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                }
                 fuzzy.add_out_highlight(lua)?;
             }
 
