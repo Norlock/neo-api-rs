@@ -2,20 +2,16 @@ use mlua::prelude::LuaResult;
 use mlua::Lua;
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
-use std::fmt;
-use std::io::IoSlice;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::process::*;
-use tokio::runtime::Runtime;
 use tokio::sync::RwLock;
 
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup,
-    NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType,
+    NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -25,7 +21,6 @@ const AUCMD_GRP: &str = "neo-fuzzy";
 struct FuzzyContainer {
     all_lines: RwLock<String>,
     cached_lines: RwLock<Vec<String>>,
-    rt: Runtime,
     fuzzy: RwLock<Option<NeoFuzzy>>,
     query_meta: RwLock<QueryMeta>,
     preview: RwLock<Vec<String>>,
@@ -34,11 +29,11 @@ struct FuzzyContainer {
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self, lua: &Lua) -> PathBuf;
     fn search_type(&self) -> FilesSearch;
-    fn on_enter(&self, lua: &Lua, item: PathBuf) -> LuaResult<()>;
+    fn on_enter(&self, lua: &Lua, item: PathBuf);
 }
 
-impl fmt::Debug for dyn FuzzyConfig {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for dyn FuzzyConfig {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }
@@ -49,14 +44,11 @@ struct QueryMeta {
     update_results: bool,
 }
 
-unsafe impl Send for FuzzyContainer {}
-unsafe impl Sync for FuzzyContainer {}
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     all_lines: RwLock::new(String::new()),
     cached_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(None),
-    rt: tokio::runtime::Runtime::new().unwrap(),
     query_meta: RwLock::new(QueryMeta {
         update_results: false,
         last_search: "".to_string(),
@@ -76,7 +68,7 @@ pub struct NeoFuzzy {
     pub selected_idx: usize,
     pub ns_id: u32,
 
-    pub config: Arc<dyn FuzzyConfig>,
+    pub config: Box<dyn FuzzyConfig>,
 }
 
 pub enum FilesSearch {
@@ -144,25 +136,11 @@ impl NeoFuzzy {
             lua,
             Mode::Insert,
             "<Enter>",
-            lua.create_async_function(Self::open_item)?,
+            lua.create_async_function(open_item)?,
         )
     }
 
-    pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
-        let fuzzy = CONTAINER.fuzzy.read().await;
-
-        let fuzzy = fuzzy.as_ref().unwrap();
-        let fz_config = fuzzy.config.clone();
-        let cached_lines = CONTAINER.cached_lines.read().await;
-        let selected = fuzzy.cwd.join(cached_lines[fuzzy.selected_idx].as_str());
-        fuzzy.pop_cmd.win.close(lua, false)?;
-
-        fz_config.on_enter(lua, selected)?;
-
-        Ok(())
-    }
-
-    pub async fn files(lua: &Lua, config: Arc<dyn FuzzyConfig>) -> LuaResult<()> {
+    pub async fn files(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
         Self::add_hl_groups(lua)?;
 
         let ns_id = NeoTheme::create_namespace(lua, "NeoFuzzy")?;
@@ -301,12 +279,11 @@ impl NeoFuzzy {
 
         fuzzy.add_keymaps(lua)?;
 
-        let rt = &CONTAINER.rt;
         let cwd = fuzzy.cwd.clone();
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
 
-        rt.spawn(async move {
+        RTM.spawn(async move {
             let _ = exec_search(&cwd, cmd, args, "").await;
             let _ = prepare_preview(&cwd, 0).await;
         });
@@ -369,6 +346,20 @@ impl NeoFuzzy {
 
         Ok(())
     }
+}
+
+pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
+    let fuzzy = CONTAINER.fuzzy.read().await;
+
+    let fuzzy = fuzzy.as_ref().unwrap();
+    let fz_config = &fuzzy.config;
+    let cached_lines = CONTAINER.cached_lines.read().await;
+    let selected = fuzzy.cwd.join(cached_lines[fuzzy.selected_idx].as_str());
+    fuzzy.pop_cmd.win.close(lua, false)?;
+
+    fz_config.on_enter(lua, selected);
+
+    Ok(())
 }
 
 async fn exec_search(
@@ -594,9 +585,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
                 })?,
             )?;
 
-            let rt = &CONTAINER.rt;
-
-            rt.spawn(async move {
+            RTM.spawn(async move {
                 let _ = prepare_preview(&cwd, sel_idx).await;
             });
         }
@@ -626,9 +615,7 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
 async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let search_query = NeoApi::get_current_line(lua)?;
 
-    let rt = &CONTAINER.rt;
-
-    rt.spawn(async move {
+    RTM.spawn(async move {
         let mut fuzzy = CONTAINER.fuzzy.write().await;
 
         let cmd;

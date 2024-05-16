@@ -29,8 +29,6 @@ impl NeoApi {
         lfn.call(callback)
     }
 
-    
-
     /// timer_id will be prefixed with neo_timer_ and stored in globals.
     /// In the callback use try lock to prevent async errors on mlua
     pub fn start_interval(lua: &Lua, timer_id: &str,ms: u32,  callback: LuaFunction<'_>) -> LuaResult<()> {
