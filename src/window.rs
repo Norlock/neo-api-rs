@@ -4,7 +4,7 @@ use crate::{
     neo_api_types::{OptValueType, WinCursor},
 };
 
-use mlua::prelude::{IntoLua, Lua, LuaFunction, LuaResult};
+use mlua::prelude::{IntoLua, Lua, LuaFunction, LuaValue, LuaResult};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NeoWindow(u32);
