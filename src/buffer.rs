@@ -36,6 +36,12 @@ impl NeoBuffer {
         Ok(NeoBuffer::new(buf_id))
     }
 
+    //pub fn exists(&self, lua: &Lua) -> LuaResult<bool> {
+        //let lfn: LuaFunction = lua.load("vim.fn.buflisted").eval()?;
+
+        //lfn.call(self.id())
+    //}
+
     pub fn new(id: u32) -> Self {
         Self(id)
     }
@@ -191,15 +197,16 @@ impl NeoBuffer {
     See also: ~
       • |nvim_buf_set_text()|
     */
-    pub fn set_lines(
+    pub fn set_lines<T: AsRef<str>>(
         &self,
         lua: &Lua,
         start: i32,
         end: i32,
         strict_indexing: bool,
-        lines: &[String],
+        lines: &[T],
     ) -> mlua::Result<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_lines").eval()?;
+        let lines: Vec<_> = lines.iter().map(AsRef::as_ref).collect();
 
         lfn.call((self.id(), start, end, strict_indexing, lines))
     }
