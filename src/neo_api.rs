@@ -23,7 +23,22 @@ impl NeoApi {
         lfn.call((callback, ms))
     }
 
-    pub fn schedule_wrap<'a>(lua: &'a Lua, callback: LuaFunction<'a>) -> LuaResult<LuaFunction<'a>> {
+    //pub fn delay_fn<'a>(
+        //lua: &'a Lua,
+        //ms: u32,
+        //callback: LuaFunction<'a>,
+    //) -> LuaResult<LuaFunction<'a>> {
+        //lua.create_function(|lua: &Lua, ()| {
+            //let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
+
+            //lfn.call((callback, ms))
+        //})
+    //}
+
+    pub fn schedule_wrap<'a>(
+        lua: &'a Lua,
+        callback: LuaFunction<'a>,
+    ) -> LuaResult<LuaFunction<'a>> {
         let lfn: LuaFunction = lua.load("vim.schedule_wrap").eval()?;
 
         lfn.call(callback)
@@ -31,7 +46,12 @@ impl NeoApi {
 
     /// timer_id will be prefixed with neo_timer_ and stored in globals.
     /// In the callback use try lock to prevent async errors on mlua
-    pub fn start_interval(lua: &Lua, timer_id: &str,ms: u32,  callback: LuaFunction<'_>) -> LuaResult<()> {
+    pub fn start_interval(
+        lua: &Lua,
+        timer_id: &str,
+        ms: u32,
+        callback: LuaFunction<'_>,
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.uv.new_timer").eval()?;
 
         let timer: LuaValue = lfn.call(())?;
@@ -40,7 +60,8 @@ impl NeoApi {
 
         let callback = Self::schedule_wrap(lua, callback)?;
 
-        lua.globals().set(format!("neo_timer_{timer_id}"), timer.clone())?;
+        lua.globals()
+            .set(format!("neo_timer_{timer_id}"), timer.clone())?;
 
         lfn.call((timer, ms, ms, callback))
     }

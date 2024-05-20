@@ -1,5 +1,4 @@
 use crate::{HLText, NeoApi, NeoBuffer, NeoWindow, TextType};
-
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaValue},
     FromLua, IntoLua, Lua,

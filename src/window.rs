@@ -20,6 +20,14 @@ impl NeoWindow {
         self.0
     }
 
+    pub fn get_current_win(lua: &Lua) -> LuaResult<NeoWindow> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_win").eval()?;
+
+        let buf_id = lfn.call(())?;
+
+        Ok(NeoWindow::new(buf_id))
+    }
+
     /**
     Sets the value of an option. The behavior of this function matches that of
     |:set|: for global-local options, both the global and local value are set

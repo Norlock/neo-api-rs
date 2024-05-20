@@ -6,6 +6,7 @@ mod popup;
 mod theme;
 mod traits;
 mod window;
+mod bridge;
 
 pub use buffer::*;
 pub use fuzzy::*;
@@ -17,6 +18,7 @@ pub use theme::*;
 use tokio::runtime::Runtime;
 pub use traits::*;
 pub use window::*;
+pub use bridge::*;
 
 pub use mlua;
 pub use tokio;

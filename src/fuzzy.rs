@@ -22,13 +22,13 @@ struct FuzzyContainer {
     all_lines: RwLock<String>,
     cached_lines: RwLock<Vec<String>>,
     fuzzy: RwLock<Option<NeoFuzzy>>,
-    query_meta: RwLock<QueryMeta>,
+    interval_state: RwLock<IntervalState>,
     preview: RwLock<Vec<String>>,
 }
 
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self, lua: &Lua) -> PathBuf;
-    fn search_type(&self) -> FilesSearch;
+    fn search_type(&self) -> &FilesSearch;
     fn on_enter(&self, lua: &Lua, item: PathBuf);
 }
 
@@ -39,18 +39,20 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 }
 
 #[derive(Debug)]
-struct QueryMeta {
+struct IntervalState {
     last_search: String,
-    update_results: bool,
+    // TODO maybe atomic
+    update_out: bool,
+    update_preview: bool,
 }
-
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     all_lines: RwLock::new(String::new()),
     cached_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(None),
-    query_meta: RwLock::new(QueryMeta {
-        update_results: false,
+    interval_state: RwLock::new(IntervalState {
+        update_out: false,
+        update_preview: false,
         last_search: "".to_string(),
     }),
     preview: RwLock::new(Vec::new()),
@@ -158,12 +160,13 @@ impl NeoFuzzy {
             ui.width - 9
         };
 
-        let out_bat_height = pop_cmd_row - 4;
+        let out_preview_height = pop_cmd_row - 4;
+        let out_preview_row = 2;
+
         let out_width = pop_cmd_width / 2;
-        let out_bat_row = 2;
         let out_col = pop_cmd_col;
-        let bat_width = out_width - 2;
-        let bat_col = pop_cmd_col + out_width + 2;
+        let preview_width = out_width - 2;
+        let preview_col = pop_cmd_col + out_width + 2;
 
         let pop_cmd = NeoPopup::open(
             lua,
@@ -188,14 +191,13 @@ impl NeoFuzzy {
             false,
             crate::WinOptions {
                 width: Some(PopupSize::Fixed(out_width)),
-                height: Some(PopupSize::Fixed(out_bat_height)),
-                row: Some(PopupSize::Fixed(out_bat_row)),
+                height: Some(PopupSize::Fixed(out_preview_height)),
+                row: Some(PopupSize::Fixed(out_preview_row)),
                 col: Some(PopupSize::Fixed(out_col)),
                 relative: PopupRelative::Editor,
                 border: crate::PopupBorder::Single,
                 focusable: Some(false),
                 style: Some(PopupStyle::Minimal),
-
                 ..Default::default()
             },
         )?;
@@ -205,10 +207,10 @@ impl NeoFuzzy {
             NeoBuffer::create(lua, false, true)?,
             false,
             crate::WinOptions {
-                width: Some(PopupSize::Fixed(bat_width)),
-                height: Some(PopupSize::Fixed(out_bat_height)),
-                row: Some(PopupSize::Fixed(out_bat_row)),
-                col: Some(PopupSize::Fixed(bat_col)),
+                width: Some(PopupSize::Fixed(preview_width)),
+                height: Some(PopupSize::Fixed(out_preview_height)),
+                row: Some(PopupSize::Fixed(out_preview_row)),
+                col: Some(PopupSize::Fixed(preview_col)),
                 relative: PopupRelative::Editor,
                 border: crate::PopupBorder::Single,
                 focusable: Some(false),
@@ -283,9 +285,14 @@ impl NeoFuzzy {
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
 
+        *CONTAINER.all_lines.write().await = String::new();
+        
+        //(&mut *lines).truncate(0);
+        //drop(lines);
+
         RTM.spawn(async move {
             let _ = exec_search(&cwd, cmd, args, "").await;
-            let _ = prepare_preview(&cwd, 0).await;
+            //let _ = prepare_preview(&cwd, 0).await;
         });
 
         let mut container = CONTAINER.fuzzy.write().await;
@@ -390,8 +397,9 @@ async fn exec_search(
         //cached_lines.push(line);
         //}
 
-        let mut query = CONTAINER.query_meta.write().await;
-        query.last_search = search_query.to_string();
+        let mut interval = CONTAINER.interval_state.write().await;
+        interval.last_search = search_query.to_string();
+        interval.update_out = true;
     }
 
     if !has_lines {
@@ -437,7 +445,7 @@ async fn exec_search(
         let search_qry_len = search_query.len();
 
         tokio::spawn(async move {
-            let meta = CONTAINER.query_meta.read().await;
+            let meta = CONTAINER.interval_state.read().await;
 
             if meta.last_search.len() < search_qry_len {
                 let lines = CONTAINER.cached_lines.read().await;
@@ -502,24 +510,24 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
     *preview = items;
     drop(preview);
 
-    let mut query = CONTAINER.query_meta.write().await;
-    query.update_results = true;
+    let mut query = CONTAINER.interval_state.write().await;
+    query.update_preview = true;
 
     Ok(())
 }
 
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let query_meta = CONTAINER.query_meta.try_read();
+    let interval = CONTAINER.interval_state.try_read();
     let fuzzy = CONTAINER.fuzzy.try_read();
 
-    if query_meta.is_err() || fuzzy.is_err() {
+    if interval.is_err() || fuzzy.is_err() {
         return Ok(());
     }
 
-    let query = query_meta.unwrap();
+    let interval = interval.unwrap();
 
-    if query.update_results {
-        if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
+    if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
+        if interval.update_out {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
                 if 300 <= lines.len() {
                     fuzzy
@@ -531,7 +539,9 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                 }
                 fuzzy.add_out_highlight(lua)?;
             }
+        }
 
+        if interval.update_preview {
             if let Ok(preview) = CONTAINER.preview.try_read() {
                 fuzzy
                     .pop_preview
@@ -586,7 +596,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
             )?;
 
             RTM.spawn(async move {
-                let _ = prepare_preview(&cwd, sel_idx).await;
+                //let _ = prepare_preview(&cwd, sel_idx).await;
             });
         }
     }
@@ -635,7 +645,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         drop(fuzzy);
 
         let _ = exec_search(&cwd, cmd, args, &search_query).await;
-        let _ = prepare_preview(&cwd, 0).await;
+        //let _ = prepare_preview(&cwd, 0).await;
     });
 
     Ok(())
