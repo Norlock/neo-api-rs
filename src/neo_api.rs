@@ -3,13 +3,13 @@ use crate::neo_api_types::{
     StdpathType, Ui,
 };
 use crate::window::NeoWindow;
-use crate::{CmdOpts, KeymapOpts};
+use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoBuffer};
 
-use mlua::Lua;
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
     IntoLua,
 };
+use mlua::{FromLua, Lua};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -24,15 +24,15 @@ impl NeoApi {
     }
 
     //pub fn delay_fn<'a>(
-        //lua: &'a Lua,
-        //ms: u32,
-        //callback: LuaFunction<'a>,
+    //lua: &'a Lua,
+    //ms: u32,
+    //callback: LuaFunction<'a>,
     //) -> LuaResult<LuaFunction<'a>> {
-        //lua.create_function(|lua: &Lua, ()| {
-            //let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
+    //lua.create_function(|lua: &Lua, ()| {
+    //let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
 
-            //lfn.call((callback, ms))
-        //})
+    //lfn.call((callback, ms))
+    //})
     //}
 
     pub fn schedule_wrap<'a>(
@@ -173,15 +173,55 @@ impl NeoApi {
         lfn.call((key, value, opts))
     }
 
-    pub fn get_current_win(lua: &mlua::Lua) -> LuaResult<NeoWindow> {
+    pub fn get_option_value<'a, V: FromLua<'a>>(
+        lua: &'a mlua::Lua,
+        key: &str,
+        opt_type: OptValueType,
+    ) -> LuaResult<V> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_get_option_value").eval()?;
+
+        let opts = lua.create_table()?;
+
+        match opt_type {
+            OptValueType::Window(window) => opts.set("win", window.id())?,
+            OptValueType::Buffer(buffer) => opts.set("buf", buffer.id())?,
+        }
+
+        lfn.call((key, opts))
+    }
+
+    /**
+    Perform filetype detection.
+
+    The filetype can be detected using one of three methods:
+    1. Using an existing buffer
+    2. Using only a file name
+    3. Using only file contents
+
+    Of these, option 1 provides the most accurate result as it uses both the
+    buffer's filename and (optionally) the buffer contents. Options 2 and 3
+    can be used without an existing buffer, but may not always provide a match
+    in cases where the filename (or contents) cannot unambiguously determine
+    the filetype.
+
+    Each of the three options is specified using a key to the single argument
+    of this function. Example: >lua
+    */
+    pub fn filetype_match(lua: &Lua, opts: FileTypeMatch) -> LuaResult<Option<String>> {
+        let lfn: LuaFunction = lua.load("vim.filetype.match").eval()?;
+
+        lfn.call((opts))
+    }
+
+    pub fn get_current_win(lua: &Lua) -> LuaResult<NeoWindow> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_win").eval()?;
         let win_id = lfn.call(())?;
 
         Ok(NeoWindow::new(win_id))
     }
 
-    pub fn set_current_buf(lua: &mlua::Lua, buf_id: u32) -> LuaResult<()> {
-        let lfn: mlua::Function = lua.load("vim.api.nvim_set_current_buf").eval()?;
+    pub fn set_current_buf(lua: &Lua, buf_id: u32) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_buf").eval()?;
 
         lfn.call(buf_id)
     }
@@ -206,6 +246,15 @@ impl NeoApi {
         let lfn: LuaFunction = lua.load("vim.cmd.enew").eval()?;
 
         lfn.call(table)
+    }
+
+    pub fn stop_lsp(lua: &Lua) -> LuaResult<()> {
+        let lfn_gc: LuaFunction = lua.load("vim.lsp.get_clients").eval()?;
+        let lfn_sc: LuaFunction = lua.load("vim.lsp.stop_client").eval()?;
+
+        let clients: LuaValue = lfn_gc.call(())?;
+
+        lfn_sc.call(clients)
     }
 
     pub fn cmd(lua: &Lua, opts: CmdOpts<'_>) -> LuaResult<()> {

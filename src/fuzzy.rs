@@ -10,8 +10,9 @@ use tokio::process::*;
 use tokio::sync::RwLock;
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup,
-    NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
+    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle,
+    TextType, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -41,6 +42,7 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 #[derive(Debug)]
 struct IntervalState {
     last_search: String,
+    buffer_path: Option<String>,
     // TODO maybe atomic
     update_out: bool,
     update_preview: bool,
@@ -54,6 +56,7 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
         update_out: false,
         update_preview: false,
         last_search: "".to_string(),
+        buffer_path: None,
     }),
     preview: RwLock::new(Vec::new()),
 });
@@ -117,14 +120,14 @@ impl NeoFuzzy {
             lua,
             Mode::Insert,
             "<Up>",
-            lua.create_async_function(|lua, _: ()| move_selection(lua, Move::Up))?,
+            lua.create_async_function(|lua, ()| move_selection(lua, Move::Up))?,
         )?;
 
         buf.set_keymap(
             lua,
             Mode::Insert,
             "<Down>",
-            lua.create_async_function(|lua, _: ()| move_selection(lua, Move::Down))?,
+            lua.create_async_function(|lua, ()| move_selection(lua, Move::Down))?,
         )?;
 
         buf.set_keymap(
@@ -215,6 +218,7 @@ impl NeoFuzzy {
                 border: crate::PopupBorder::Single,
                 focusable: Some(false),
                 style: Some(PopupStyle::Minimal),
+                noautocmd: true,
                 ..Default::default()
             },
         )?;
@@ -286,13 +290,10 @@ impl NeoFuzzy {
         let args = fuzzy.args.clone();
 
         *CONTAINER.all_lines.write().await = String::new();
-        
-        //(&mut *lines).truncate(0);
-        //drop(lines);
 
         RTM.spawn(async move {
             let _ = exec_search(&cwd, cmd, args, "").await;
-            //let _ = prepare_preview(&cwd, 0).await;
+            let _ = prepare_preview(&cwd, 0).await;
         });
 
         let mut container = CONTAINER.fuzzy.write().await;
@@ -393,10 +394,6 @@ async fn exec_search(
         let mut cached_lines = CONTAINER.cached_lines.write().await;
         *cached_lines = new_lines.collect();
 
-        //for line in new_lines {
-        //cached_lines.push(line);
-        //}
-
         let mut interval = CONTAINER.interval_state.write().await;
         interval.last_search = search_query.to_string();
         interval.update_out = true;
@@ -470,12 +467,30 @@ async fn exec_search(
     Ok(())
 }
 
-async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
-    let cached_lines = CONTAINER.cached_lines.read().await;
-    let path: PathBuf = cwd.join(cached_lines[selected_idx].as_str());
+async fn preview_file(path: &Path) -> io::Result<()> {
+    let mut interval_state = CONTAINER.interval_state.write().await;
+    interval_state.update_preview = true;
 
-    drop(cached_lines);
+    if is_binary(path) {
+        let mut preview = CONTAINER.preview.write().await;
+        *preview = vec!["> File is a binary".to_string()];
+    } else {
+        interval_state.buffer_path = Some(path.to_string_lossy().to_string());
+        let mut lines = vec![];
+        let file = fs::read_to_string(path).await?;
 
+        for line in file.lines() {
+            lines.push(line.to_string());
+        }
+
+        let mut preview = CONTAINER.preview.write().await;
+        *preview = lines
+    }
+
+    Ok(())
+}
+
+async fn preview_directory(path: &Path) -> io::Result<()> {
     let mut items = Vec::new();
 
     let mut dir = fs::read_dir(path).await?;
@@ -516,17 +531,31 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
     Ok(())
 }
 
+async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
+    let cached_lines = CONTAINER.cached_lines.read().await;
+    let path: PathBuf = cwd.join(cached_lines[selected_idx].as_str());
+    drop(cached_lines);
+
+    if path.is_dir() {
+        preview_directory(&path).await?;
+    } else if path.is_file() {
+        preview_file(&path).await?;
+    }
+
+    Ok(())
+}
+
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let interval = CONTAINER.interval_state.try_read();
+    let interval = CONTAINER.interval_state.try_write();
     let fuzzy = CONTAINER.fuzzy.try_read();
 
     if interval.is_err() || fuzzy.is_err() {
         return Ok(());
     }
 
-    let interval = interval.unwrap();
-
     if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
+        let mut interval = interval.unwrap();
+
         if interval.update_out {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
                 if 300 <= lines.len() {
@@ -537,17 +566,25 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                 } else {
                     fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
                 }
-                fuzzy.add_out_highlight(lua)?;
+
+                interval.update_out = false;
             }
         }
 
+        fuzzy.add_out_highlight(lua)?;
+
         if interval.update_preview {
+            let buf = &fuzzy.pop_preview.buf;
+
+            if let Some(path) = &interval.buffer_path {
+                buf.start_treesitter(lua, &path)?;
+            }
+
             if let Ok(preview) = CONTAINER.preview.try_read() {
-                fuzzy
-                    .pop_preview
-                    .buf
-                    .set_lines(lua, 0, -1, false, &preview)?;
+                buf.set_lines(lua, 0, -1, false, &preview)?;
                 fuzzy.add_preview_highlight(lua, &preview)?;
+
+                interval.update_preview = false;
             }
         }
     }
@@ -596,7 +633,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
             )?;
 
             RTM.spawn(async move {
-                //let _ = prepare_preview(&cwd, sel_idx).await;
+                let _ = prepare_preview(&cwd, sel_idx).await;
             });
         }
     }
@@ -645,7 +682,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         drop(fuzzy);
 
         let _ = exec_search(&cwd, cmd, args, &search_query).await;
-        //let _ = prepare_preview(&cwd, 0).await;
+        let _ = prepare_preview(&cwd, 0).await;
     });
 
     Ok(())
@@ -708,4 +745,12 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
     }
 
     result
+}
+
+fn is_binary(file: &Path) -> bool {
+    if let Some(ext) = file.extension() {
+        ext == "bin" || ext == "so" || ext == "mkv" || ext == "mp4" || ext == "blend"
+    } else {
+        false
+    }
 }

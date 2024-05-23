@@ -390,12 +390,12 @@ impl Mode {
 }
 
 //impl<'lua> FromLua<'lua> for Ui {
-    //fn from_lua(
-        //value: LuaValue<'lua>,
-        //lua: &'lua mlua::prelude::Lua,
-    //) -> mlua::prelude::LuaResult<Self> {
-        //lua.from_value(value)
-    //}
+//fn from_lua(
+//value: LuaValue<'lua>,
+//lua: &'lua mlua::prelude::Lua,
+//) -> mlua::prelude::LuaResult<Self> {
+//lua.from_value(value)
+//}
 //}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -852,4 +852,40 @@ pub struct CmdOpts<'a> {
     pub cmd: &'a str,
     pub args: &'a [&'a str],
     pub bang: bool,
+}
+
+impl<'a> CmdOpts<'a> {
+    pub fn simple(cmd: &'a str) -> Self {
+        Self {
+            cmd,
+            args: &[],
+            bang: false,
+        }
+    }
+}
+
+pub struct FileTypeMatch {
+    pub buf: Option<u32>,
+    pub filename: Option<String>,
+    pub contents: Option<Vec<String>>,
+}
+
+impl<'a> IntoLua<'a> for FileTypeMatch {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        let out = lua.create_table()?;
+
+        if let Some(buf) = self.buf {
+            out.set("buf", buf)?;
+        }
+
+        if let Some(filename) = self.filename {
+            out.set("filename", filename)?;
+        }
+
+        if let Some(contents) = self.contents {
+            out.set("contents", contents)?;
+        }
+
+        out.into_lua(lua)
+    }
 }

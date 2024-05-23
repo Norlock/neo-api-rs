@@ -1,11 +1,25 @@
 #![allow(unused)]
 use crate::neo_api::NeoApi;
 use crate::neo_api_types::{ExtmarkOpts, OptValueType};
-use crate::{BufferDeleteOpts, KeymapOpts, Mode};
+use crate::{BufferDeleteOpts, FileTypeMatch, KeymapOpts, Mode};
 use mlua::prelude::{IntoLua, Lua, LuaError, LuaFunction, LuaResult, LuaTable, LuaValue};
+use mlua::FromLua;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NeoBuffer(u32);
+
+impl<'a> FromLua<'a> for NeoBuffer {
+    fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
+        match value {
+            LuaValue::Integer(num) => Ok(NeoBuffer::new(num as u32)),
+            _ => Err(LuaError::FromLuaConversionError {
+                from: "LuaValue",
+                to: "NeoBuffer",
+                message: Some("Not a number".to_string()),
+            }),
+        }
+    }
+}
 
 impl NeoBuffer {
     pub const ZERO: Self = Self(0);
@@ -25,7 +39,7 @@ impl NeoBuffer {
     See also: ~
       • buf_open_scratch
     */
-    pub fn create(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<NeoBuffer> {
+    pub fn create(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<Self> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
         let buf_id: u32 = lfn.call::<_, u32>((listed, scratch))?;
 
@@ -37,10 +51,15 @@ impl NeoBuffer {
     }
 
     //pub fn exists(&self, lua: &Lua) -> LuaResult<bool> {
-        //let lfn: LuaFunction = lua.load("vim.fn.buflisted").eval()?;
+    //let lfn: LuaFunction = lua.load("vim.fn.buflisted").eval()?;
 
-        //lfn.call(self.id())
+    //lfn.call(self.id())
     //}
+    pub fn bufadd(lua: &Lua, path: &str) -> LuaResult<Self> {
+        let lfn: LuaFunction = lua.load("vim.fn.bufadd").eval()?;
+
+        lfn.call(path)
+    }
 
     pub fn new(id: u32) -> Self {
         Self(id)
@@ -53,9 +72,7 @@ impl NeoBuffer {
     pub fn get_current_buf(lua: &Lua) -> LuaResult<NeoBuffer> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_get_current_buf").eval()?;
 
-        let buf_id = lfn.call(())?;
-
-        Ok(NeoBuffer::new(buf_id))
+        lfn.call(())
     }
 
     pub fn keymap_opts(&self, silent: bool) -> KeymapOpts {
@@ -75,14 +92,20 @@ impl NeoBuffer {
         NeoApi::set_keymap(lua, mode, lhs, rhs, self.keymap_opts(true))
     }
 
+    pub fn set_name(&self, lua: &Lua, path: &str) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_name").eval()?;
+
+        lfn.call((self.id(), path))
+    }
+
     /**
     Sets the current buffer.
 
     Attributes: ~
         not allowed when |textlock| is active or in the |cmdwin|
     */
-    pub fn set_current(&self, lua: &mlua::Lua) -> LuaResult<()> {
-        let lfn: mlua::Function = lua.load("vim.api.nvim_set_current_buf").eval()?;
+    pub fn set_current(&self, lua: &Lua) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_set_current_buf").eval()?;
 
         lfn.call(self.id())
     }
@@ -122,6 +145,35 @@ impl NeoBuffer {
         value: V,
     ) -> LuaResult<()> {
         NeoApi::set_option_value(lua, key, value, OptValueType::Buffer(*self))
+    }
+
+    pub fn get_option_value<'a, V: FromLua<'a>>(&self, lua: &'a Lua, key: &str) -> LuaResult<V> {
+        NeoApi::get_option_value(lua, key, OptValueType::Buffer(*self))
+    }
+
+    pub fn start_treesitter(&self, lua: &Lua, path: &str) -> LuaResult<()> {
+        let ft: Option<String> = NeoApi::filetype_match(
+            lua,
+            FileTypeMatch {
+                filename: Some(path.to_string()),
+                contents: None,
+                buf: Some(self.id()),
+            },
+        )?;
+
+        if ft.is_none() {
+            return Ok(());
+        }
+
+        let lfn_gl: LuaFunction = lua.load("vim.treesitter.language.get_lang").eval()?;
+        let lang: LuaResult<String> = lfn_gl.call(ft);
+
+        if let Ok(lang) = lang {
+            let lfn: LuaFunction = lua.load("vim.treesitter.start").eval()?;
+            lfn.call((self.id(), lang))
+        } else {
+            Ok(())
+        }
     }
 
     /**
@@ -282,7 +334,13 @@ impl NeoBuffer {
       • {line_end}    End of range of lines to clear (exclusive) or -1 to
                       clear to end of buffer.
     */
-    pub fn clear_namespace(&self, lua: &Lua, ns_id: i32, line_start: u32, line_end: i32) -> LuaResult<()> {
+    pub fn clear_namespace(
+        &self,
+        lua: &Lua,
+        ns_id: i32,
+        line_start: u32,
+        line_end: i32,
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_clear_namespace").eval()?;
 
         lfn.call((self.id(), ns_id, line_start, line_end))
