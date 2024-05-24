@@ -10,9 +10,7 @@ use tokio::process::*;
 use tokio::sync::RwLock;
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
-    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle,
-    TextType, RTM,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -69,17 +67,14 @@ pub struct NeoFuzzy {
     pub cwd: PathBuf,
     pub args: Vec<String>,
     pub cmd: String,
-
     pub selected_idx: usize,
     pub ns_id: u32,
-
     pub config: Box<dyn FuzzyConfig>,
 }
 
 pub enum FilesSearch {
     FileOnly,
     DirOnly,
-    All,
 }
 
 pub enum Move {
@@ -92,7 +87,7 @@ impl NeoFuzzy {
         NeoTheme::set_hl(
             lua,
             0,
-            GRP_FUZZY_SELECT,
+            GRP_FUZZY_LETTER,
             HLOpts {
                 fg: Some("#39E75F".to_string()),
                 bold: true,
@@ -145,7 +140,7 @@ impl NeoFuzzy {
         )
     }
 
-    pub async fn files(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
+    pub async fn files_or_directories(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
         Self::add_hl_groups(lua)?;
 
         let ns_id = NeoTheme::create_namespace(lua, "NeoFuzzy")?;
@@ -260,9 +255,6 @@ impl NeoFuzzy {
         let cwd = config.cwd(lua);
 
         let args = match config.search_type() {
-            FilesSearch::All => {
-                vec![]
-            }
             FilesSearch::DirOnly => {
                 vec!["--type".to_string(), "directory".to_string()]
             }
@@ -468,14 +460,14 @@ async fn exec_search(
 }
 
 async fn preview_file(path: &Path) -> io::Result<()> {
-    let mut interval_state = CONTAINER.interval_state.write().await;
-    interval_state.update_preview = true;
-
     if is_binary(path) {
         let mut preview = CONTAINER.preview.write().await;
         *preview = vec!["> File is a binary".to_string()];
     } else {
+        let mut interval_state = CONTAINER.interval_state.write().await;
         interval_state.buffer_path = Some(path.to_string_lossy().to_string());
+        drop(interval_state);
+
         let mut lines = vec![];
         let file = fs::read_to_string(path).await?;
 
@@ -486,6 +478,9 @@ async fn preview_file(path: &Path) -> io::Result<()> {
         let mut preview = CONTAINER.preview.write().await;
         *preview = lines
     }
+
+    let mut interval_state = CONTAINER.interval_state.write().await;
+    interval_state.update_preview = true;
 
     Ok(())
 }
@@ -521,12 +516,8 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
         items.push("> Empty directory".to_string());
     }
 
-    let mut preview = CONTAINER.preview.write().await;
-    *preview = items;
-    drop(preview);
-
-    let mut query = CONTAINER.interval_state.write().await;
-    query.update_preview = true;
+    *CONTAINER.preview.write().await = items;
+    CONTAINER.interval_state.write().await.update_preview = true;
 
     Ok(())
 }
@@ -554,37 +545,46 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     }
 
     if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
+        fuzzy.add_out_highlight(lua)?;
+
         let mut interval = interval.unwrap();
 
         if interval.update_out {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
-                if 300 <= lines.len() {
-                    fuzzy
-                        .pop_out
-                        .buf
-                        .set_lines(lua, 0, -1, false, &lines[..300])?;
+                let lines = if 300 <= lines.len() {
+                    &lines[..300]
                 } else {
-                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
-                }
+                    &lines
+                };
 
+                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
                 interval.update_out = false;
             }
         }
 
-        fuzzy.add_out_highlight(lua)?;
-
         if interval.update_preview {
             let buf = &fuzzy.pop_preview.buf;
-
-            if let Some(path) = &interval.buffer_path {
-                buf.start_treesitter(lua, &path)?;
-            }
 
             if let Ok(preview) = CONTAINER.preview.try_read() {
                 buf.set_lines(lua, 0, -1, false, &preview)?;
                 fuzzy.add_preview_highlight(lua, &preview)?;
 
                 interval.update_preview = false;
+
+                if let Some(path) = &interval.buffer_path {
+                    let ft: Option<String> = NeoApi::filetype_match(
+                        lua,
+                        FileTypeMatch {
+                            filename: Some(path.to_string()),
+                            contents: None,
+                            buf: Some(buf.id()),
+                        },
+                    )?;
+
+                    if let Some(ft) = ft {
+                        buf.set_option_value(lua, "filetype", ft)?;
+                    }
+                }
             }
         }
     }

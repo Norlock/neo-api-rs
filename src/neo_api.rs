@@ -3,7 +3,7 @@ use crate::neo_api_types::{
     StdpathType, Ui,
 };
 use crate::window::NeoWindow;
-use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoBuffer};
+use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoBridge};
 
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
@@ -22,18 +22,6 @@ impl NeoApi {
 
         lfn.call((callback, ms))
     }
-
-    //pub fn delay_fn<'a>(
-    //lua: &'a Lua,
-    //ms: u32,
-    //callback: LuaFunction<'a>,
-    //) -> LuaResult<LuaFunction<'a>> {
-    //lua.create_function(|lua: &Lua, ()| {
-    //let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
-
-    //lfn.call((callback, ms))
-    //})
-    //}
 
     pub fn schedule_wrap<'a>(
         lua: &'a Lua,

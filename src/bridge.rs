@@ -13,7 +13,7 @@ unsafe impl Send for NeoBridge {}
 unsafe impl Sync for NeoBridge {}
 
 impl NeoBridge {
-    pub async fn insert_item(key: &str, cb: Box<dyn Any>) {
+    pub async fn insert(key: &str, cb: Box<dyn Any>) {
         let mut bridge = LUA_BRIDGE.write().await;
         bridge.0.insert(key.to_string(), cb);
     }

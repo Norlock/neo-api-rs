@@ -151,29 +151,14 @@ impl NeoBuffer {
         NeoApi::get_option_value(lua, key, OptValueType::Buffer(*self))
     }
 
-    pub fn start_treesitter(&self, lua: &Lua, path: &str) -> LuaResult<()> {
-        let ft: Option<String> = NeoApi::filetype_match(
-            lua,
-            FileTypeMatch {
-                filename: Some(path.to_string()),
-                contents: None,
-                buf: Some(self.id()),
-            },
-        )?;
-
-        if ft.is_none() {
-            return Ok(());
-        }
-
+    pub fn get_treesitter_lang(&self, lua: &Lua, ft: &str) -> LuaResult<String> {
         let lfn_gl: LuaFunction = lua.load("vim.treesitter.language.get_lang").eval()?;
-        let lang: LuaResult<String> = lfn_gl.call(ft);
+        lfn_gl.call(ft)
+    }
 
-        if let Ok(lang) = lang {
-            let lfn: LuaFunction = lua.load("vim.treesitter.start").eval()?;
-            lfn.call((self.id(), lang))
-        } else {
-            Ok(())
-        }
+    pub fn start_treesitter(&self, lua: &Lua, lang: &str) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.treesitter.start").eval()?;
+        lfn.call((self.id(), lang))
     }
 
     /**
