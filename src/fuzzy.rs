@@ -49,7 +49,7 @@ impl<T: Sized> NeoTryLock<T> for RwLock<T> {
 
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self, lua: &Lua) -> PathBuf;
-    fn search_type(&self) -> &FilesSearch;
+    fn search_type(&self) -> &FuzzySearch;
     fn on_enter(&self, lua: &Lua, item: PathBuf);
 }
 
@@ -93,8 +93,8 @@ pub struct NeoFuzzy {
     pub config: Box<dyn FuzzyConfig>,
 }
 
-#[derive(PartialEq, Eq)]
-pub enum FilesSearch {
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum FuzzySearch {
     FileOnly,
     DirOnly,
 }
@@ -277,10 +277,10 @@ impl NeoFuzzy {
         let cwd = config.cwd(lua);
 
         let args = match config.search_type() {
-            FilesSearch::DirOnly => {
+            FuzzySearch::DirOnly => {
                 vec!["--type".to_string(), "directory".to_string()]
             }
-            FilesSearch::FileOnly => {
+            FuzzySearch::FileOnly => {
                 vec!["--type".to_string(), "file".to_string()]
             }
         };
@@ -302,11 +302,12 @@ impl NeoFuzzy {
         let cwd = fuzzy.cwd.clone();
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
+        let search_type = *fuzzy.config.search_type();
 
         *CONTAINER.all_lines.write().await = String::new();
 
         RTM.spawn(async move {
-            let _ = exec_search(&cwd, cmd, args, "").await;
+            let _ = exec_search(&cwd, cmd, args, "", search_type).await;
             let _ = prepare_preview(&cwd, 0).await;
         });
 
@@ -405,12 +406,13 @@ async fn exec_search(
     cmd: String,
     args: Vec<String>,
     search_query: &str,
+    search_type: FuzzySearch,
 ) -> io::Result<()> {
     let sanitized = search_query.replace('/', "\\/").replace('.', "\\.");
 
     let has_lines = !CONTAINER.all_lines.read().await.is_empty();
 
-    async fn sort_lines(lines: &str, search_query: &str) {
+    async fn sort_lines(lines: &str, search_query: &str, search_type: FuzzySearch) {
         let mut new_lines = Vec::new();
 
         for line in lines.lines() {
@@ -419,10 +421,17 @@ async fn exec_search(
         }
 
         new_lines.sort_by_key(|k| k.0);
+
+        let hl_group = if search_type == FuzzySearch::DirOnly {
+            "Directory"
+        } else {
+            ""
+        };
+
         let new_lines = new_lines.into_iter().map(|k| LineOut {
             text: k.1,
             icon: "".to_string(),
-            hl_group: "".to_string(),
+            hl_group: hl_group.to_string(),
         });
 
         let mut lines_out = CONTAINER.lines_out.write().await;
@@ -444,11 +453,11 @@ async fn exec_search(
             let mut lines = CONTAINER.all_lines.write().await;
             *lines = String::from_utf8_lossy(&out.stdout).to_string();
 
-            sort_lines(&lines, "").await;
+            sort_lines(&lines, "", search_type).await;
         }
     } else if search_query.is_empty() {
         let lines = CONTAINER.all_lines.read().await;
-        sort_lines(&lines, "").await;
+        sort_lines(&lines, "", search_type).await;
     } else {
         let mut regex = String::from(".*");
 
@@ -501,7 +510,7 @@ async fn exec_search(
         if out.status.success() {
             let lines = String::from_utf8_lossy(&out.stdout);
 
-            sort_lines(&lines, search_query).await;
+            sort_lines(&lines, search_query, search_type).await;
         }
     }
 
@@ -607,7 +616,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                     &mut lines
                 };
 
-                if FilesSearch::FileOnly == *fuzzy.config.search_type() {
+                if FuzzySearch::FileOnly == *fuzzy.config.search_type() {
                     let mut icon_lines = Vec::new();
 
                     for line in lines {
@@ -634,13 +643,12 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                         .buf
                         .set_lines(lua, 0, -1, false, &icon_lines)?;
                 } else {
-                    let lines: Vec<_> = lines.iter().map(|line| line.text.to_string()).collect();
+                    let lines: Vec<_> = lines
+                        .iter()
+                        .map(|line| format!("  {}", line.text))
+                        .collect();
 
-                    fuzzy
-                        .pop_out
-                        .buf
-                        .set_lines(lua, 0, -1, false, &lines)?;
-
+                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
                 }
 
                 interval.update_out = false;
@@ -756,6 +764,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         let cmd;
         let cwd;
         let args;
+        let search_type;
 
         if let Some(fuzzy) = fuzzy.as_mut() {
             fuzzy.selected_idx = 0;
@@ -763,13 +772,14 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
             cwd = fuzzy.cwd.clone();
             cmd = fuzzy.cmd.clone();
             args = fuzzy.args.clone();
+            search_type = *fuzzy.config.search_type();
         } else {
             return;
         }
 
         drop(fuzzy);
 
-        let _ = exec_search(&cwd, cmd, args, &search_query).await;
+        let _ = exec_search(&cwd, cmd, args, &search_query, search_type).await;
         let _ = prepare_preview(&cwd, 0).await;
     });
 
