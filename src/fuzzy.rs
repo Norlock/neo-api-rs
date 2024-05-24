@@ -19,9 +19,15 @@ const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
 
+struct LineOut {
+    text: String,
+    icon: String,
+    hl_group: String,
+}
+
 struct FuzzyContainer {
     all_lines: RwLock<String>,
-    cached_lines: RwLock<Vec<String>>,
+    lines_out: RwLock<Vec<LineOut>>,
     fuzzy: RwLock<Option<NeoFuzzy>>,
     interval_state: RwLock<IntervalState>,
     preview: RwLock<Vec<String>>,
@@ -63,7 +69,7 @@ struct IntervalState {
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     all_lines: RwLock::new(String::new()),
-    cached_lines: RwLock::new(vec![]),
+    lines_out: RwLock::new(vec![]),
     fuzzy: RwLock::new(None),
     interval_state: RwLock::new(IntervalState {
         update_out: false,
@@ -87,6 +93,7 @@ pub struct NeoFuzzy {
     pub config: Box<dyn FuzzyConfig>,
 }
 
+#[derive(PartialEq, Eq)]
 pub enum FilesSearch {
     FileOnly,
     DirOnly,
@@ -193,7 +200,7 @@ impl NeoFuzzy {
                 relative: PopupRelative::Editor,
                 border: PopupBorder::Single,
                 style: Some(PopupStyle::Minimal),
-                title: Some(TextType::String("Search for directory".to_string())),
+                title: Some(TextType::String(" Search query ".to_string())),
                 ..Default::default()
             },
         )?;
@@ -359,6 +366,20 @@ impl NeoFuzzy {
             -1,
         )?;
 
+        if let Ok(lines) = CONTAINER.lines_out.try_read() {
+            let lines = if 300 <= lines.len() {
+                &lines[..300]
+            } else {
+                &lines
+            };
+
+            for (i, line) in lines.iter().enumerate() {
+                self.pop_out
+                    .buf
+                    .add_highlight(lua, self.ns_id as i32, &line.hl_group, i, 0, 2)?;
+            }
+        }
+
         Ok(())
     }
 }
@@ -368,8 +389,10 @@ pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
 
     let fuzzy = fuzzy.as_ref().unwrap();
     let fz_config = &fuzzy.config;
-    let cached_lines = CONTAINER.cached_lines.read().await;
-    let selected = fuzzy.cwd.join(cached_lines[fuzzy.selected_idx].as_str());
+    let cached_lines = CONTAINER.lines_out.read().await;
+    let selected = fuzzy
+        .cwd
+        .join(cached_lines[fuzzy.selected_idx].text.as_str());
     fuzzy.pop_cmd.win.close(lua, false)?;
 
     fz_config.on_enter(lua, selected);
@@ -396,10 +419,14 @@ async fn exec_search(
         }
 
         new_lines.sort_by_key(|k| k.0);
-        let new_lines = new_lines.into_iter().map(|k| k.1);
+        let new_lines = new_lines.into_iter().map(|k| LineOut {
+            text: k.1,
+            icon: "".to_string(),
+            hl_group: "".to_string(),
+        });
 
-        let mut cached_lines = CONTAINER.cached_lines.write().await;
-        *cached_lines = new_lines.collect();
+        let mut lines_out = CONTAINER.lines_out.write().await;
+        *lines_out = new_lines.collect();
 
         let mut interval = CONTAINER.interval_state.write().await;
         interval.last_search = search_query.to_string();
@@ -452,8 +479,15 @@ async fn exec_search(
             let meta = CONTAINER.interval_state.read().await;
 
             if meta.last_search.len() < search_qry_len {
-                let lines = CONTAINER.cached_lines.read().await;
-                stdin.write_all(lines.join("\n").as_bytes()).await.unwrap();
+                let lines = CONTAINER.lines_out.read().await;
+
+                let mut out = String::new();
+
+                for line in lines.iter() {
+                    out.push_str(&format!("{}\n", line.text));
+                }
+
+                stdin.write_all(out.as_bytes()).await.unwrap();
             } else {
                 let lines = CONTAINER.all_lines.read().await;
                 stdin.write_all(lines.as_bytes()).await.unwrap();
@@ -538,8 +572,8 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
 }
 
 async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
-    let cached_lines = CONTAINER.cached_lines.read().await;
-    let path: PathBuf = cwd.join(cached_lines[selected_idx].as_str());
+    let cached_lines = CONTAINER.lines_out.read().await;
+    let path: PathBuf = cwd.join(cached_lines[selected_idx].text.as_str());
     drop(cached_lines);
 
     if path.is_dir() {
@@ -563,28 +597,61 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     let fuzzy = fuzzy.unwrap();
 
     if let Some(fuzzy) = fuzzy.as_ref() {
-        fuzzy.add_out_highlight(lua)?;
-
         if interval.update_out {
-            if let Ok(lines) = CONTAINER.cached_lines.try_read() {
+            fuzzy.add_out_highlight(lua)?;
+
+            if let Ok(mut lines) = CONTAINER.lines_out.try_write() {
                 let lines = if 300 <= lines.len() {
-                    &lines[..300]
+                    &mut lines[..300]
                 } else {
-                    &lines
+                    &mut lines
                 };
 
-                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                if FilesSearch::FileOnly == *fuzzy.config.search_type() {
+                    let mut icon_lines = Vec::new();
+
+                    for line in lines {
+                        let pb: PathBuf = line.text.clone().into();
+
+                        if let (Some(filename), Some(extension)) = (pb.file_name(), pb.extension())
+                        {
+                            let (icon, hl_group) = NeoApi::get_dev_icon(
+                                lua,
+                                filename.to_str().unwrap(),
+                                extension.to_str().unwrap(),
+                            )?;
+
+                            icon_lines.push(format!(" {} {}", icon, line.text));
+                            line.icon = icon;
+                            line.hl_group = hl_group;
+                        }
+                    }
+
+                    fuzzy
+                        .pop_out
+                        .buf
+                        .set_lines(lua, 0, -1, false, &icon_lines)?;
+                } else {
+                    let lines: Vec<_> = lines.iter().map(|line| line.text.to_string()).collect();
+
+                    fuzzy
+                        .pop_out
+                        .buf
+                        .set_lines(lua, 0, -1, false, &lines)?;
+
+                }
+
                 interval.update_out = false;
             }
         }
 
         if interval.update_preview {
+            fuzzy.add_out_highlight(lua)?;
+
             if let Some(preview) = CONTAINER.preview.neo_read() {
                 let buf = &fuzzy.pop_preview.buf;
                 buf.set_lines(lua, 0, -1, false, &preview)?;
                 fuzzy.add_preview_highlight(lua, &preview)?;
-
-                interval.update_preview = false;
 
                 if let Some(path) = &interval.buffer_path {
                     let ft = NeoApi::filetype_match(
@@ -598,6 +665,8 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
                     buf.set_option_value(lua, "filetype", ft)?;
                 }
+
+                interval.update_preview = false;
             }
         }
     }

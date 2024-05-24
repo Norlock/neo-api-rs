@@ -3,13 +3,11 @@ use crate::neo_api_types::{
     StdpathType, Ui,
 };
 use crate::window::NeoWindow;
-use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoBridge};
-
+use crate::{CmdOpts, FileTypeMatch, KeymapOpts};
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
-    IntoLua,
+    FromLua, IntoLua, Lua,
 };
-use mlua::{FromLua, Lua};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -409,5 +407,11 @@ impl NeoApi {
 
             lfn.call(())
         }
+    }
+
+    pub fn get_dev_icon(lua: &Lua, filename: &str, extension: &str) -> LuaResult<(String, String)> {
+        let lfn: LuaFunction = lua.load("require('nvim-web-devicons').get_icon").eval()?;
+
+        lfn.call((filename, extension))
     }
 }
