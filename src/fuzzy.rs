@@ -7,10 +7,12 @@ use std::process::Stdio;
 use tokio::fs;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::process::*;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
+    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle,
+    TextType, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -23,6 +25,20 @@ struct FuzzyContainer {
     fuzzy: RwLock<Option<NeoFuzzy>>,
     interval_state: RwLock<IntervalState>,
     preview: RwLock<Vec<String>>,
+}
+
+pub trait NeoTryLock<T> {
+    fn neo_write(&self) -> Option<RwLockWriteGuard<'_, T>>;
+    fn neo_read(&self) -> Option<RwLockReadGuard<'_, T>>;
+}
+
+impl<T: Sized> NeoTryLock<T> for RwLock<T> {
+    fn neo_read(&self) -> Option<RwLockReadGuard<'_, T>> {
+        self.try_read().ok()
+    }
+    fn neo_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
+        self.try_write().ok()
+    }
 }
 
 pub trait FuzzyConfig: Send + Sync {
@@ -41,7 +57,6 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 struct IntervalState {
     last_search: String,
     buffer_path: Option<String>,
-    // TODO maybe atomic
     update_out: bool,
     update_preview: bool,
 }
@@ -537,17 +552,18 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
 }
 
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let interval = CONTAINER.interval_state.try_write();
-    let fuzzy = CONTAINER.fuzzy.try_read();
+    let interval = CONTAINER.interval_state.neo_write();
+    let fuzzy = CONTAINER.fuzzy.neo_read();
 
-    if interval.is_err() || fuzzy.is_err() {
+    if interval.is_none() || fuzzy.is_none() {
         return Ok(());
     }
 
-    if let Some(fuzzy) = fuzzy.unwrap().as_ref() {
-        fuzzy.add_out_highlight(lua)?;
+    let mut interval = interval.unwrap();
+    let fuzzy = fuzzy.unwrap();
 
-        let mut interval = interval.unwrap();
+    if let Some(fuzzy) = fuzzy.as_ref() {
+        fuzzy.add_out_highlight(lua)?;
 
         if interval.update_out {
             if let Ok(lines) = CONTAINER.cached_lines.try_read() {
@@ -563,16 +579,15 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         }
 
         if interval.update_preview {
-            let buf = &fuzzy.pop_preview.buf;
-
-            if let Ok(preview) = CONTAINER.preview.try_read() {
+            if let Some(preview) = CONTAINER.preview.neo_read() {
+                let buf = &fuzzy.pop_preview.buf;
                 buf.set_lines(lua, 0, -1, false, &preview)?;
                 fuzzy.add_preview_highlight(lua, &preview)?;
 
                 interval.update_preview = false;
 
                 if let Some(path) = &interval.buffer_path {
-                    let ft: Option<String> = NeoApi::filetype_match(
+                    let ft = NeoApi::filetype_match(
                         lua,
                         FileTypeMatch {
                             filename: Some(path.to_string()),
@@ -581,9 +596,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                         },
                     )?;
 
-                    if let Some(ft) = ft {
-                        buf.set_option_value(lua, "filetype", ft)?;
-                    }
+                    buf.set_option_value(lua, "filetype", ft)?;
                 }
             }
         }
