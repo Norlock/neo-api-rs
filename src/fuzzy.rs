@@ -624,6 +624,8 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                             icon_lines.push(format!(" {} {}", icon, line.text));
                             line.icon = icon;
                             line.hl_group = hl_group;
+                        } else {
+                            icon_lines.push(format!("   {}", line.text));
                         }
                     }
 
@@ -663,7 +665,11 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                         },
                     )?;
 
-                    buf.set_option_value(lua, "filetype", ft)?;
+                    if ft.is_some() {
+                        buf.set_option_value(lua, "filetype", ft)?;
+                    } else {
+                        buf.set_option_value(lua, "filetype", "text")?;
+                    }
                 }
 
                 interval.update_preview = false;

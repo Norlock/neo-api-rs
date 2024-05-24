@@ -193,7 +193,7 @@ impl NeoApi {
     Each of the three options is specified using a key to the single argument
     of this function. Example: >lua
     */
-    pub fn filetype_match(lua: &Lua, opts: FileTypeMatch) -> LuaResult<String> {
+    pub fn filetype_match(lua: &Lua, opts: FileTypeMatch) -> LuaResult<Option<String>> {
         let lfn: LuaFunction = lua.load("vim.filetype.match").eval()?;
 
         lfn.call((opts))
