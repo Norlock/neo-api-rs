@@ -7,15 +7,18 @@ use std::process::Stdio;
 use tokio::fs;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::process::*;
-use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::RwLock;
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
+    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
+    PopupStyle, TextType, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
+//static FUZZY_CFG<T>: OnceCell<T>;
 
 struct LineOut {
     text: String,
@@ -29,20 +32,6 @@ struct FuzzyContainer {
     fuzzy: RwLock<Option<NeoFuzzy>>,
     interval_state: RwLock<IntervalState>,
     preview: RwLock<Vec<String>>,
-}
-
-pub trait NeoTryLock<T> {
-    fn neo_write(&self) -> Option<RwLockWriteGuard<'_, T>>;
-    fn neo_read(&self) -> Option<RwLockReadGuard<'_, T>>;
-}
-
-impl<T: Sized> NeoTryLock<T> for RwLock<T> {
-    fn neo_read(&self) -> Option<RwLockReadGuard<'_, T>> {
-        self.try_read().ok()
-    }
-    fn neo_write(&self) -> Option<RwLockWriteGuard<'_, T>> {
-        self.try_write().ok()
-    }
 }
 
 pub trait FuzzyConfig: Send + Sync {
@@ -60,7 +49,7 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 #[derive(Debug)]
 struct IntervalState {
     last_search: String,
-    buffer_path: Option<String>,
+    file_path: String,
     update_out: bool,
     update_preview: bool,
 }
@@ -73,7 +62,7 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
         update_out: false,
         update_preview: false,
         last_search: "".to_string(),
-        buffer_path: None,
+        file_path: "".to_string(),
     }),
     preview: RwLock::new(Vec::new()),
 });
@@ -93,8 +82,8 @@ pub struct NeoFuzzy {
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum FuzzySearch {
-    FileOnly,
-    DirOnly,
+    File,
+    Directory,
 }
 
 pub enum Move {
@@ -296,10 +285,10 @@ impl NeoFuzzy {
         let cwd = config.cwd(lua);
 
         let args = match config.search_type() {
-            FuzzySearch::DirOnly => {
+            FuzzySearch::Directory => {
                 vec!["--type".to_string(), "directory".to_string()]
             }
-            FuzzySearch::FileOnly => {
+            FuzzySearch::File => {
                 vec!["--type".to_string(), "file".to_string()]
             }
         };
@@ -408,14 +397,13 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
 
     let fuzzy = fuzzy.as_ref().unwrap();
-    let fz_config = &fuzzy.config;
     let cached_lines = CONTAINER.lines_out.read().await;
     let selected = fuzzy
         .cwd
         .join(cached_lines[fuzzy.selected_idx].text.as_str());
     fuzzy.pop_cmd.win.close(lua, false)?;
 
-    fz_config.on_enter(lua, open_in, selected);
+    fuzzy.config.on_enter(lua, open_in, selected);
 
     Ok(())
 }
@@ -441,7 +429,7 @@ async fn exec_search(
 
         new_lines.sort_by_key(|k| k.0);
 
-        let hl_group = if search_type == FuzzySearch::DirOnly {
+        let hl_group = if search_type == FuzzySearch::Directory {
             "Directory"
         } else {
             ""
@@ -542,7 +530,7 @@ async fn preview_file(path: &Path) -> io::Result<()> {
         *preview = vec!["> File is a binary".to_string()];
     } else {
         let mut interval_state = CONTAINER.interval_state.write().await;
-        interval_state.buffer_path = Some(path.to_string_lossy().to_string());
+        interval_state.file_path = path.to_string_lossy().to_string();
         drop(interval_state);
 
         let mut lines = vec![];
@@ -614,10 +602,10 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
 }
 
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let interval = CONTAINER.interval_state.neo_write();
-    let fuzzy = CONTAINER.fuzzy.neo_read();
+    let interval = CONTAINER.interval_state.try_write();
+    let fuzzy = CONTAINER.fuzzy.try_read();
 
-    if interval.is_none() || fuzzy.is_none() {
+    if interval.is_err() || fuzzy.is_err() {
         return Ok(());
     }
 
@@ -628,14 +616,14 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         if interval.update_out {
             fuzzy.add_out_highlight(lua)?;
 
-            if let Ok(mut lines) = CONTAINER.lines_out.try_write() {
-                let lines = if 300 <= lines.len() {
-                    &mut lines[..300]
-                } else {
-                    &mut lines
-                };
+            if FuzzySearch::File == fuzzy.config.search_type() {
+                if let Ok(mut lines) = CONTAINER.lines_out.try_write() {
+                    let lines = if 300 <= lines.len() {
+                        &mut lines[..300]
+                    } else {
+                        &mut lines
+                    };
 
-                if FuzzySearch::FileOnly == fuzzy.config.search_type() {
                     let mut icon_lines = Vec::new();
 
                     for line in lines {
@@ -661,15 +649,21 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                         .pop_out
                         .buf
                         .set_lines(lua, 0, -1, false, &icon_lines)?;
-                } else {
-                    let lines: Vec<_> = lines
-                        .iter()
-                        .map(|line| format!("  {}", line.text))
-                        .collect();
-
-                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                    interval.update_out = false;
                 }
+            } else if let Ok(lines) = CONTAINER.lines_out.try_read() {
+                let lines = if 300 <= lines.len() {
+                    &lines[..300]
+                } else {
+                    &lines
+                };
 
+                let lines: Vec<_> = lines
+                    .iter()
+                    .map(|line| format!("  {}", line.text))
+                    .collect();
+
+                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
                 interval.update_out = false;
             }
         }
@@ -677,16 +671,16 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         if interval.update_preview {
             fuzzy.add_out_highlight(lua)?;
 
-            if let Some(preview) = CONTAINER.preview.neo_read() {
+            if let Ok(preview) = CONTAINER.preview.try_read() {
                 let buf = &fuzzy.pop_preview.buf;
                 buf.set_lines(lua, 0, -1, false, &preview)?;
                 fuzzy.add_preview_highlight(lua, &preview)?;
 
-                if let Some(path) = &interval.buffer_path {
+                if fuzzy.config.search_type() == FuzzySearch::File {
                     let ft = NeoApi::filetype_match(
                         lua,
                         FileTypeMatch {
-                            filename: Some(path.to_string()),
+                            filename: Some(interval.file_path.to_string()),
                             contents: None,
                             buf: Some(buf.id()),
                         },
