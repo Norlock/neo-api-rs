@@ -10,9 +10,7 @@ use tokio::process::*;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
-    NeoBuffer, NeoPopup, NeoTheme, NeoWindow, PopupBorder, PopupRelative, PopupSize, PopupStyle,
-    TextType, RTM,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi, NeoBuffer, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle, TextType, RTM
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -49,8 +47,8 @@ impl<T: Sized> NeoTryLock<T> for RwLock<T> {
 
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self, lua: &Lua) -> PathBuf;
-    fn search_type(&self) -> &FuzzySearch;
-    fn on_enter(&self, lua: &Lua, item: PathBuf);
+    fn search_type(&self) -> FuzzySearch;
+    fn on_enter(&self, lua: &Lua, open_in: OpenIn, item: PathBuf);
 }
 
 impl std::fmt::Debug for dyn FuzzyConfig {
@@ -157,8 +155,29 @@ impl NeoFuzzy {
         buf.set_keymap(
             lua,
             Mode::Insert,
+            "<C-t>",
+            lua.create_async_function(|lua, ()| open_item(lua, OpenIn::Tab))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<C-s>",
+            lua.create_async_function(|lua, ()| open_item(lua, OpenIn::HSplit))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<C-v>",
+            lua.create_async_function(|lua, ()| open_item(lua, OpenIn::VSplit))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
             "<Enter>",
-            lua.create_async_function(open_item)?,
+            lua.create_async_function(|lua, ()| open_item(lua, OpenIn::Buffer))?,
         )
     }
 
@@ -302,7 +321,7 @@ impl NeoFuzzy {
         let cwd = fuzzy.cwd.clone();
         let cmd = fuzzy.cmd.clone();
         let args = fuzzy.args.clone();
-        let search_type = *fuzzy.config.search_type();
+        let search_type = fuzzy.config.search_type();
 
         *CONTAINER.all_lines.write().await = String::new();
 
@@ -385,7 +404,7 @@ impl NeoFuzzy {
     }
 }
 
-pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
+pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
 
     let fuzzy = fuzzy.as_ref().unwrap();
@@ -396,7 +415,7 @@ pub async fn open_item(lua: &Lua, _: ()) -> LuaResult<()> {
         .join(cached_lines[fuzzy.selected_idx].text.as_str());
     fuzzy.pop_cmd.win.close(lua, false)?;
 
-    fz_config.on_enter(lua, selected);
+    fz_config.on_enter(lua, open_in, selected);
 
     Ok(())
 }
@@ -616,7 +635,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                     &mut lines
                 };
 
-                if FuzzySearch::FileOnly == *fuzzy.config.search_type() {
+                if FuzzySearch::FileOnly == fuzzy.config.search_type() {
                     let mut icon_lines = Vec::new();
 
                     for line in lines {
@@ -772,7 +791,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
             cwd = fuzzy.cwd.clone();
             cmd = fuzzy.cmd.clone();
             args = fuzzy.args.clone();
-            search_type = *fuzzy.config.search_type();
+            search_type = fuzzy.config.search_type();
         } else {
             return;
         }
