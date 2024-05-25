@@ -5,7 +5,7 @@ use tokio::sync::RwLock;
 
 static LUA_BRIDGE: Lazy<RwLock<NeoBridge>> = Lazy::new(|| RwLock::new(NeoBridge(HashMap::new())));
 
-/// This can be used to store small data for inside lua async functions, 
+/// This can be used to store small data for inside lua async functions,
 /// where you can't move the data inside the closure.
 pub struct NeoBridge(HashMap<String, Box<dyn Any>>);
 
@@ -33,13 +33,37 @@ impl NeoBridge {
         Err(LuaError::external("Item with key doesn't exist"))
     }
 
-    /// Will consume the stored data.
-    pub async fn consume<T: 'static + Clone>(key: &str) -> LuaResult<T> {
-        let bridge = LUA_BRIDGE.read().await;
-
-        if let Some(cb) = bridge.0.get(key) {
+    pub async fn borrow<T: 'static>(&self, key: &str) -> LuaResult<&T> {
+        if let Some(cb) = self.0.get(key) {
             if let Some(downcast) = cb.downcast_ref::<T>() {
-                return Ok(downcast.clone());
+                return Ok(downcast);
+            } else {
+                return Err(LuaError::external("Can't downcast to the expected type"));
+            }
+        }
+
+        Err(LuaError::external("Item with key doesn't exist"))
+    }
+
+    pub async fn borrow_mut<T: 'static>(&mut self, key: &str) -> LuaResult<&mut T> {
+        if let Some(cb) = self.0.get_mut(key) {
+            if let Some(downcast) = cb.downcast_mut::<T>() {
+                return Ok(downcast);
+            } else {
+                return Err(LuaError::external("Can't downcast to the expected type"));
+            }
+        }
+
+        Err(LuaError::external("Item with key doesn't exist"))
+    }
+
+    /// Will consume the stored data.
+    pub async fn consume<T: 'static>(key: &str) -> LuaResult<Box<T>> {
+        let mut bridge = LUA_BRIDGE.write().await;
+
+        if let Some(cb) = bridge.0.remove(key) {
+            if let Ok(downcast) = cb.downcast::<T>() {
+                return Ok(downcast);
             } else {
                 return Err(LuaError::external("Can't downcast to the expected type"));
             }
