@@ -1,6 +1,5 @@
 use std::sync::{Mutex, MutexGuard};
 
-use mlua::IntoLua;
 
 pub trait FastLock<T> {
     fn fast_lock(&self) -> MutexGuard<'_, T>;

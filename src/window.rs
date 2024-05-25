@@ -80,7 +80,7 @@ impl NeoWindow {
     pub fn get_cursor(&self, lua: &Lua) -> LuaResult<WinCursor> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_get_cursor").eval()?;
 
-        lfn.call((self.id()))
+        lfn.call(self.id())
     }
 
     /// Adds the namespace scope to the window.

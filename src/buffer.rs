@@ -295,9 +295,9 @@ impl NeoBuffer {
       • {col}     Column where to place the mark, 0-based. |api-indexing|
       • {opts}    Optional parameters.
     */
-    pub fn set_extmarks<'a>(
+    pub fn set_extmarks(
         &self,
-        lua: &'a Lua,
+        lua: &Lua,
         ns_id: u32,
         line: u32,
         col: u32,

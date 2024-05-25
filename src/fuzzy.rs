@@ -341,7 +341,7 @@ impl NeoFuzzy {
         Ok(())
     }
 
-    pub fn fuzzy_grep(cwd: &Path, text: String) {
+    pub fn fuzzy_grep(_cwd: &Path, _text: String) {
         //
     }
 
@@ -351,7 +351,7 @@ impl NeoFuzzy {
             .clear_namespace(lua, self.ns_id as i32, 0, -1)?;
 
         for (i, item_name) in preview.iter().enumerate() {
-            if item_name.ends_with("/") {
+            if item_name.ends_with('/') {
                 self.pop_preview.buf.add_highlight(
                     lua,
                     self.ns_id as i32,
@@ -435,7 +435,7 @@ async fn exec_search(
         let mut new_lines = Vec::new();
 
         for line in lines.lines() {
-            let score = levenshtein(&search_query, line);
+            let score = levenshtein(search_query, line);
             new_lines.push((score, line.to_string()));
         }
 
@@ -581,7 +581,7 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
 
     items.sort_by(|a, b| {
         if a.ends_with('/') == b.ends_with('/') {
-            a.cmp(&b)
+            a.cmp(b)
         } else if a.ends_with('/') {
             Ordering::Less
         } else {

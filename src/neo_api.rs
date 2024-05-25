@@ -196,7 +196,7 @@ impl NeoApi {
     pub fn filetype_match(lua: &Lua, opts: FileTypeMatch) -> LuaResult<Option<String>> {
         let lfn: LuaFunction = lua.load("vim.filetype.match").eval()?;
 
-        lfn.call((opts))
+        lfn.call(opts)
     }
 
     pub fn get_current_win(lua: &Lua) -> LuaResult<NeoWindow> {
@@ -247,7 +247,7 @@ impl NeoApi {
         let cmd = format!("vim.cmd.{}", opts.cmd);
         let lfn: LuaFunction = lua.load(cmd).eval()?;
 
-        lfn.call((opts))
+        lfn.call(opts)
     }
 
     pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
