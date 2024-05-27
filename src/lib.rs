@@ -7,6 +7,7 @@ mod theme;
 mod traits;
 mod window;
 mod bridge;
+mod web_devicons;
 
 pub use buffer::*;
 pub use fuzzy::*;
