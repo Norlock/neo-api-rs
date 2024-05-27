@@ -2,6 +2,7 @@ use mlua::prelude::LuaResult;
 use mlua::Lua;
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tokio::fs;
@@ -18,7 +19,6 @@ use crate::{
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
-//static FUZZY_CFG<T>: OnceCell<T>;
 
 struct LineOut {
     text: String,
@@ -230,6 +230,8 @@ impl NeoFuzzy {
             },
         )?;
 
+        pop_out.win.set_option_value(lua, "cursorline", true)?;
+
         let pop_preview = NeoPopup::open(
             lua,
             NeoBuffer::create(lua, false, true)?,
@@ -351,7 +353,9 @@ impl NeoFuzzy {
                 )?;
             }
 
-            if item_name.starts_with("> Empty") {
+            if item_name.starts_with("> Empty directory")
+                || item_name.starts_with("> File is a binary")
+            {
                 self.pop_preview
                     .buf
                     .add_highlight(lua, self.ns_id as i32, "Comment", i, 0, -1)?;
@@ -525,11 +529,15 @@ async fn exec_search(
 }
 
 async fn preview_file(path: &Path) -> io::Result<()> {
+    let mut interval_state = CONTAINER.interval_state.write().await;
+
     if is_binary(path) {
+        interval_state.file_path = "text".to_string();
+        drop(interval_state);
+
         let mut preview = CONTAINER.preview.write().await;
         *preview = vec!["> File is a binary".to_string()];
     } else {
-        let mut interval_state = CONTAINER.interval_state.write().await;
         interval_state.file_path = path.to_string_lossy().to_string();
         drop(interval_state);
 
@@ -588,9 +596,17 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
 }
 
 async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
-    let cached_lines = CONTAINER.lines_out.read().await;
-    let path: PathBuf = cwd.join(cached_lines[selected_idx].text.as_str());
-    drop(cached_lines);
+    let path: PathBuf = {
+        let lines_out = CONTAINER.lines_out.read().await;
+
+        if lines_out.is_empty() {
+            let mut preview = CONTAINER.preview.write().await;
+            *preview = vec![];
+            return Ok(());
+        }
+
+        cwd.join(lines_out[selected_idx].text.as_str())
+    };
 
     if path.is_dir() {
         preview_directory(&path).await?;
@@ -631,15 +647,19 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
                         if let (Some(filename), Some(extension)) = (pb.file_name(), pb.extension())
                         {
-                            let (icon, hl_group) = NeoApi::get_dev_icon(
+                            let dev_icon = NeoApi::get_dev_icon(
                                 lua,
                                 filename.to_str().unwrap(),
                                 extension.to_str().unwrap(),
                             )?;
 
-                            icon_lines.push(format!(" {} {}", icon, line.text));
-                            line.icon = icon;
-                            line.hl_group = hl_group;
+                            if let (Some(icon), Some(hl_group)) = dev_icon {
+                                icon_lines.push(format!(" {} {}", icon, line.text));
+                                line.icon = icon;
+                                line.hl_group = hl_group;
+                            } else {
+                                icon_lines.push(format!("   {}", line.text));
+                            }
                         } else {
                             icon_lines.push(format!("   {}", line.text));
                         }
@@ -686,10 +706,14 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                         },
                     )?;
 
-                    if ft.is_some() {
-                        buf.set_option_value(lua, "filetype", ft)?;
-                    } else {
-                        buf.set_option_value(lua, "filetype", "text")?;
+                    buf.stop_treesitter(lua)?;
+
+                    if let Some(ft) = ft {
+                        let lang = buf.get_treesitter_lang(lua, &ft)?;
+
+                        if let Some(lang) = lang {
+                            buf.start_treesitter(lua, &lang)?;
+                        }
                     }
                 }
 
@@ -770,28 +794,41 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
 
 async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let search_query = NeoApi::get_current_line(lua)?;
+    let mut fuzzy = CONTAINER.fuzzy.write().await;
+
+    let cmd;
+    let cwd;
+    let args;
+    let search_type;
+
+    if let Some(fuzzy) = fuzzy.as_mut() {
+        fuzzy.selected_idx = 0;
+
+        cwd = fuzzy.cwd.clone();
+        cmd = fuzzy.cmd.clone();
+        args = fuzzy.args.clone();
+        search_type = fuzzy.config.search_type();
+        let sel_idx = fuzzy.selected_idx;
+
+        fuzzy.pop_out.win.call(
+            lua,
+            lua.create_function(move |lua, _: ()| {
+                NeoApi::cmd(
+                    lua,
+                    CmdOpts {
+                        cmd: "normal",
+                        bang: true,
+                        args: &[&format!("{}G", sel_idx + 1)],
+                    },
+                )
+            })?,
+        )?;
+    } else {
+        // TODO return err
+        return Ok(());
+    }
 
     RTM.spawn(async move {
-        let mut fuzzy = CONTAINER.fuzzy.write().await;
-
-        let cmd;
-        let cwd;
-        let args;
-        let search_type;
-
-        if let Some(fuzzy) = fuzzy.as_mut() {
-            fuzzy.selected_idx = 0;
-
-            cwd = fuzzy.cwd.clone();
-            cmd = fuzzy.cmd.clone();
-            args = fuzzy.args.clone();
-            search_type = fuzzy.config.search_type();
-        } else {
-            return;
-        }
-
-        drop(fuzzy);
-
         let _ = exec_search(&cwd, cmd, args, &search_query, search_type).await;
         let _ = prepare_preview(&cwd, 0).await;
     });
@@ -859,8 +896,13 @@ pub fn levenshtein(a: &str, b: &str) -> usize {
 }
 
 fn is_binary(file: &Path) -> bool {
+    let binaries: HashSet<&str> = [
+        "bin", "so", "mkv", "mp4", "blend", "jpg", "png", "jpeg", "webp",
+    ]
+    .into();
+
     if let Some(ext) = file.extension() {
-        ext == "bin" || ext == "so" || ext == "mkv" || ext == "mp4" || ext == "blend"
+        binaries.contains(ext.to_str().unwrap())
     } else {
         false
     }
