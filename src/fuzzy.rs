@@ -10,6 +10,7 @@ use tokio::io::{self, AsyncWriteExt};
 use tokio::process::*;
 use tokio::sync::RwLock;
 
+use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
     NeoBuffer, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
@@ -433,20 +434,35 @@ async fn exec_search(
 
         new_lines.sort_by_key(|k| k.0);
 
-        let hl_group = if search_type == FuzzySearch::Directory {
-            "Directory"
-        } else {
-            ""
-        };
+        let mut out_lines = Vec::new();
 
-        let new_lines = new_lines.into_iter().map(|k| LineOut {
-            text: k.1,
-            icon: "".to_string(),
-            hl_group: hl_group.to_string(),
-        });
+        for (_k, v) in new_lines.into_iter() {
+            if search_type == FuzzySearch::Directory {
+                out_lines.push(LineOut {
+                    text: v,
+                    icon: "".to_string(),
+                    hl_group: "Directory".to_string(),
+                });
+            } else {
+                let path = PathBuf::from(&v);
+                if let Some(dev_icon) = DevIcon::get_icon(&path).await {
+                    out_lines.push(LineOut {
+                        text: v,
+                        icon: dev_icon.icon.to_string(),
+                        hl_group: dev_icon.highlight.to_string(),
+                    });
+                } else {
+                    out_lines.push(LineOut {
+                        text: v,
+                        icon: "".to_string(),
+                        hl_group: "".to_string(),
+                    });
+                }
+            }
+        }
 
         let mut lines_out = CONTAINER.lines_out.write().await;
-        *lines_out = new_lines.collect();
+        *lines_out = out_lines;
 
         let mut interval = CONTAINER.interval_state.write().await;
         interval.last_search = search_query.to_string();
@@ -632,59 +648,33 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         if interval.update_out {
             fuzzy.add_out_highlight(lua)?;
 
-            if FuzzySearch::File == fuzzy.config.search_type() {
-                if let Ok(mut lines) = CONTAINER.lines_out.try_write() {
-                    let lines = if 300 <= lines.len() {
-                        &mut lines[..300]
-                    } else {
-                        &mut lines
-                    };
-
-                    let mut icon_lines = Vec::new();
-
-                    for line in lines {
-                        let pb: PathBuf = line.text.clone().into();
-
-                        if let (Some(filename), Some(extension)) = (pb.file_name(), pb.extension())
-                        {
-                            let dev_icon = NeoApi::get_dev_icon(
-                                lua,
-                                filename.to_str().unwrap(),
-                                extension.to_str().unwrap(),
-                            )?;
-
-                            if let (Some(icon), Some(hl_group)) = dev_icon {
-                                icon_lines.push(format!(" {} {}", icon, line.text));
-                                line.icon = icon;
-                                line.hl_group = hl_group;
-                            } else {
-                                icon_lines.push(format!("   {}", line.text));
-                            }
-                        } else {
-                            icon_lines.push(format!("   {}", line.text));
-                        }
-                    }
-
-                    fuzzy
-                        .pop_out
-                        .buf
-                        .set_lines(lua, 0, -1, false, &icon_lines)?;
-                    interval.update_out = false;
-                }
-            } else if let Ok(lines) = CONTAINER.lines_out.try_read() {
+            if let Ok(lines) = CONTAINER.lines_out.try_read() {
                 let lines = if 300 <= lines.len() {
                     &lines[..300]
                 } else {
                     &lines
                 };
 
-                let lines: Vec<_> = lines
-                    .iter()
-                    .map(|line| format!("  {}", line.text))
-                    .collect();
+                if FuzzySearch::File == fuzzy.config.search_type() {
+                    let mut icon_lines = Vec::new();
 
-                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
-                interval.update_out = false;
+                    for line in lines {
+                        icon_lines.push(format!(" {} {}", line.icon, line.text));
+                    }
+
+                    fuzzy
+                        .pop_out
+                        .buf
+                        .set_lines(lua, 0, -1, false, &icon_lines)?;
+                } else {
+                    let lines: Vec<_> = lines
+                        .iter()
+                        .map(|line| format!(" {} {}", line.icon, line.text))
+                        .collect();
+
+                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                }
+                    interval.update_out = false;
             }
         }
 
