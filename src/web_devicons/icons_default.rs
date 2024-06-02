@@ -17,7 +17,7 @@ struct DevIconsContainer {
 
 // https://github.com/nvim-tree/nvim-web-devicons
 // b77921f
-static DEV_ICONS: Lazy<RwLock<DevIconsContainer>> = Lazy::new(|| {
+static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
         let dev_icon_from_filename = HashMap::from_iter([
             (OsStr::new("build.gradle"), DevIcon {
                 icon: "",
@@ -3771,13 +3771,13 @@ static DEV_ICONS: Lazy<RwLock<DevIconsContainer>> = Lazy::new(|| {
             }),
             ]);
 
-        RwLock::new(DevIconsContainer {
+        DevIconsContainer {
             from_file_name: dev_icon_from_filename,
             from_extension: dev_icon_from_extension,
             from_os: dev_icon_from_os,
             from_de: dev_icon_from_de,
             from_wm: dev_icon_from_wm,
-        })
+        }
 });
 
 #[derive(Default)]
@@ -3790,8 +3790,8 @@ pub struct DevIcon {
 
 /// Last update: commit b77921f
 impl DevIcon {
-    pub async fn init(lua: &Lua) -> LuaResult<()> {
-        let container = DEV_ICONS.read().await;
+    pub fn init(lua: &Lua) -> LuaResult<()> {
+        let container = &DEV_ICONS;
 
         for item in container.from_file_name.iter() {
             let dev_icon = item.1;
@@ -3807,9 +3807,8 @@ impl DevIcon {
         Ok(())
     }
 
-    pub async fn get_icon(path: &Path) -> Option<IconResult> {
-        let container = DEV_ICONS.read().await;
-
+    pub fn get_icon(path: &Path) -> Option<IconResult> {
+        let container = &DEV_ICONS;
 
         if let Some(dev_icon) = container.from_file_name.get(path.as_os_str()) {
             return Some(IconResult {

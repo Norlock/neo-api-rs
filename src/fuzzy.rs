@@ -4,12 +4,14 @@ use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::process::Stdio;
 use tokio::fs;
 use tokio::io::{self, AsyncWriteExt};
-use tokio::process::*;
+use tokio::process::Command;
 use tokio::sync::RwLock;
 
+use crate::diffuser::{Diffuse, ExecuteChain};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
@@ -31,7 +33,7 @@ struct FuzzyContainer {
     all_lines: RwLock<String>,
     lines_out: RwLock<Vec<LineOut>>,
     fuzzy: RwLock<Option<NeoFuzzy>>,
-    interval_state: RwLock<IntervalState>,
+    search_state: RwLock<SearchState>,
     preview: RwLock<Vec<String>>,
 }
 
@@ -48,20 +50,22 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 }
 
 #[derive(Debug)]
-struct IntervalState {
+struct SearchState {
     last_search: String,
     file_path: String,
     update_out: bool,
     update_preview: bool,
+    has_searched: bool,
 }
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     all_lines: RwLock::new(String::new()),
     lines_out: RwLock::new(vec![]),
     fuzzy: RwLock::new(None),
-    interval_state: RwLock::new(IntervalState {
+    search_state: RwLock::new(SearchState {
         update_out: false,
         update_preview: false,
+        has_searched: false,
         last_search: "".to_string(),
         file_path: "".to_string(),
     }),
@@ -316,11 +320,22 @@ impl NeoFuzzy {
         let search_type = fuzzy.config.search_type();
 
         *CONTAINER.all_lines.write().await = String::new();
+        CONTAINER.search_state.write().await.has_searched = false;
 
-        RTM.spawn(async move {
-            let _ = exec_search(&cwd, cmd, args, "", search_type).await;
-            let _ = prepare_preview(&cwd, 0).await;
-        });
+        Diffuse::queue(Box::new(ExecSearch {
+            search_query: "".to_string(),
+            cwd,
+            cmd,
+            args,
+            search_type,
+        }))
+        .await;
+
+        Diffuse::start().await;
+        //RTM.spawn(async move {
+        //let _ = exec_search(&cwd, cmd, args, "", search_type).await;
+        //let _ = prepare_preview(&cwd, 0).await;
+        //});
 
         let mut container = CONTAINER.fuzzy.write().await;
         *container = Some(fuzzy);
@@ -413,149 +428,293 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     Ok(())
 }
 
-async fn exec_search(
-    cwd: &Path,
-    cmd: String,
-    args: Vec<String>,
-    search_query: &str,
-    search_type: FuzzySearch,
-) -> io::Result<()> {
-    let sanitized = search_query.replace('/', "\\/").replace('.', "\\.");
-
-    let has_lines = !CONTAINER.all_lines.read().await.is_empty();
-
-    async fn sort_lines(lines: &str, search_query: &str, search_type: FuzzySearch) {
-        let mut new_lines = Vec::new();
-
-        for line in lines.lines() {
-            let score = levenshtein(search_query, line);
-            new_lines.push((score, line.to_string()));
-        }
-
-        new_lines.sort_by_key(|k| k.0);
-
-        let mut out_lines = Vec::new();
-
-        for (_k, v) in new_lines.into_iter() {
-            if search_type == FuzzySearch::Directory {
-                out_lines.push(LineOut {
-                    text: v,
-                    icon: "".to_string(),
-                    hl_group: "Directory".to_string(),
-                });
-            } else {
-                let path = PathBuf::from(&v);
-                if let Some(dev_icon) = DevIcon::get_icon(&path).await {
-                    out_lines.push(LineOut {
-                        text: v,
-                        icon: dev_icon.icon.to_string(),
-                        hl_group: dev_icon.highlight.to_string(),
-                    });
-                } else {
-                    out_lines.push(LineOut {
-                        text: v,
-                        icon: "".to_string(),
-                        hl_group: "".to_string(),
-                    });
-                }
-            }
-        }
-
-        let mut lines_out = CONTAINER.lines_out.write().await;
-        *lines_out = out_lines;
-
-        let mut interval = CONTAINER.interval_state.write().await;
-        interval.last_search = search_query.to_string();
-        interval.update_out = true;
-    }
-
-    if !has_lines {
-        let out = Command::new(cmd)
-            .current_dir(cwd)
-            .args(args)
-            .output()
-            .await?;
-
-        if out.status.success() {
-            let mut lines = CONTAINER.all_lines.write().await;
-            *lines = String::from_utf8_lossy(&out.stdout).to_string();
-
-            sort_lines(&lines, "", search_type).await;
-        }
-    } else if search_query.is_empty() {
-        let lines = CONTAINER.all_lines.read().await;
-        sort_lines(&lines, "", search_type).await;
-    } else {
-        let mut regex = String::from(".*");
-
-        for char in sanitized.chars() {
-            if char.is_lowercase() {
-                regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
-            } else {
-                regex.push(char);
-            }
-
-            if char != '\\' {
-                regex.push_str(".*");
-            }
-        }
-
-        let mut rg_proc = Command::new("rg")
-            .args(["--regexp", &regex])
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-
-        let mut stdin = rg_proc.stdin.take().unwrap();
-
-        let search_qry_len = search_query.len();
-
-        tokio::spawn(async move {
-            let meta = CONTAINER.interval_state.read().await;
-
-            if meta.last_search.len() < search_qry_len {
-                let lines = CONTAINER.lines_out.read().await;
-
-                let mut out = String::new();
-
-                for line in lines.iter() {
-                    out.push_str(&format!("{}\n", line.text));
-                }
-
-                stdin.write_all(out.as_bytes()).await.unwrap();
-            } else {
-                let lines = CONTAINER.all_lines.read().await;
-                stdin.write_all(lines.as_bytes()).await.unwrap();
-            }
-
-            drop(stdin);
-        });
-
-        let out = rg_proc.wait_with_output().await?;
-
-        if out.status.success() {
-            let lines = String::from_utf8_lossy(&out.stdout);
-
-            sort_lines(&lines, search_query, search_type).await;
-        }
-    }
-
-    Ok(())
+struct SortLines {
+    lines_out: Vec<LineOut>,
+    search_query: String,
 }
 
+impl ExecuteChain for SortLines {
+    fn try_execute(
+        self: Box<Self>,
+    ) -> Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>> {
+        Box::pin(async move {
+            let lines_out = CONTAINER.lines_out.try_write();
+            let interval = CONTAINER.search_state.try_write();
+
+            if lines_out.is_err() || interval.is_err() {
+                let ret: Box<dyn ExecuteChain> = self;
+                return Some(ret);
+            }
+
+            let mut lines_out = lines_out.unwrap();
+            let mut interval = interval.unwrap();
+
+            *lines_out = self.lines_out;
+
+            interval.last_search = self.search_query;
+            interval.update_out = true;
+            interval.has_searched = true;
+
+            None
+        })
+
+        //fn try_execute(self: Box<Self>) -> Option<Box<dyn ExecuteChain>> {
+    }
+}
+
+fn sort_lines(
+    lines: &str,
+    search_query: String,
+    search_type: FuzzySearch,
+) -> Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>> {
+    let mut new_lines = Vec::new();
+
+    for line in lines.lines() {
+        let score = levenshtein(&search_query, line);
+        new_lines.push((score, line.to_string()));
+    }
+
+    new_lines.sort_by_key(|k| k.0);
+
+    let mut lines_out = Vec::new();
+
+    for (_k, v) in new_lines.into_iter() {
+        if search_type == FuzzySearch::Directory {
+            lines_out.push(LineOut {
+                text: v,
+                icon: "".to_string(),
+                hl_group: "Directory".to_string(),
+            });
+        } else {
+            let path = PathBuf::from(&v);
+            if let Some(dev_icon) = DevIcon::get_icon(&path) {
+                lines_out.push(LineOut {
+                    text: v,
+                    icon: dev_icon.icon.to_string(),
+                    hl_group: dev_icon.highlight.to_string(),
+                });
+            } else {
+                lines_out.push(LineOut {
+                    text: v,
+                    icon: "".to_string(),
+                    hl_group: "".to_string(),
+                });
+            }
+        }
+    }
+
+    let sort_lines = Box::new(SortLines {
+        lines_out,
+        search_query,
+    });
+
+    sort_lines.try_execute()
+}
+
+struct ExecSearch {
+    cwd: PathBuf,
+    cmd: String,
+    args: Vec<String>,
+    search_query: String,
+    search_type: FuzzySearch,
+}
+
+impl ExecuteChain for ExecSearch {
+    fn try_execute(
+        self: Box<Self>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>>
+    {
+        Box::pin(async move {
+            let sanitized = self.search_query.replace('/', "\\/").replace('.', "\\.");
+
+            let search_state = CONTAINER.search_state.try_read();
+
+            if search_state.is_err() {
+                let ret: Box<dyn ExecuteChain> = self;
+                return Some(ret);
+            }
+
+            let search_state = search_state.unwrap();
+
+            if !search_state.has_searched {
+                //return Some(self);
+                let out = Command::new(&self.cmd)
+                    .current_dir(&self.cwd)
+                    .args(&self.args)
+                    .output()
+                    .await
+                    .unwrap();
+
+                if out.status.success() {
+                    if let Ok(mut lines) = CONTAINER.all_lines.try_write() {
+                        *lines = String::from_utf8_lossy(&out.stdout).to_string();
+                        return sort_lines(&lines, "".to_string(), self.search_type).await;
+                    } else {
+                        return Some(self);
+                    }
+                } else {
+                    panic!("Unsuccessfull search query");
+                }
+            } else if self.search_query.is_empty() {
+                if let Ok(lines) = CONTAINER.all_lines.try_read() {
+                    return sort_lines(&lines, "".to_string(), self.search_type).await;
+                } else {
+                    return Some(self);
+                }
+            } else {
+                let mut regex = String::from(".*");
+
+                for char in sanitized.chars() {
+                    if char.is_lowercase() {
+                        regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
+                    } else {
+                        regex.push(char);
+                    }
+
+                    if char != '\\' {
+                        regex.push_str(".*");
+                    }
+                }
+
+                let mut rg_proc = tokio::process::Command::new("rg")
+                    .args(["--regexp", &regex])
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .unwrap();
+
+                let mut stdin = rg_proc.stdin.take().unwrap();
+
+                let search_qry_len = self.search_query.len();
+
+                RTM.spawn(async move {
+                    let meta = CONTAINER.search_state.read().await;
+                    let lines = CONTAINER.lines_out.read().await;
+
+                    if meta.last_search.len() < search_qry_len {
+                        for line in lines.iter() {
+                            let line = format!("{}\n", line.text);
+                            let _ = stdin.write_all(line.as_bytes()).await;
+                        }
+                    } else {
+                        if let Ok(lines) = CONTAINER.all_lines.try_read() {
+                            stdin.write_all(lines.as_bytes()).await.unwrap();
+                        }
+                    }
+
+                    let _ = stdin.flush().await;
+                });
+                //RTM.block_on(async move {
+                //});
+
+                //RTM.handle().block_on(async {
+                let out = rg_proc.wait_with_output().await.unwrap();
+
+                if out.status.success() {
+                    let lines = String::from_utf8_lossy(&out.stdout);
+                    return sort_lines(&lines, self.search_query, self.search_type).await;
+                } else {
+                    return Some(self);
+                }
+                //return Some(self);
+            }
+        })
+    }
+}
+//fn try_execute(self: Box<Self>) -> Option<Box<dyn ExecuteChain>> {
+
+//async fn exec_search(
+//cwd: &Path,
+//cmd: String,
+//args: Vec<String>,
+//search_query: &str,
+//search_type: FuzzySearch,
+//) -> io::Result<()> {
+//let sanitized = search_query.replace('/', "\\/").replace('.', "\\.");
+
+//let has_searched = CONTAINER.search_state.read().await.has_searched;
+
+//if !has_searched {
+//let out = Command::new(cmd)
+//.current_dir(cwd)
+//.args(args)
+//.output()
+//.await?;
+
+//if out.status.success() {
+//let mut lines = CONTAINER.all_lines.write().await;
+//*lines = String::from_utf8_lossy(&out.stdout).to_string();
+//sort_lines(&lines, "", search_type).await;
+//}
+//} else if search_query.is_empty() {
+//let lines = CONTAINER.all_lines.read().await;
+//sort_lines(&lines, "", search_type).await;
+//} else {
+//let mut regex = String::from(".*");
+
+//for char in sanitized.chars() {
+//if char.is_lowercase() {
+//regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
+//} else {
+//regex.push(char);
+//}
+
+//if char != '\\' {
+//regex.push_str(".*");
+//}
+//}
+
+//let mut rg_proc = Command::new("rg")
+//.args(["--regexp", &regex])
+//.stdin(Stdio::piped())
+//.stdout(Stdio::piped())
+//.stderr(Stdio::piped())
+//.spawn()?;
+
+//let mut stdin = rg_proc.stdin.take().unwrap();
+
+//let search_qry_len = search_query.len();
+
+//tokio::spawn(async move {
+//let meta = CONTAINER.search_state.read().await;
+
+//if meta.last_search.len() < search_qry_len {
+//let lines = CONTAINER.lines_out.read().await;
+
+//for line in lines.iter() {
+//let line = format!("{}\n", line.text);
+//let _ = stdin.write_all(line.as_bytes()).await;
+//}
+//} else {
+//let lines = CONTAINER.all_lines.read().await;
+//stdin.write_all(lines.as_bytes()).await.unwrap();
+//}
+
+//let _ = stdin.flush().await;
+//});
+
+//let out = rg_proc.wait_with_output().await?;
+
+//if out.status.success() {
+//let lines = String::from_utf8_lossy(&out.stdout);
+//sort_lines(&lines, search_query, search_type).await;
+//}
+//}
+
+//Ok(())
+//}
+
 async fn preview_file(path: &Path) -> io::Result<()> {
-    let mut interval_state = CONTAINER.interval_state.write().await;
+    let file_path;
 
     if is_binary(path) {
-        interval_state.file_path = "text".to_string();
-        drop(interval_state);
+        file_path = "text".to_string();
 
         let mut preview = CONTAINER.preview.write().await;
         *preview = vec!["> File is a binary".to_string()];
     } else {
-        interval_state.file_path = path.to_string_lossy().to_string();
-        drop(interval_state);
+        file_path = path.to_string_lossy().to_string();
 
         let mut lines = vec![];
         let file = fs::read_to_string(path).await?;
@@ -568,7 +727,8 @@ async fn preview_file(path: &Path) -> io::Result<()> {
         *preview = lines
     }
 
-    let mut interval_state = CONTAINER.interval_state.write().await;
+    let mut interval_state = CONTAINER.search_state.write().await;
+    interval_state.file_path = file_path;
     interval_state.update_preview = true;
 
     Ok(())
@@ -606,7 +766,7 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
     }
 
     *CONTAINER.preview.write().await = items;
-    CONTAINER.interval_state.write().await.update_preview = true;
+    CONTAINER.search_state.write().await.update_preview = true;
 
     Ok(())
 }
@@ -616,8 +776,8 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
         let lines_out = CONTAINER.lines_out.read().await;
 
         if lines_out.is_empty() {
-            let mut preview = CONTAINER.preview.write().await;
-            *preview = vec![];
+            CONTAINER.preview.write().await.clear();
+            CONTAINER.search_state.write().await.update_preview = true;
             return Ok(());
         }
 
@@ -634,80 +794,88 @@ async fn prepare_preview(cwd: &Path, selected_idx: usize) -> io::Result<()> {
 }
 
 async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
-    let interval = CONTAINER.interval_state.try_write();
     let fuzzy = CONTAINER.fuzzy.try_read();
 
-    if interval.is_err() || fuzzy.is_err() {
+    if fuzzy.is_err() {
         return Ok(());
     }
 
-    let mut interval = interval.unwrap();
     let fuzzy = fuzzy.unwrap();
 
     if let Some(fuzzy) = fuzzy.as_ref() {
+        let interval = CONTAINER.search_state.try_write();
+        let lines = CONTAINER.lines_out.try_read();
+
+        if interval.is_err() || lines.is_err() {
+            return Ok(());
+        }
+
+        let mut interval = interval.unwrap();
+        let lines = lines.unwrap();
+
         if interval.update_out {
+            interval.update_out = false;
+
             fuzzy.add_out_highlight(lua)?;
+            let lines = if 300 <= lines.len() {
+                &lines[..300]
+            } else {
+                &lines
+            };
 
-            if let Ok(lines) = CONTAINER.lines_out.try_read() {
-                let lines = if 300 <= lines.len() {
-                    &lines[..300]
-                } else {
-                    &lines
-                };
+            if FuzzySearch::File == fuzzy.config.search_type() {
+                let mut icon_lines = Vec::new();
 
-                if FuzzySearch::File == fuzzy.config.search_type() {
-                    let mut icon_lines = Vec::new();
-
-                    for line in lines {
-                        icon_lines.push(format!(" {} {}", line.icon, line.text));
-                    }
-
-                    fuzzy
-                        .pop_out
-                        .buf
-                        .set_lines(lua, 0, -1, false, &icon_lines)?;
-                } else {
-                    let lines: Vec<_> = lines
-                        .iter()
-                        .map(|line| format!(" {} {}", line.icon, line.text))
-                        .collect();
-
-                    fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
+                for line in lines {
+                    icon_lines.push(format!(" {} {}", line.icon, line.text));
                 }
-                    interval.update_out = false;
+
+                fuzzy
+                    .pop_out
+                    .buf
+                    .set_lines(lua, 0, -1, false, &icon_lines)?;
+            } else {
+                let lines: Vec<_> = lines
+                    .iter()
+                    .map(|line| format!(" {} {}", line.icon, line.text))
+                    .collect();
+
+                fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
             }
         }
 
-        if interval.update_preview {
+        let preview = CONTAINER.preview.try_read();
+        if interval.update_preview && preview.is_ok() {
+            interval.update_preview = false;
+            let file_path = interval.file_path.to_string();
+
             fuzzy.add_out_highlight(lua)?;
 
-            if let Ok(preview) = CONTAINER.preview.try_read() {
-                let buf = &fuzzy.pop_preview.buf;
-                buf.set_lines(lua, 0, -1, false, &preview)?;
-                fuzzy.add_preview_highlight(lua, &preview)?;
+            let buf = &fuzzy.pop_preview.buf;
 
-                if fuzzy.config.search_type() == FuzzySearch::File {
-                    let ft = NeoApi::filetype_match(
-                        lua,
-                        FileTypeMatch {
-                            filename: Some(interval.file_path.to_string()),
-                            contents: None,
-                            buf: Some(buf.id()),
-                        },
-                    )?;
+            let preview = preview.unwrap();
+            buf.set_lines(lua, 0, -1, false, &preview)?;
+            fuzzy.add_preview_highlight(lua, &preview)?;
 
-                    buf.stop_treesitter(lua)?;
+            if fuzzy.config.search_type() == FuzzySearch::File {
+                let ft = NeoApi::filetype_match(
+                    lua,
+                    FileTypeMatch {
+                        filename: Some(file_path),
+                        contents: None,
+                        buf: Some(buf.id()),
+                    },
+                )?;
 
-                    if let Some(ft) = ft {
-                        let lang = buf.get_treesitter_lang(lua, &ft)?;
+                buf.stop_treesitter(lua)?;
 
-                        if let Some(lang) = lang {
-                            buf.start_treesitter(lua, &lang)?;
-                        }
+                if let Some(ft) = ft {
+                    let lang = buf.get_treesitter_lang(lua, &ft)?;
+
+                    if let Some(lang) = lang {
+                        buf.start_treesitter(lua, &lang)?;
                     }
                 }
-
-                interval.update_preview = false;
             }
         }
     }
@@ -777,6 +945,8 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         fuzzy.pop_preview.win.close(lua, false)?;
     }
 
+    Diffuse::stop().await;
+
     NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
     NeoApi::stop_interval(lua, "fuzzy")?;
     NeoApi::set_insert_mode(lua, false)
@@ -786,18 +956,13 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let search_query = NeoApi::get_current_line(lua)?;
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
-    let cmd;
-    let cwd;
-    let args;
-    let search_type;
-
     if let Some(fuzzy) = fuzzy.as_mut() {
         fuzzy.selected_idx = 0;
 
-        cwd = fuzzy.cwd.clone();
-        cmd = fuzzy.cmd.clone();
-        args = fuzzy.args.clone();
-        search_type = fuzzy.config.search_type();
+        let cwd = fuzzy.cwd.clone();
+        let cmd = fuzzy.cmd.clone();
+        let args = fuzzy.args.clone();
+        let search_type = fuzzy.config.search_type();
         let sel_idx = fuzzy.selected_idx;
 
         fuzzy.pop_out.win.call(
@@ -813,15 +978,21 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
                 )
             })?,
         )?;
-    } else {
-        // TODO return err
-        return Ok(());
-    }
 
-    RTM.spawn(async move {
-        let _ = exec_search(&cwd, cmd, args, &search_query, search_type).await;
-        let _ = prepare_preview(&cwd, 0).await;
-    });
+        let exec_search = Box::new(ExecSearch {
+            search_query,
+            cwd,
+            cmd,
+            args,
+            search_type,
+        });
+
+        RTM.spawn(Diffuse::queue(exec_search));
+        //RTM.spawn(async move {
+        //let _ = exec_search(&cwd, cmd, args, &search_query, search_type).await;
+        //let _ = prepare_preview(&cwd, 0).await;
+        //});
+    }
 
     Ok(())
 }
