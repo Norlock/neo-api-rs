@@ -1,12 +1,13 @@
 #![allow(unused)]
 use crate::{
     neo_api::NeoApi,
-    neo_api_types::{OptValueType, WinCursor}, NeoBuffer,
+    neo_api_types::{OptValueType, WinCursor},
+    NeoBuffer,
 };
 
-use mlua::prelude::{IntoLua, Lua, LuaFunction, LuaValue, LuaResult};
+use mlua::prelude::{IntoLua, Lua, LuaFunction, LuaResult, LuaValue};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct NeoWindow(u32);
 
 impl NeoWindow {
@@ -27,7 +28,7 @@ impl NeoWindow {
 
         Ok(NeoWindow::new(buf_id))
     }
-    
+
     pub fn set_buf(&self, lua: &Lua, buf: &NeoBuffer) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_set_buf").eval()?;
 
@@ -90,11 +91,7 @@ impl NeoWindow {
         lfn.call((self.id(), ns_id))
     }
 
-    pub fn call<'a>(
-        &self, 
-        lua: &'a Lua,
-        cb: LuaFunction<'a>
-    ) -> LuaResult<()> {
+    pub fn call<'a>(&self, lua: &'a Lua, cb: LuaFunction<'a>) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_call").eval()?;
 
         lfn.call((self.id(), cb))

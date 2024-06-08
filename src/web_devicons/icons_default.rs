@@ -3,7 +3,6 @@ use std::{collections::HashMap, ffi::OsStr, path::Path};
 use mlua::Lua;
 use mlua::prelude::LuaResult;
 use once_cell::sync::Lazy;
-use tokio::sync::RwLock;
 
 use crate::{HLOpts, NeoTheme};
 

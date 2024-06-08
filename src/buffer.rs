@@ -5,7 +5,7 @@ use crate::{BufferDeleteOpts, FileTypeMatch, KeymapOpts, Mode};
 use mlua::prelude::{IntoLua, Lua, LuaError, LuaFunction, LuaResult, LuaTable, LuaValue};
 use mlua::FromLua;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct NeoBuffer(u32);
 
 impl<'a> FromLua<'a> for NeoBuffer {

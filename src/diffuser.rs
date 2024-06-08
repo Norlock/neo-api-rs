@@ -22,11 +22,10 @@ unsafe impl Send for Diffuse {}
 unsafe impl Sync for Diffuse {}
 
 /// Will execute part and act like a chain where every part will use try_read / try_write
-pub type ChainLink = Option<Box<dyn ExecuteChain>>; 
+pub type ChainLink = Option<Box<dyn ExecuteChain>>;
 pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
 
-
-pub trait ExecuteChain: Send + Sync {
+pub trait ExecuteChain: Send {
     fn try_execute(self: Box<Self>) -> ChainResult;
     fn failure_count(&mut self) -> &mut usize;
 }

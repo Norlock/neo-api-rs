@@ -345,7 +345,7 @@ impl<'a> IntoLua<'a> for WinOptions {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct NeoPopup {
     pub win: NeoWindow,
     pub buf: NeoBuffer,
