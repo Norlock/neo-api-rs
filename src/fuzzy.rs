@@ -4,9 +4,8 @@ use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use tokio::fs;
-use tokio::io::{self, AsyncWriteExt};
+use tokio::io::{self};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
@@ -29,7 +28,6 @@ struct LineOut {
 }
 
 struct FuzzyContainer {
-    all_lines: RwLock<String>,
     lines_out: RwLock<Vec<LineOut>>,
     fuzzy: RwLock<Option<NeoFuzzy>>,
     search_state: RwLock<SearchState>,
@@ -54,17 +52,14 @@ struct SearchState {
     file_path: String,
     update_out: bool,
     update_preview: bool,
-    has_searched: bool,
 }
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
-    all_lines: RwLock::new(String::new()),
     lines_out: RwLock::new(vec![]),
     fuzzy: RwLock::new(None),
     search_state: RwLock::new(SearchState {
         update_out: false,
         update_preview: false,
-        has_searched: false,
         last_search: "".to_string(),
         file_path: "".to_string(),
     }),
@@ -318,24 +313,17 @@ impl NeoFuzzy {
         let args = fuzzy.args.clone();
         let search_type = fuzzy.config.search_type();
 
-        *CONTAINER.all_lines.write().await = String::new();
-        CONTAINER.search_state.write().await.has_searched = false;
-
         Diffuse::queue(Box::new(ExecSearch {
             search_query: "".to_string(),
             cwd,
             cmd,
             args,
             search_type,
-            failure_count: 0
+            failure_count: 0,
         }))
         .await;
 
         Diffuse::start().await;
-        //RTM.spawn(async move {
-        //let _ = exec_search(&cwd, cmd, args, "", search_type).await;
-        //let _ = prepare_preview(&cwd, 0).await;
-        //});
 
         let mut container = CONTAINER.fuzzy.write().await;
         *container = Some(fuzzy);
@@ -451,65 +439,14 @@ impl ExecuteChain for SortLines {
 
             interval.last_search = self.search_query;
             interval.update_out = true;
-            interval.has_searched = true;
 
             None
         })
     }
 
-    fn failure_count(&self) -> usize {
-        self.failure_count
+    fn failure_count(&mut self) -> &mut usize {
+        &mut self.failure_count
     }
-
-    fn increment_failure_count(&mut self) {
-        self.failure_count += 1;
-    }
-}
-
-fn sort_lines(lines: &str, search_query: String, search_type: FuzzySearch) -> ChainResult {
-    let mut new_lines = Vec::new();
-
-    for line in lines.lines() {
-        let score = levenshtein(&search_query, line);
-        new_lines.push((score, line.to_string()));
-    }
-
-    new_lines.sort_by_key(|k| k.0);
-
-    let mut lines_out = Vec::new();
-
-    for (_k, v) in new_lines.into_iter() {
-        if search_type == FuzzySearch::Directory {
-            lines_out.push(LineOut {
-                text: v,
-                icon: "".to_string(),
-                hl_group: "Directory".to_string(),
-            });
-        } else {
-            let path = PathBuf::from(&v);
-            if let Some(dev_icon) = DevIcon::get_icon(&path) {
-                lines_out.push(LineOut {
-                    text: v,
-                    icon: dev_icon.icon.to_string(),
-                    hl_group: dev_icon.highlight.to_string(),
-                });
-            } else {
-                lines_out.push(LineOut {
-                    text: v,
-                    icon: "".to_string(),
-                    hl_group: "".to_string(),
-                });
-            }
-        }
-    }
-
-    let sort_lines = Box::new(SortLines {
-        lines_out,
-        search_query,
-        failure_count: 0,
-    });
-
-    sort_lines.try_execute()
 }
 
 struct ExecSearch {
@@ -526,182 +463,89 @@ impl ExecuteChain for ExecSearch {
         Box::pin(async move {
             let sanitized = self.search_query.replace('/', "\\/").replace('.', "\\.");
 
-            let search_state = CONTAINER.search_state.try_read();
+            let mut regex = String::from(".*");
 
-            if search_state.is_err() {
-                return Some(self as Box<dyn ExecuteChain>);
+            for char in sanitized.chars() {
+                if char.is_lowercase() {
+                    regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
+                } else {
+                    regex.push(char);
+                }
+
+                if char != '\\' {
+                    regex.push_str(".*");
+                }
             }
 
-            let search_state = search_state.unwrap();
-
-            if !search_state.has_searched {
-                let out = Command::new(&self.cmd)
-                    .current_dir(&self.cwd)
-                    .args(&self.args)
-                    .output()
-                    .await
-                    .unwrap();
-
-                if out.status.success() {
-                    if let Ok(mut lines) = CONTAINER.all_lines.try_write() {
-                        *lines = String::from_utf8_lossy(&out.stdout).to_string();
-                        return sort_lines(&lines, "".to_string(), self.search_type).await;
-                    } else {
-                        return Some(self);
-                    }
-                } else {
-                    panic!("Unsuccessfull search query");
-                }
-            } else if self.search_query.is_empty() {
-                if let Ok(lines) = CONTAINER.all_lines.try_read() {
-                    return sort_lines(&lines, "".to_string(), self.search_type).await;
-                } else {
-                    return Some(self);
-                }
+            let search_specific_arg = if self.search_type == FuzzySearch::File {
+                vec![regex.as_str()]
             } else {
-                let mut regex = String::from(".*");
+                vec!["--full-path", &regex]
+            };
 
-                for char in sanitized.chars() {
-                    if char.is_lowercase() {
-                        regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
+            let out = Command::new(&self.cmd)
+                .current_dir(&self.cwd)
+                .args(&self.args)
+                .args(search_specific_arg)
+                .output()
+                .await
+                .unwrap();
+
+            if out.status.success() {
+                let lines = String::from_utf8_lossy(&out.stdout);
+                let mut new_lines = Vec::new();
+
+                for line in lines.lines() {
+                    let score = levenshtein(&self.search_query, line);
+                    new_lines.push((score, line.to_string()));
+                }
+
+                new_lines.sort_by_key(|k| k.0);
+
+                let mut lines_out = Vec::new();
+
+                for (_k, v) in new_lines.into_iter() {
+                    if self.search_type == FuzzySearch::Directory {
+                        lines_out.push(LineOut {
+                            text: v,
+                            icon: "".to_string(),
+                            hl_group: "Directory".to_string(),
+                        });
                     } else {
-                        regex.push(char);
-                    }
-
-                    if char != '\\' {
-                        regex.push_str(".*");
-                    }
-                }
-
-                let mut rg_proc = Command::new("rg")
-                    .args(["--regexp", &regex])
-                    .stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .unwrap();
-
-                {
-                    let mut stdin = rg_proc.stdin.take().unwrap();
-
-                    let search_qry_len = self.search_query.len();
-                    let meta = CONTAINER.search_state.read().await;
-
-                    if meta.last_search.len() < search_qry_len {
-                        let lines = CONTAINER.lines_out.read().await;
-                        for line in lines.iter() {
-                            let line = format!("{}\n", line.text);
-                            let _ = stdin.write_all(line.as_bytes()).await;
-                        }
-                    } else {
-                        if let Ok(lines) = CONTAINER.all_lines.try_read() {
-                            let _ = stdin.write_all(lines.as_bytes()).await;
+                        let path = PathBuf::from(&v);
+                        if let Some(dev_icon) = DevIcon::get_icon(&path) {
+                            lines_out.push(LineOut {
+                                text: v,
+                                icon: dev_icon.icon.to_string(),
+                                hl_group: dev_icon.highlight.to_string(),
+                            });
+                        } else {
+                            lines_out.push(LineOut {
+                                text: v,
+                                icon: "".to_string(),
+                                hl_group: "".to_string(),
+                            });
                         }
                     }
                 }
 
-                let out = rg_proc.wait_with_output().await.unwrap();
+                let sort_lines = Box::new(SortLines {
+                    lines_out,
+                    search_query: self.search_query.clone(),
+                    failure_count: 0,
+                });
 
-                if out.status.success() {
-                    let lines = String::from_utf8_lossy(&out.stdout);
-                    sort_lines(&lines, self.search_query, self.search_type).await
-                } else {
-                    Some(self)
-                }
+                sort_lines.try_execute().await
+            } else {
+                Some(self as Box<dyn ExecuteChain>)
             }
         })
     }
 
-    fn increment_failure_count(&mut self) {
-        self.failure_count += 1;
-    }
-
-    fn failure_count(&self) -> usize {
-        self.failure_count
+    fn failure_count(&mut self) -> &mut usize {
+        &mut self.failure_count
     }
 }
-//fn try_execute(self: Box<Self>) -> Option<Box<dyn ExecuteChain>> {
-
-//async fn exec_search(
-//cwd: &Path,
-//cmd: String,
-//args: Vec<String>,
-//search_query: &str,
-//search_type: FuzzySearch,
-//) -> io::Result<()> {
-//let sanitized = search_query.replace('/', "\\/").replace('.', "\\.");
-
-//let has_searched = CONTAINER.search_state.read().await.has_searched;
-
-//if !has_searched {
-//let out = Command::new(cmd)
-//.current_dir(cwd)
-//.args(args)
-//.output()
-//.await?;
-
-//if out.status.success() {
-//let mut lines = CONTAINER.all_lines.write().await;
-//*lines = String::from_utf8_lossy(&out.stdout).to_string();
-//sort_lines(&lines, "", search_type).await;
-//}
-//} else if search_query.is_empty() {
-//let lines = CONTAINER.all_lines.read().await;
-//sort_lines(&lines, "", search_type).await;
-//} else {
-//let mut regex = String::from(".*");
-
-//for char in sanitized.chars() {
-//if char.is_lowercase() {
-//regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
-//} else {
-//regex.push(char);
-//}
-
-//if char != '\\' {
-//regex.push_str(".*");
-//}
-//}
-
-//let mut rg_proc = Command::new("rg")
-//.args(["--regexp", &regex])
-//.stdin(Stdio::piped())
-//.stdout(Stdio::piped())
-//.stderr(Stdio::piped())
-//.spawn()?;
-
-//let mut stdin = rg_proc.stdin.take().unwrap();
-
-//let search_qry_len = search_query.len();
-
-//tokio::spawn(async move {
-//let meta = CONTAINER.search_state.read().await;
-
-//if meta.last_search.len() < search_qry_len {
-//let lines = CONTAINER.lines_out.read().await;
-
-//for line in lines.iter() {
-//let line = format!("{}\n", line.text);
-//let _ = stdin.write_all(line.as_bytes()).await;
-//}
-//} else {
-//let lines = CONTAINER.all_lines.read().await;
-//stdin.write_all(lines.as_bytes()).await.unwrap();
-//}
-
-//let _ = stdin.flush().await;
-//});
-
-//let out = rg_proc.wait_with_output().await?;
-
-//if out.status.success() {
-//let lines = String::from_utf8_lossy(&out.stdout);
-//sort_lines(&lines, search_query, search_type).await;
-//}
-//}
-
-//Ok(())
-//}
 
 async fn preview_file(path: &Path) -> io::Result<()> {
     let file_path;
@@ -734,7 +578,6 @@ async fn preview_file(path: &Path) -> io::Result<()> {
 
 async fn preview_directory(path: &Path) -> io::Result<()> {
     let mut items = Vec::new();
-
     let mut dir = fs::read_dir(path).await?;
 
     while let Some(item) = dir.next_entry().await? {
@@ -814,7 +657,6 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         if interval.update_out {
             interval.update_out = false;
 
-            fuzzy.add_out_highlight(lua)?;
             let lines = if 300 <= lines.len() {
                 &lines[..300]
             } else {
@@ -840,6 +682,8 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
                 fuzzy.pop_out.buf.set_lines(lua, 0, -1, false, &lines)?;
             }
+
+            fuzzy.add_out_highlight(lua)?;
         }
 
         let preview = CONTAINER.preview.try_read();
@@ -983,7 +827,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
             cmd,
             args,
             search_type,
-            failure_count: 0
+            failure_count: 0,
         });
 
         RTM.spawn(Diffuse::queue(exec_search));

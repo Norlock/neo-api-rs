@@ -28,8 +28,7 @@ pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
 
 pub trait ExecuteChain: Send + Sync {
     fn try_execute(self: Box<Self>) -> ChainResult;
-    fn increment_failure_count(&mut self);
-    fn failure_count(&self) -> usize;
+    fn failure_count(&mut self) -> &mut usize;
 }
 
 impl Diffuse {
@@ -55,9 +54,9 @@ impl Diffuse {
 
                 if let Some(current) = diffuser.queue.pop_front() {
                     if let Some(mut next) = current.try_execute().await {
-                        next.increment_failure_count();
+                        *next.failure_count() += 1;
 
-                        if next.failure_count() < 100 {
+                        if *next.failure_count() < 100 {
                             diffuser.queue.push_front(next);
                         }
                     }
