@@ -147,7 +147,6 @@ impl NeoBuffer {
         NeoApi::set_option_value(lua, key, value, OptValueType::Buffer(*self))
     }
 
-
     pub fn get_option_value<'a, V: FromLua<'a>>(&self, lua: &'a Lua, key: &str) -> LuaResult<V> {
         NeoApi::get_option_value(lua, key, OptValueType::Buffer(*self))
     }

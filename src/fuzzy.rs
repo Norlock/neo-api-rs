@@ -677,10 +677,8 @@ impl ExecuteChain for ExecPreview {
                 if preview_directory(&path).await.is_ok() {
                     return None;
                 }
-            } else if path.is_file() {
-                if preview_file(&path).await.is_ok() {
-                    return None;
-                }
+            } else if path.is_file() && preview_file(&path).await.is_ok() {
+                return None;
             }
 
             Some(self)
@@ -739,7 +737,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     }
 
     let preview = CONTAINER.preview.try_read();
-    
+
     if interval.update_preview && preview.is_ok() {
         interval.update_preview = false;
         let file_path = interval.file_path.to_string();

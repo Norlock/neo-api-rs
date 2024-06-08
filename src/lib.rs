@@ -1,5 +1,6 @@
 mod bridge;
 mod buffer;
+mod diffuser;
 mod fuzzy;
 mod neo_api;
 mod neo_api_types;
@@ -8,7 +9,6 @@ mod theme;
 mod traits;
 mod web_devicons;
 mod window;
-mod diffuser;
 
 pub use bridge::*;
 pub use buffer::*;

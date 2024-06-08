@@ -1,9 +1,9 @@
 use convert_case::Case;
 
+mod common;
+mod from_table;
 mod into_enum;
 mod into_table;
-mod from_table;
-mod common;
 
 /// A simple into table function (yet), for complex structures create your own into lua function
 #[proc_macro_derive(IntoTable)]

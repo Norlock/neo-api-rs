@@ -321,9 +321,7 @@ impl<'a> FromLua<'a> for WinCursor {
 
                 Ok(Self { row, column })
             }
-            _ => Err(LuaError::runtime(
-                "Supposed to be a table".to_string(),
-            )),
+            _ => Err(LuaError::runtime("Supposed to be a table".to_string())),
         }
     }
 }
