@@ -4,14 +4,13 @@ use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::process::Stdio;
 use tokio::fs;
 use tokio::io::{self, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
-use crate::diffuser::{Diffuse, ExecuteChain};
+use crate::diffuser::{ChainResult, Diffuse, ExecuteChain};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
@@ -328,6 +327,7 @@ impl NeoFuzzy {
             cmd,
             args,
             search_type,
+            failure_count: 0
         }))
         .await;
 
@@ -431,19 +431,17 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
 struct SortLines {
     lines_out: Vec<LineOut>,
     search_query: String,
+    failure_count: usize,
 }
 
 impl ExecuteChain for SortLines {
-    fn try_execute(
-        self: Box<Self>,
-    ) -> Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>> {
+    fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let lines_out = CONTAINER.lines_out.try_write();
             let interval = CONTAINER.search_state.try_write();
 
             if lines_out.is_err() || interval.is_err() {
-                let ret: Box<dyn ExecuteChain> = self;
-                return Some(ret);
+                return Some(self as Box<dyn ExecuteChain>);
             }
 
             let mut lines_out = lines_out.unwrap();
@@ -457,16 +455,18 @@ impl ExecuteChain for SortLines {
 
             None
         })
+    }
 
-        //fn try_execute(self: Box<Self>) -> Option<Box<dyn ExecuteChain>> {
+    fn failure_count(&self) -> usize {
+        self.failure_count
+    }
+
+    fn increment_failure_count(&mut self) {
+        self.failure_count += 1;
     }
 }
 
-fn sort_lines(
-    lines: &str,
-    search_query: String,
-    search_type: FuzzySearch,
-) -> Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>> {
+fn sort_lines(lines: &str, search_query: String, search_type: FuzzySearch) -> ChainResult {
     let mut new_lines = Vec::new();
 
     for line in lines.lines() {
@@ -506,6 +506,7 @@ fn sort_lines(
     let sort_lines = Box::new(SortLines {
         lines_out,
         search_query,
+        failure_count: 0,
     });
 
     sort_lines.try_execute()
@@ -517,27 +518,23 @@ struct ExecSearch {
     args: Vec<String>,
     search_query: String,
     search_type: FuzzySearch,
+    failure_count: usize,
 }
 
 impl ExecuteChain for ExecSearch {
-    fn try_execute(
-        self: Box<Self>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = crate::diffuser::ChainLink> + Send>>
-    {
+    fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let sanitized = self.search_query.replace('/', "\\/").replace('.', "\\.");
 
             let search_state = CONTAINER.search_state.try_read();
 
             if search_state.is_err() {
-                let ret: Box<dyn ExecuteChain> = self;
-                return Some(ret);
+                return Some(self as Box<dyn ExecuteChain>);
             }
 
             let search_state = search_state.unwrap();
 
             if !search_state.has_searched {
-                //return Some(self);
                 let out = Command::new(&self.cmd)
                     .current_dir(&self.cwd)
                     .args(&self.args)
@@ -576,7 +573,7 @@ impl ExecuteChain for ExecSearch {
                     }
                 }
 
-                let mut rg_proc = tokio::process::Command::new("rg")
+                let mut rg_proc = Command::new("rg")
                     .args(["--regexp", &regex])
                     .stdin(Stdio::piped())
                     .stdout(Stdio::piped())
@@ -584,42 +581,43 @@ impl ExecuteChain for ExecSearch {
                     .spawn()
                     .unwrap();
 
-                let mut stdin = rg_proc.stdin.take().unwrap();
+                {
+                    let mut stdin = rg_proc.stdin.take().unwrap();
 
-                let search_qry_len = self.search_query.len();
-
-                RTM.spawn(async move {
+                    let search_qry_len = self.search_query.len();
                     let meta = CONTAINER.search_state.read().await;
-                    let lines = CONTAINER.lines_out.read().await;
 
                     if meta.last_search.len() < search_qry_len {
+                        let lines = CONTAINER.lines_out.read().await;
                         for line in lines.iter() {
                             let line = format!("{}\n", line.text);
                             let _ = stdin.write_all(line.as_bytes()).await;
                         }
                     } else {
                         if let Ok(lines) = CONTAINER.all_lines.try_read() {
-                            stdin.write_all(lines.as_bytes()).await.unwrap();
+                            let _ = stdin.write_all(lines.as_bytes()).await;
                         }
                     }
+                }
 
-                    let _ = stdin.flush().await;
-                });
-                //RTM.block_on(async move {
-                //});
-
-                //RTM.handle().block_on(async {
                 let out = rg_proc.wait_with_output().await.unwrap();
 
                 if out.status.success() {
                     let lines = String::from_utf8_lossy(&out.stdout);
-                    return sort_lines(&lines, self.search_query, self.search_type).await;
+                    sort_lines(&lines, self.search_query, self.search_type).await
                 } else {
-                    return Some(self);
+                    Some(self)
                 }
-                //return Some(self);
             }
         })
+    }
+
+    fn increment_failure_count(&mut self) {
+        self.failure_count += 1;
+    }
+
+    fn failure_count(&self) -> usize {
+        self.failure_count
     }
 }
 //fn try_execute(self: Box<Self>) -> Option<Box<dyn ExecuteChain>> {
@@ -985,6 +983,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
             cmd,
             args,
             search_type,
+            failure_count: 0
         });
 
         RTM.spawn(Diffuse::queue(exec_search));

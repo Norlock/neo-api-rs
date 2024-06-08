@@ -5,7 +5,7 @@
 // Try to lock do something then next
 
 use once_cell::sync::Lazy;
-use std::{collections::VecDeque, future::Future, pin::Pin, sync::Arc, time::Duration};
+use std::{collections::VecDeque, future::Future, pin::Pin, time::Duration};
 use tokio::{sync::Mutex, time};
 
 use crate::RTM;
@@ -23,9 +23,13 @@ unsafe impl Sync for Diffuse {}
 
 /// Will execute part and act like a chain where every part will use try_read / try_write
 pub type ChainLink = Option<Box<dyn ExecuteChain>>; 
+pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
+
 
 pub trait ExecuteChain: Send + Sync {
-    fn try_execute(self: Box<Self>) -> Pin<Box<dyn Future<Output = ChainLink> + Send>>;
+    fn try_execute(self: Box<Self>) -> ChainResult;
+    fn increment_failure_count(&mut self);
+    fn failure_count(&self) -> usize;
 }
 
 impl Diffuse {
@@ -38,7 +42,6 @@ impl Diffuse {
     pub async fn start() {
         let mut diffuser = DIFFUSER.lock().await;
         diffuser.run = true;
-        drop(diffuser);
 
         RTM.spawn(async {
             let mut interval = time::interval(Duration::from_millis(1));
@@ -51,8 +54,12 @@ impl Diffuse {
                 }
 
                 if let Some(current) = diffuser.queue.pop_front() {
-                    if let Some(next) = current.try_execute().await {
-                        diffuser.queue.push_front(next);
+                    if let Some(mut next) = current.try_execute().await {
+                        next.increment_failure_count();
+
+                        if next.failure_count() < 100 {
+                            diffuser.queue.push_front(next);
+                        }
                     }
                 }
 
