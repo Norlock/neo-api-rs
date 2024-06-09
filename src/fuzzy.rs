@@ -9,7 +9,7 @@ use tokio::io::{self};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
-use crate::diffuser::{ChainResult, Diffuse, ExecuteChain};
+use crate::diffuser::{ChainLink, ChainResult, Diffuse, ExecuteChain};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
@@ -21,6 +21,7 @@ const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
 
+#[derive(Clone, Debug)]
 struct LineOut {
     text: String,
     icon: String,
@@ -358,6 +359,8 @@ impl NeoFuzzy {
         Diffuse::start().await;
 
         *CONTAINER.fuzzy.write().await = fuzzy;
+        CONTAINER.all_lines.write().await.clear();
+        CONTAINER.filtered_lines.write().await.clear();
 
         let interval = lua.create_async_function(interval_write_out)?;
 
@@ -413,7 +416,7 @@ impl NeoFuzzy {
             -1,
         )?;
 
-        if let Ok(lines) = CONTAINER.all_lines.try_read() {
+        if let Ok(lines) = CONTAINER.filtered_lines.try_read() {
             let lines = if 300 <= lines.len() {
                 &lines[..300]
             } else {
@@ -433,7 +436,7 @@ impl NeoFuzzy {
 
 pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
-    let cached_lines = CONTAINER.all_lines.read().await;
+    let cached_lines = CONTAINER.filtered_lines.read().await;
     let selected = fuzzy
         .cwd
         .join(cached_lines[fuzzy.selected_idx].text.as_str());
@@ -442,47 +445,6 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     fuzzy.config.on_enter(lua, open_in, selected);
 
     Ok(())
-}
-
-struct SortLines {
-    lines_out: Vec<LineOut>,
-    search_query: String,
-    cwd: PathBuf,
-    failure_count: usize,
-}
-
-impl ExecuteChain for SortLines {
-    fn try_execute(self: Box<Self>) -> ChainResult {
-        Box::pin(async move {
-            {
-                let lines_out = CONTAINER.all_lines.try_write();
-                let interval = CONTAINER.search_state.try_write();
-
-                if lines_out.is_err() || interval.is_err() {
-                    return Some(self as Box<dyn ExecuteChain>);
-                }
-
-                let mut lines_out = lines_out.unwrap();
-                let mut interval = interval.unwrap();
-
-                *lines_out = self.lines_out;
-
-                interval.last_search = self.search_query;
-                interval.update_out = true;
-            }
-
-            let preview = Box::new(ExecPreview {
-                cwd: self.cwd,
-                failure_count: 0,
-            });
-
-            preview.try_execute().await
-        })
-    }
-
-    fn failure_count(&mut self) -> &mut usize {
-        &mut self.failure_count
-    }
 }
 
 struct ExecSearch {
@@ -494,75 +456,110 @@ struct ExecSearch {
     failure_count: usize,
 }
 
-impl ExecuteChain for ExecSearch {
-    fn try_execute(self: Box<Self>) -> ChainResult {
-        Box::pin(async move {
-            let sanitized = self.search_query.replace('/', "\\/").replace('.', "\\.");
+impl ExecSearch {
+    async fn sort_lines(self: Box<Self>, lines: &[LineOut]) -> ChainLink {
+        let mut new_lines = Vec::new();
 
-            let mut regex = String::from(".*");
+        let search_query_len = self.search_query.chars().count();
 
-            for char in sanitized.chars() {
-                if char.is_lowercase() {
-                    regex.push_str(&format!("[{}{}]", char.to_uppercase(), char));
-                } else {
-                    regex.push(char);
-                }
+        for line in lines {
+            let mut is_match = search_query_len == 0;
 
-                if char != '\\' {
-                    regex.push_str(".*");
+            if !is_match {
+                let mut current_idx = 0;
+
+                for line_char in line.text.chars() {
+                    let qry_char = self.search_query.chars().nth(current_idx).unwrap();
+
+                    if line_char == qry_char
+                        || line_char.to_lowercase().to_string() == qry_char.to_string()
+                    {
+                        current_idx += 1;
+
+                        if search_query_len <= current_idx {
+                            is_match = true;
+                            break;
+                        }
+                    }
                 }
             }
 
-            let out = Command::new(&self.cmd)
-                .current_dir(&self.cwd)
-                .args(&self.args)
-                .args(["--full-path", &regex])
-                .output()
-                .await
-                .unwrap();
+            if is_match {
+                let score = levenshtein(&self.search_query, &line.text);
+                new_lines.push((score, line.clone()));
+            }
+        }
 
-            if out.status.success() {
-                let lines = String::from_utf8_lossy(&out.stdout);
-                let mut new_lines = Vec::new();
+        new_lines.sort_by_key(|k| k.0);
 
-                for line in lines.lines() {
-                    let score = levenshtein(&self.search_query, line);
-                    new_lines.push((score, line.to_string()));
-                }
+        let mut filtered = CONTAINER.filtered_lines.write().await;
+        *filtered = new_lines
+            .into_iter()
+            .map(|sorted_lines| sorted_lines.1)
+            .collect();
+        drop(filtered);
 
-                new_lines.sort_by_key(|k| k.0);
+        let exec_prev = Box::new(ExecPreview {
+            cwd: self.cwd,
+            failure_count: 0,
+        });
 
-                let mut lines_out = Vec::new();
+        let mut interval = CONTAINER.search_state.write().await;
+        interval.last_search = self.search_query;
+        interval.update_out = true;
+        drop(interval);
 
-                for (_k, v) in new_lines.into_iter() {
-                    if self.search_type == FuzzySearch::Directory {
-                        lines_out.push(LineOut {
-                            text: v,
-                            icon: "".to_string(),
-                            hl_group: "Directory".to_string(),
-                        });
-                    } else {
-                        let path = PathBuf::from(&v);
-                        let dev_icon = DevIcon::get_icon(&path);
+        // Move to queue instead of inside same chain
+        exec_prev.try_execute().await
+    }
+}
 
-                        lines_out.push(LineOut {
-                            text: v,
-                            icon: dev_icon.icon.to_string(),
-                            hl_group: dev_icon.highlight.to_string(),
-                        });
+impl ExecuteChain for ExecSearch {
+    fn try_execute(self: Box<Self>) -> ChainResult {
+        Box::pin(async move {
+            let all_lines = CONTAINER.all_lines.read().await;
+
+            if all_lines.is_empty() {
+                drop(all_lines);
+
+                let out = Command::new(&self.cmd)
+                    .current_dir(&self.cwd)
+                    .args(&self.args)
+                    .output()
+                    .await
+                    .unwrap();
+
+                if out.status.success() {
+                    let out = String::from_utf8_lossy(&out.stdout);
+                    let mut new_lines = Vec::new();
+
+                    for line in out.lines() {
+                        if self.search_type == FuzzySearch::Directory {
+                            new_lines.push(LineOut {
+                                text: line.to_string(),
+                                icon: "".to_string(),
+                                hl_group: "Directory".to_string(),
+                            });
+                        } else {
+                            let path = PathBuf::from(line);
+                            let dev_icon = DevIcon::get_icon(&path);
+
+                            new_lines.push(LineOut {
+                                text: line.to_string(),
+                                icon: dev_icon.icon.to_string(),
+                                hl_group: dev_icon.highlight.to_string(),
+                            });
+                        }
                     }
+
+                    let mut all_lines = CONTAINER.all_lines.write().await;
+                    *all_lines = new_lines;
+                    self.sort_lines(&all_lines).await
+                } else {
+                    Some(self as Box<dyn ExecuteChain>)
                 }
-
-                let sort_lines = Box::new(SortLines {
-                    lines_out,
-                    search_query: self.search_query.clone(),
-                    failure_count: 0,
-                    cwd: self.cwd,
-                });
-
-                sort_lines.try_execute().await
             } else {
-                Some(self as Box<dyn ExecuteChain>)
+                self.sort_lines(&all_lines).await
             }
         })
     }
@@ -647,7 +644,7 @@ impl ExecuteChain for ExecPreview {
         Box::pin(async move {
             let path: PathBuf = {
                 let fuzzy = CONTAINER.fuzzy.try_read();
-                let lines_out = CONTAINER.all_lines.try_read();
+                let lines_out = CONTAINER.filtered_lines.try_read();
 
                 if fuzzy.is_err() || lines_out.is_err() {
                     return Some(self as Box<dyn ExecuteChain>);
@@ -691,7 +688,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     let mut interval = interval.unwrap();
     let fuzzy = fuzzy.unwrap();
 
-    let lines = CONTAINER.all_lines.try_read();
+    let lines = CONTAINER.filtered_lines.try_read();
 
     if interval.update_out && lines.is_ok() {
         let lines = lines.unwrap();
@@ -732,13 +729,13 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         interval.update_preview = false;
         let file_path = interval.file_path.to_string();
 
-        fuzzy.add_out_highlight(lua)?;
-
         let buf = &fuzzy.pop_preview.buf;
 
         let preview = preview.unwrap();
         buf.set_lines(lua, 0, -1, false, &preview)?;
+
         fuzzy.add_preview_highlight(lua, &preview)?;
+        fuzzy.add_out_highlight(lua)?;
 
         if fuzzy.config.search_type() == FuzzySearch::File {
             let ft = NeoApi::filetype_match(
