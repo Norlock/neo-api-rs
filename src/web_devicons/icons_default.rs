@@ -5678,40 +5678,46 @@ impl DevIcon {
         Ok(())
     }
 
-    pub fn get_icon(path: &Path) -> Option<IconResult> {
+    pub fn get_icon(path: &Path) -> IconResult {
         let container = &DEV_ICONS;
 
+        let dev_icon_from_extension = || -> Option<&DevIcon> {
+            let ext = path.extension()?;
+            container.from_extension.get(ext)
+        };
+
         if let Some(dev_icon) = container.from_file_name.get(path.as_os_str()) {
-            Some(IconResult {
+            IconResult {
                 icon: dev_icon.icon,
                 highlight: format!("DevIcon{}", dev_icon.name),
-            })
-        } else if let Some(extension) = path.extension() {
-            container
-                .from_extension
-                .get(extension)
-                .map(|dev_icon| IconResult {
-                    icon: dev_icon.icon,
-                    highlight: format!("DevIcon{}", dev_icon.name),
-                })
+            }
+        } else if let Some(dev_icon) = dev_icon_from_extension() {
+            IconResult {
+                icon: dev_icon.icon,
+                highlight: format!("DevIcon{}", dev_icon.name),
+            }
         } else if let Some(dev_icon) = container.from_os.get(path.as_os_str()) {
-            Some(IconResult {
+            IconResult {
                 icon: dev_icon.icon,
                 highlight: format!("DevIcon{}", dev_icon.name),
-            })
+            }
         } else if let Some(dev_icon) = container.from_de.get(path.as_os_str()) {
-            Some(IconResult {
+            IconResult {
                 icon: dev_icon.icon,
                 highlight: format!("DevIcon{}", dev_icon.name),
-            })
+            }
+        } else if let Some(dev_icon) = container.from_de.get(path.as_os_str()) {
+            IconResult {
+                icon: dev_icon.icon,
+                highlight: format!("DevIcon{}", dev_icon.name),
+            }
         } else {
-            container
-                .from_wm
-                .get(path.as_os_str())
-                .map(|dev_icon| IconResult {
-                    icon: dev_icon.icon,
-                    highlight: format!("DevIcon{}", dev_icon.name),
-                })
+            let dev_icon = container.from_extension.get(OsStr::new("txt")).unwrap();
+
+            IconResult {
+                icon: dev_icon.icon,
+                highlight: format!("DevIcon{}", dev_icon.name),
+            }
         }
     }
 }

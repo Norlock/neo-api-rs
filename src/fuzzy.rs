@@ -28,7 +28,8 @@ struct LineOut {
 }
 
 struct FuzzyContainer {
-    lines_out: RwLock<Vec<LineOut>>,
+    all_lines: RwLock<Vec<LineOut>>,
+    filtered_lines: RwLock<Vec<LineOut>>,
     fuzzy: RwLock<NeoFuzzy>,
     search_state: RwLock<SearchState>,
     preview: RwLock<Vec<String>>,
@@ -69,7 +70,8 @@ struct SearchState {
 }
 
 static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
-    lines_out: RwLock::new(vec![]),
+    all_lines: RwLock::new(vec![]),
+    filtered_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(NeoFuzzy::default()),
     search_state: RwLock::new(SearchState {
         update_out: false,
@@ -411,7 +413,7 @@ impl NeoFuzzy {
             -1,
         )?;
 
-        if let Ok(lines) = CONTAINER.lines_out.try_read() {
+        if let Ok(lines) = CONTAINER.all_lines.try_read() {
             let lines = if 300 <= lines.len() {
                 &lines[..300]
             } else {
@@ -431,7 +433,7 @@ impl NeoFuzzy {
 
 pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
-    let cached_lines = CONTAINER.lines_out.read().await;
+    let cached_lines = CONTAINER.all_lines.read().await;
     let selected = fuzzy
         .cwd
         .join(cached_lines[fuzzy.selected_idx].text.as_str());
@@ -452,20 +454,22 @@ struct SortLines {
 impl ExecuteChain for SortLines {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
-            let lines_out = CONTAINER.lines_out.try_write();
-            let interval = CONTAINER.search_state.try_write();
+            {
+                let lines_out = CONTAINER.all_lines.try_write();
+                let interval = CONTAINER.search_state.try_write();
 
-            if lines_out.is_err() || interval.is_err() {
-                return Some(self as Box<dyn ExecuteChain>);
+                if lines_out.is_err() || interval.is_err() {
+                    return Some(self as Box<dyn ExecuteChain>);
+                }
+
+                let mut lines_out = lines_out.unwrap();
+                let mut interval = interval.unwrap();
+
+                *lines_out = self.lines_out;
+
+                interval.last_search = self.search_query;
+                interval.update_out = true;
             }
-
-            let mut lines_out = lines_out.unwrap();
-            let mut interval = interval.unwrap();
-
-            *lines_out = self.lines_out;
-
-            interval.last_search = self.search_query;
-            interval.update_out = true;
 
             let preview = Box::new(ExecPreview {
                 cwd: self.cwd,
@@ -509,16 +513,10 @@ impl ExecuteChain for ExecSearch {
                 }
             }
 
-            let search_specific_arg = if self.search_type == FuzzySearch::File {
-                vec![regex.as_str()]
-            } else {
-                vec!["--full-path", &regex]
-            };
-
             let out = Command::new(&self.cmd)
                 .current_dir(&self.cwd)
                 .args(&self.args)
-                .args(search_specific_arg)
+                .args(["--full-path", &regex])
                 .output()
                 .await
                 .unwrap();
@@ -545,19 +543,13 @@ impl ExecuteChain for ExecSearch {
                         });
                     } else {
                         let path = PathBuf::from(&v);
-                        if let Some(dev_icon) = DevIcon::get_icon(&path) {
-                            lines_out.push(LineOut {
-                                text: v,
-                                icon: dev_icon.icon.to_string(),
-                                hl_group: dev_icon.highlight.to_string(),
-                            });
-                        } else {
-                            lines_out.push(LineOut {
-                                text: v,
-                                icon: "".to_string(),
-                                hl_group: "".to_string(),
-                            });
-                        }
+                        let dev_icon = DevIcon::get_icon(&path);
+
+                        lines_out.push(LineOut {
+                            text: v,
+                            icon: dev_icon.icon.to_string(),
+                            hl_group: dev_icon.highlight.to_string(),
+                        });
                     }
                 }
 
@@ -655,7 +647,7 @@ impl ExecuteChain for ExecPreview {
         Box::pin(async move {
             let path: PathBuf = {
                 let fuzzy = CONTAINER.fuzzy.try_read();
-                let lines_out = CONTAINER.lines_out.try_read();
+                let lines_out = CONTAINER.all_lines.try_read();
 
                 if fuzzy.is_err() || lines_out.is_err() {
                     return Some(self as Box<dyn ExecuteChain>);
@@ -673,15 +665,13 @@ impl ExecuteChain for ExecPreview {
                 self.cwd.join(lines_out[selected_idx].text.as_str())
             };
 
-            if path.is_dir() {
-                if preview_directory(&path).await.is_ok() {
-                    return None;
-                }
+            if path.is_dir() && preview_directory(&path).await.is_ok() {
+                None
             } else if path.is_file() && preview_file(&path).await.is_ok() {
-                return None;
+                None
+            } else {
+                Some(self)
             }
-
-            Some(self)
         })
     }
 
@@ -701,7 +691,7 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     let mut interval = interval.unwrap();
     let fuzzy = fuzzy.unwrap();
 
-    let lines = CONTAINER.lines_out.try_read();
+    let lines = CONTAINER.all_lines.try_read();
 
     if interval.update_out && lines.is_ok() {
         let lines = lines.unwrap();
