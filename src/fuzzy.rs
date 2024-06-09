@@ -26,6 +26,7 @@ struct LineOut {
     text: String,
     icon: String,
     hl_group: String,
+    score: usize,
 }
 
 struct FuzzyContainer {
@@ -457,12 +458,12 @@ struct ExecSearch {
 }
 
 impl ExecSearch {
-    async fn sort_lines(self: Box<Self>, lines: &[LineOut]) -> ChainLink {
-        let mut new_lines = Vec::new();
-
+    async fn sort_lines(self: Box<Self>) -> ChainLink {
         let search_query_len = self.search_query.chars().count();
 
-        for line in lines {
+        let mut filtered_lines = CONTAINER.filtered_lines.read().await.clone();
+
+        filtered_lines.retain_mut(|line| {
             let mut is_match = search_query_len == 0;
 
             if !is_match {
@@ -485,43 +486,56 @@ impl ExecSearch {
             }
 
             if is_match {
-                let score = levenshtein(&self.search_query, &line.text);
-                new_lines.push((score, line.clone()));
+                line.score = levenshtein(&self.search_query, &line.text);
+                true
+            } else {
+                false
             }
-        }
+        });
 
-        new_lines.sort_by_key(|k| k.0);
+        filtered_lines.sort_by_key(|k| k.score);
 
-        let mut filtered = CONTAINER.filtered_lines.write().await;
-        *filtered = new_lines
-            .into_iter()
-            .map(|sorted_lines| sorted_lines.1)
-            .collect();
-        drop(filtered);
+        *CONTAINER.filtered_lines.write().await = filtered_lines;
 
         let exec_prev = Box::new(ExecPreview {
             cwd: self.cwd,
             failure_count: 0,
         });
 
-        let mut interval = CONTAINER.search_state.write().await;
-        interval.last_search = self.search_query;
-        interval.update_out = true;
-        drop(interval);
+        let mut search_state = CONTAINER.search_state.write().await;
+        search_state.last_search = self.search_query;
+        search_state.update_out = true;
+
+        drop(search_state);
 
         // Move to queue instead of inside same chain
         exec_prev.try_execute().await
     }
 }
 
+impl ExecSearch {
+    async fn copy_all_to_filtered() {
+        let all_lines = CONTAINER.all_lines.read().await;
+        let mut filtered_lines = CONTAINER.filtered_lines.write().await;
+
+        *filtered_lines = all_lines.clone();
+    }
+
+    async fn copy_new_to_all(new_lines: Vec<LineOut>) {
+        let mut all_lines = CONTAINER.all_lines.write().await;
+        let mut filtered_lines = CONTAINER.filtered_lines.write().await;
+
+        *all_lines = new_lines.clone();
+        *filtered_lines = new_lines;
+    }
+}
+
 impl ExecuteChain for ExecSearch {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
-            let all_lines = CONTAINER.all_lines.read().await;
+            let first_search = CONTAINER.all_lines.read().await.is_empty();
 
-            if all_lines.is_empty() {
-                drop(all_lines);
-
+            if first_search {
                 let out = Command::new(&self.cmd)
                     .current_dir(&self.cwd)
                     .args(&self.args)
@@ -539,6 +553,7 @@ impl ExecuteChain for ExecSearch {
                                 text: line.to_string(),
                                 icon: "".to_string(),
                                 hl_group: "Directory".to_string(),
+                                score: 0,
                             });
                         } else {
                             let path = PathBuf::from(line);
@@ -548,18 +563,27 @@ impl ExecuteChain for ExecSearch {
                                 text: line.to_string(),
                                 icon: dev_icon.icon.to_string(),
                                 hl_group: dev_icon.highlight.to_string(),
+                                score: 0,
                             });
                         }
                     }
 
-                    let mut all_lines = CONTAINER.all_lines.write().await;
-                    *all_lines = new_lines;
-                    self.sort_lines(&all_lines).await
+                    Self::copy_new_to_all(new_lines).await;
+
+                    self.sort_lines().await
                 } else {
                     Some(self as Box<dyn ExecuteChain>)
                 }
             } else {
-                self.sort_lines(&all_lines).await
+                let last_search_len = CONTAINER.search_state.read().await.last_search.len();
+
+                if last_search_len < self.search_query.len() {
+                    self.sort_lines().await
+                } else {
+                    Self::copy_all_to_filtered().await;
+
+                    self.sort_lines().await
+                }
             }
         })
     }

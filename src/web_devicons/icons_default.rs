@@ -5706,7 +5706,7 @@ impl DevIcon {
                 icon: dev_icon.icon,
                 highlight: format!("DevIcon{}", dev_icon.name),
             }
-        } else if let Some(dev_icon) = container.from_de.get(path.as_os_str()) {
+        } else if let Some(dev_icon) = container.from_wm.get(path.as_os_str()) {
             IconResult {
                 icon: dev_icon.icon,
                 highlight: format!("DevIcon{}", dev_icon.name),
