@@ -349,10 +349,16 @@ impl NeoFuzzy {
 
         Diffuse::queue(Box::new(ExecSearch {
             search_query: "".to_string(),
-            cwd,
+            cwd: cwd.clone(),
             cmd,
             args,
             search_type,
+            failure_count: 0,
+        }))
+        .await;
+
+        Diffuse::queue(Box::new(ExecPreview {
+            cwd,
             failure_count: 0,
         }))
         .await;
@@ -497,19 +503,11 @@ impl ExecSearch {
 
         *CONTAINER.filtered_lines.write().await = filtered_lines;
 
-        let exec_prev = Box::new(ExecPreview {
-            cwd: self.cwd,
-            failure_count: 0,
-        });
-
         let mut search_state = CONTAINER.search_state.write().await;
         search_state.last_search = self.search_query;
         search_state.update_out = true;
 
-        drop(search_state);
-
-        // Move to queue instead of inside same chain
-        exec_prev.try_execute().await
+        None
     }
 }
 
@@ -577,13 +575,11 @@ impl ExecuteChain for ExecSearch {
             } else {
                 let last_search_len = CONTAINER.search_state.read().await.last_search.len();
 
-                if last_search_len < self.search_query.len() {
-                    self.sort_lines().await
-                } else {
+                if self.search_query.len() < last_search_len {
                     Self::copy_all_to_filtered().await;
-
-                    self.sort_lines().await
                 }
+
+                self.sort_lines().await
             }
         })
     }
@@ -758,9 +754,6 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let preview = preview.unwrap();
         buf.set_lines(lua, 0, -1, false, &preview)?;
 
-        fuzzy.add_preview_highlight(lua, &preview)?;
-        fuzzy.add_out_highlight(lua)?;
-
         if fuzzy.config.search_type() == FuzzySearch::File {
             let ft = NeoApi::filetype_match(
                 lua,
@@ -781,6 +774,9 @@ async fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                 }
             }
         }
+
+        fuzzy.add_preview_highlight(lua, &preview)?;
+        fuzzy.add_out_highlight(lua)?;
     }
 
     Ok(())
@@ -825,16 +821,10 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
             })?,
         )?;
 
-        drop(fuzzy);
-
-        RTM.spawn(async move {
-            let head = Box::new(ExecPreview {
-                cwd,
-                failure_count: 0,
-            });
-
-            Diffuse::queue(head).await;
-        });
+        RTM.spawn(Diffuse::queue(Box::new(ExecPreview {
+            cwd,
+            failure_count: 0,
+        })));
     }
 
     Ok(())
@@ -886,14 +876,22 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
 
     let exec_search = Box::new(ExecSearch {
         search_query,
-        cwd,
+        cwd: cwd.clone(),
         cmd,
         args,
         search_type,
         failure_count: 0,
     });
 
-    RTM.spawn(Diffuse::queue(exec_search));
+    let exec_prev = Box::new(ExecPreview {
+        cwd,
+        failure_count: 0,
+    });
+
+    RTM.spawn(async move {
+        Diffuse::queue(exec_search).await;
+        Diffuse::queue(exec_prev).await;
+    });
 
     Ok(())
 }
