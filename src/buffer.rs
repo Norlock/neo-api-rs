@@ -11,7 +11,7 @@ pub struct NeoBuffer(u32);
 impl<'a> FromLua<'a> for NeoBuffer {
     fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
         match value {
-            LuaValue::Integer(num) => Ok(NeoBuffer::new(num as u32)),
+            LuaValue::Integer(num) => Ok(NeoBuffer::from_id(num as u32)),
             _ => Err(LuaError::FromLuaConversionError {
                 from: "LuaValue",
                 to: "NeoBuffer",
@@ -47,7 +47,7 @@ impl NeoBuffer {
             return Err(LuaError::RuntimeError("Buffer not created".to_string()));
         }
 
-        Ok(NeoBuffer::new(buf_id))
+        Ok(NeoBuffer::from_id(buf_id))
     }
 
     //pub fn exists(&self, lua: &Lua) -> LuaResult<bool> {
@@ -61,7 +61,9 @@ impl NeoBuffer {
         lfn.call(path)
     }
 
-    pub fn new(id: u32) -> Self {
+    /// This will create a buffer rust object, but not the corresponding lua object. 
+    /// For that use the `NeoBuffer::create` function
+    pub fn from_id(id: u32) -> Self {
         Self(id)
     }
 

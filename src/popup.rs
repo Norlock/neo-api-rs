@@ -137,9 +137,11 @@ pub struct WinOptions {
     pub width: Option<PopupSize>,
     /// height: Window height (in character cells). Minimum of 1.
     pub height: Option<PopupSize>,
-    /// col: Column position in units of "screen cell width", may be fractional.
+    /// col: Column position in units of "screen cell width", may be fractional. Will calculate
+    /// from ui width so 0.5 will begin from the half of the screen so not necessarily centered 
     pub col: Option<PopupSize>,
     /// row: Row position in units of "screen cell height", may be fractional.
+    /// from ui height so 0.5 will begin from the half of the screen so not necessarily centered 
     pub row: Option<PopupSize>,
     /**
     relative: Sets the window layout to "floating", placed at (row,col) coordinates relative to:
@@ -314,6 +316,9 @@ impl<'a> IntoLua<'a> for WinOptions {
             }
         }
 
+        //let line = format!("w{} c{} h{} r{}", ui.width, raw_col, ui.height, raw_row);
+        //panic!("{}", line);
+
         out.set("relative", self.relative.to_string())?;
         out.set("width", raw_width)?;
         out.set("height", raw_height)?;
@@ -369,7 +374,7 @@ impl<'a> FromLua<'a> for NeoPopup {
 
             Ok(NeoPopup {
                 win: NeoWindow::new(win_id),
-                buf: NeoBuffer::new(buf_id),
+                buf: NeoBuffer::from_id(buf_id),
             })
         } else {
             Err(mlua::Error::FromLuaConversionError {

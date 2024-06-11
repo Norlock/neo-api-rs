@@ -2,8 +2,8 @@ use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
     StdpathType, Ui,
 };
-use crate::window::NeoWindow;
-use crate::{CmdOpts, FileTypeMatch, KeymapOpts};
+use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoDebug};
+use crate::{NeoWindow, RTM};
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
     FromLua, IntoLua, Lua,
@@ -15,6 +15,40 @@ pub struct NeoApi;
 
 #[allow(unused)]
 impl NeoApi {
+    pub fn init(lua: &Lua) -> LuaResult<()> {
+        //DevIcon::init(lua)?;
+
+        let cb = lua.create_async_function(|lua, ()| async {
+            RTM.block_on(NeoDebug::display(lua));
+
+            Ok(())
+        })?;
+
+        Self::create_user_command(lua, "NeoApiShowLogs", cb, false)?;
+
+        let cb = lua.create_async_function(|lua, ()| async {
+            RTM.block_on(NeoDebug::clear_logs());
+
+            Ok(())
+        })?;
+
+        Self::create_user_command(lua, "NeoApiClearLogs", cb, false)
+    }
+
+    pub fn create_user_command<'a>(
+        lua: &'a Lua,
+        name: &str,
+        callback: LuaFunction<'a>,
+        bang: bool,
+    ) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_create_user_command").eval()?;
+
+        let opts = lua.create_table()?;
+        opts.set("bang", bang)?;
+
+        lfn.call((name, callback, opts))
+    }
+
     pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
 

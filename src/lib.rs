@@ -9,6 +9,7 @@ mod theme;
 mod traits;
 mod web_devicons;
 mod window;
+mod debug;
 
 pub use bridge::*;
 pub use buffer::*;
@@ -19,6 +20,7 @@ pub use popup::*;
 pub use theme::*;
 pub use traits::*;
 pub use window::*;
+pub use debug::*;
 
 pub use mlua;
 pub use tokio;
