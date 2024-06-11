@@ -9,7 +9,7 @@ use tokio::io::{self};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
-use crate::diffuser::{ChainLink, ChainResult, Diffuse, ExecuteChain};
+use crate::diffuser::{ChainLink, ChainResult, Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
@@ -540,7 +540,7 @@ impl ExecSearch {
     }
 }
 
-impl ExecuteChain for ExecSearch {
+impl ExecuteTask for ExecSearch {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let first_search = CONTAINER.all_lines.read().await.is_empty();
@@ -582,7 +582,7 @@ impl ExecuteChain for ExecSearch {
 
                     self.sort_lines().await
                 } else {
-                    Some(self as Box<dyn ExecuteChain>)
+                    Some(self as Box<dyn ExecuteTask>)
                 }
             } else {
                 let last_search_len = CONTAINER.search_state.read().await.last_search.len();
@@ -604,29 +604,35 @@ impl ExecuteChain for ExecSearch {
 async fn preview_file(path: &Path) -> io::Result<()> {
     let file_path;
 
-    if is_binary(path) {
-        file_path = "text".to_string();
-
+    async fn handle_binary() {
         let mut preview = CONTAINER.preview.write().await;
         *preview = vec!["> File is a binary".to_string()];
+    }
+
+    if is_binary(path) {
+        file_path = "text".to_string();
+        handle_binary().await;
     } else {
-        file_path = path.to_string_lossy().to_string();
+        // TODO check for ZIP and preview
+        if let Ok(file) = fs::read_to_string(path).await {
+            file_path = path.to_string_lossy().to_string();
 
-        let mut lines = vec![];
-        let file = fs::read_to_string(path).await?;
+            let mut lines = vec![];
 
-        for line in file.lines() {
-            lines.push(line.to_string());
+            for line in file.lines() {
+                lines.push(line.to_string());
+            }
+
+            *CONTAINER.preview.write().await = lines;
+        } else {
+            file_path = "text".to_string();
+            handle_binary().await;
         }
-
-        *CONTAINER.preview.write().await = lines;
     }
 
     let mut interval_state = CONTAINER.search_state.write().await;
     interval_state.file_path = file_path;
     interval_state.update_preview = true;
-
-    NeoDebug::log("Update preview successfull").await?;
 
     Ok(())
 }
@@ -673,7 +679,7 @@ struct ExecPreview {
     failure_count: usize,
 }
 
-impl ExecuteChain for ExecPreview {
+impl ExecuteTask for ExecPreview {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let path: PathBuf = {
@@ -688,12 +694,13 @@ impl ExecuteChain for ExecPreview {
                 self.cwd.join(lines_out[self.selected_idx].text.as_str())
             };
 
+            let _ = NeoDebug::log(format!("{}", self.selected_idx)).await;
+
             if path.is_dir() && preview_directory(&path).await.is_ok()
-                || path.is_file() && preview_file(&path).await.is_ok()
-            {
+                || path.is_file() && preview_file(&path).await.is_ok() {
                 None
             } else {
-                Some(self as Box<dyn ExecuteChain>)
+                Some(self as Box<dyn ExecuteTask>)
             }
         })
     }
@@ -757,6 +764,9 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
             let buf = &fuzzy.pop_preview.buf;
 
             let preview = preview.unwrap();
+            let test = preview[0].to_string();
+
+            RTM.spawn(async move { NeoDebug::log(test.as_str()).await });
             buf.set_lines(lua, 0, -1, false, &preview)?;
 
             if fuzzy.config.search_type() == FuzzySearch::File {
@@ -816,7 +826,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     }
 
     if jump_line {
-        let sel_idx = fuzzy.selected_idx;
+        let selected_idx = fuzzy.selected_idx;
         let cwd = fuzzy.cwd.clone();
 
         fuzzy.pop_out.win.call(
@@ -827,7 +837,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
                     CmdOpts {
                         cmd: "normal",
                         bang: true,
-                        args: &[&format!("{}G", sel_idx + 1)],
+                        args: &[&format!("{}G", selected_idx + 1)],
                     },
                 )
             })?,
@@ -836,7 +846,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
         RTM.spawn(Diffuse::queue(Box::new(ExecPreview {
             cwd,
             failure_count: 0,
-            selected_idx: sel_idx,
+            selected_idx,
         })));
     }
 

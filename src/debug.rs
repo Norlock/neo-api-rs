@@ -1,6 +1,6 @@
 use mlua::prelude::LuaResult;
 use mlua::Lua;
-use std::env;
+use std::{env, fmt::Display};
 use std::io::Write;
 use tokio::{
     fs::{self, OpenOptions},
@@ -15,7 +15,7 @@ use crate::{
 pub struct NeoDebug;
 
 impl NeoDebug {
-    pub async fn log(message: &str) -> io::Result<()> {
+    pub async fn log<AsStr: Display>(message: AsStr) -> io::Result<()> {
         let mut dir = env::temp_dir();
         dir.push("neo-api-log");
 

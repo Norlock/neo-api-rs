@@ -15,23 +15,23 @@ static DIFFUSER: Lazy<Mutex<Diffuse>> = Lazy::new(|| Diffuse::default().into());
 #[derive(Default)]
 pub struct Diffuse {
     run: bool,
-    queue: VecDeque<Box<dyn ExecuteChain>>,
+    queue: VecDeque<Box<dyn ExecuteTask>>,
 }
 
 unsafe impl Send for Diffuse {}
 unsafe impl Sync for Diffuse {}
 
 /// Will execute part and act like a chain where every part will use try_read / try_write
-pub type ChainLink = Option<Box<dyn ExecuteChain>>;
+pub type ChainLink = Option<Box<dyn ExecuteTask>>;
 pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
 
-pub trait ExecuteChain: Send {
+pub trait ExecuteTask: Send {
     fn try_execute(self: Box<Self>) -> ChainResult;
     fn failure_count(&mut self) -> &mut usize;
 }
 
 impl Diffuse {
-    pub async fn queue(head: Box<dyn ExecuteChain>) {
+    pub async fn queue(head: Box<dyn ExecuteTask>) {
         let mut diffuser = DIFFUSER.lock().await;
 
         diffuser.queue.push_back(head);
