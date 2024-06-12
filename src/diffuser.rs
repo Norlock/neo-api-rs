@@ -8,7 +8,7 @@ use once_cell::sync::Lazy;
 use std::{collections::VecDeque, future::Future, pin::Pin, time::Duration};
 use tokio::{sync::Mutex, time};
 
-use crate::RTM;
+use crate::{NeoDebug, RTM};
 
 static DIFFUSER: Lazy<Mutex<Diffuse>> = Lazy::new(|| Diffuse::default().into());
 
@@ -28,13 +28,23 @@ pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
 pub trait ExecuteTask: Send {
     fn try_execute(self: Box<Self>) -> ChainResult;
     fn failure_count(&mut self) -> &mut usize;
+    fn id(&self) -> &str;
 }
 
 impl Diffuse {
-    pub async fn queue(head: Box<dyn ExecuteTask>) {
+    pub async fn queue<const N: usize>(task_list: [Box<dyn ExecuteTask>; N]) {
         let mut diffuser = DIFFUSER.lock().await;
+        
+        for mut new_task in task_list.into_iter() {
+            for task in diffuser.queue.iter_mut() {
+                if task.id() == new_task.id() {
+                    std::mem::swap(task, &mut new_task);
+                    continue;
+                }
+            }
 
-        diffuser.queue.push_back(head);
+            diffuser.queue.push_back(new_task);
+        }
     }
 
     pub async fn start() {
@@ -54,6 +64,14 @@ impl Diffuse {
                 if let Some(current) = diffuser.queue.pop_front() {
                     if let Some(mut next) = current.try_execute().await {
                         *next.failure_count() += 1;
+                        let failure_count = *next.failure_count();
+
+                        let _ = NeoDebug::log(format!(
+                            "Task: {} failed {} times.",
+                            next.id(),
+                            failure_count
+                        ))
+                        .await;
 
                         if *next.failure_count() < 100 {
                             diffuser.queue.push_front(next);
