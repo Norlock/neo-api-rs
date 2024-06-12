@@ -482,40 +482,41 @@ impl ExecSearch {
         if search_query_len == 0 {
             let max_len = all_lines.len().min(300);
 
-            *CONTAINER.filtered_lines.write().await = (0..max_len)
-                .map(|i| FilteredLine {
-                    score: 0,
+            let mut sorted_lines = vec![];
+
+            for i in 0..max_len {
+                sorted_lines.push(FilteredLine {
                     line_idx: i,
+                    score: 0,
                 })
-                .collect();
+            }
+
+            *CONTAINER.filtered_lines.write().await = sorted_lines;
         } else {
-            let mut sorted_lines: Vec<_> = all_lines
-                .iter()
-                .enumerate()
-                .filter(|(_, line)| {
-                    let mut current_idx = 0;
+            let mut sorted_lines = vec![];
 
-                    for line_char in line.text.chars() {
-                        let qry_char = self.search_query.chars().nth(current_idx).unwrap();
+            for (i, line) in all_lines.iter().enumerate() {
+                let mut current_search_idx = 0;
 
-                        if line_char == qry_char
-                            || line_char.to_lowercase().to_string() == qry_char.to_string()
-                        {
-                            current_idx += 1;
+                for line_char in line.text.chars() {
+                    let qry_char = self.search_query.chars().nth(current_search_idx).unwrap();
 
-                            if search_query_len <= current_idx {
-                                return true;
-                            }
-                        }
+                    if line_char == qry_char
+                        || line_char.to_lowercase().to_string() == qry_char.to_string()
+                    {
+                        current_search_idx += 1;
+
+                        if search_query_len <= current_search_idx {
+                            sorted_lines.push(FilteredLine {
+                                score: levenshtein(&self.search_query, &line.text),
+                                line_idx: i,
+                            });
+
+                            break;
+                        } 
                     }
-
-                    false
-                })
-                .map(|(line_idx, line)| FilteredLine {
-                    score: levenshtein(&self.search_query, &line.text),
-                    line_idx,
-                })
-                .collect();
+                }
+            }
 
             sorted_lines.sort_by_key(|item| item.score);
 
@@ -535,6 +536,10 @@ impl ExecSearch {
             .collect();
 
         new_lines.sort_by_key(|kv| kv.0);
+
+        //if 10_000 < new_lines.len() {
+            //new_lines = new_lines[..10_000].to_vec();
+        //}
 
         let mut all_lines = CONTAINER.all_lines.write().await;
         *all_lines = new_lines.into_iter().map(|line| line.1).collect();
@@ -626,8 +631,12 @@ async fn preview_file(path: &Path) -> io::Result<()> {
 
             let mut lines = vec![];
 
-            for line in file.lines() {
+            for (i, line) in file.lines().enumerate() {
                 lines.push(line.to_string());
+
+                if 100 <= i {
+                    break;
+                }
             }
 
             *CONTAINER.preview.write().await = lines;
@@ -694,16 +703,16 @@ impl ExecuteTask for ExecPreview {
             let now = Instant::now();
 
             let path: PathBuf = {
-                let lines_out = CONTAINER.filtered_lines.read().await;
-                let all_lines = CONTAINER.all_lines.read().await;
+                let filtered_lines = CONTAINER.filtered_lines.read().await;
 
-                if lines_out.is_empty() {
+                if filtered_lines.is_empty() {
                     CONTAINER.preview.write().await.clear();
                     CONTAINER.search_state.write().await.update = true;
                     return None;
                 }
 
-                let idx = lines_out[self.selected_idx].line_idx;
+                let all_lines = CONTAINER.all_lines.read().await;
+                let idx = filtered_lines[self.selected_idx].line_idx;
                 self.cwd.join(all_lines[idx].text.as_str())
             };
 
@@ -712,7 +721,7 @@ impl ExecuteTask for ExecPreview {
             {
                 CONTAINER.search_state.write().await.update = true;
                 let elapsed_ms = now.elapsed().as_millis();
-                let _ = NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
+                //let _ = NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
                 None
             } else {
                 Some(self as Box<dyn ExecuteTask>)

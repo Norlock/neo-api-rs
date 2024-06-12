@@ -35,14 +35,7 @@ impl Diffuse {
     pub async fn queue<const N: usize>(task_list: [Box<dyn ExecuteTask>; N]) {
         let mut diffuser = DIFFUSER.lock().await;
         
-        for mut new_task in task_list.into_iter() {
-            for task in diffuser.queue.iter_mut() {
-                if task.id() == new_task.id() {
-                    std::mem::swap(task, &mut new_task);
-                    continue;
-                }
-            }
-
+        for new_task in task_list.into_iter() {
             diffuser.queue.push_back(new_task);
         }
     }
