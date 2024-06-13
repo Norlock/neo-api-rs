@@ -7,14 +7,14 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{self};
 use tokio::process::Command;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::Instant;
 
 use crate::diffuser::{ChainResult, Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, FileTypeMatch, HLOpts, Mode, NeoApi,
-    NeoBuffer, NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, FileTypeMatch, HLOpts, Mode,
+    NeoApi, NeoBuffer, NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative,
     PopupSize, PopupStyle, TextType, RTM,
 };
 
@@ -22,11 +22,11 @@ const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
 
-#[derive(Clone, Debug)]
-struct LineOut {
-    text: String,
-    icon: String,
-    hl_group: String,
+#[derive(Clone, Debug, sqlx::FromRow)]
+pub struct LineOut {
+    pub text: String,
+    pub icon: String,
+    pub hl_group: String,
 }
 
 #[derive(Clone, Copy)]
@@ -41,6 +41,7 @@ struct FuzzyContainer {
     fuzzy: RwLock<NeoFuzzy>,
     search_state: RwLock<SearchState>,
     preview: RwLock<Vec<String>>,
+    db: Mutex<Database>,
 }
 
 pub trait FuzzyConfig: Send + Sync {
@@ -86,6 +87,15 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
         file_path: "".to_string(),
     }),
     preview: RwLock::new(Vec::new()),
+    db: Mutex::new({
+        let result = Database::init();
+        if let Err(err) = result {
+            let _ = RTM.block_on(NeoDebug::log(err.to_string()));
+            panic!("");
+        };
+
+        result.unwrap()
+    }),
 });
 
 #[derive(Debug)]
@@ -513,7 +523,7 @@ impl ExecSearch {
                             });
 
                             break;
-                        } 
+                        }
                     }
                 }
             }
@@ -538,11 +548,22 @@ impl ExecSearch {
         new_lines.sort_by_key(|kv| kv.0);
 
         //if 10_000 < new_lines.len() {
-            //new_lines = new_lines[..10_000].to_vec();
+        //new_lines = new_lines[..10_000].to_vec();
         //}
 
         let mut all_lines = CONTAINER.all_lines.write().await;
-        *all_lines = new_lines.into_iter().map(|line| line.1).collect();
+        let new_lines: Vec<_> = new_lines.into_iter().map(|line| line.1).collect();
+
+        let mut db = CONTAINER.db.lock().await;
+        let _ = db.insert_all(&new_lines).await;
+        if let Err(test) = db.select(0..100).await {
+            let _ = NeoDebug::log(test).await;
+        }
+        if let Ok(test) = db.select(0..100).await {
+            let _ = NeoDebug::log(format!("{test:?}")).await;
+        }
+
+        *all_lines = new_lines;
     }
 }
 

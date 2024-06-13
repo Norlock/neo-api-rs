@@ -13,3 +13,5 @@ once_cell = "1"
 macros = { path = "crates/macros"}
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "fs", "sync", "process", "macros", "io-std", "io-util", "time"] }
 async-trait = "0.1"
+sqlx = { version = "0.7", features = [ "runtime-tokio", "sqlite" ] }
+futures = "0.3"
