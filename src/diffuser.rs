@@ -34,7 +34,7 @@ pub trait ExecuteTask: Send {
 impl Diffuse {
     pub async fn queue<const N: usize>(task_list: [Box<dyn ExecuteTask>; N]) {
         let mut diffuser = DIFFUSER.lock().await;
-        
+
         for new_task in task_list.into_iter() {
             diffuser.queue.push_back(new_task);
         }
@@ -59,7 +59,7 @@ impl Diffuse {
                         *next.failure_count() += 1;
                         let failure_count = *next.failure_count();
 
-                        let _ = NeoDebug::log(format!(
+                        NeoDebug::log(format!(
                             "Task: {} failed {} times.",
                             next.id(),
                             failure_count

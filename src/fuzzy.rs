@@ -27,6 +27,7 @@ pub struct LineOut {
     pub text: String,
     pub icon: String,
     pub hl_group: String,
+    pub id: u32,
 }
 
 #[derive(Clone, Copy)]
@@ -90,7 +91,7 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     db: Mutex::new({
         let result = Database::init();
         if let Err(err) = result {
-            let _ = RTM.block_on(NeoDebug::log(err.to_string()));
+            RTM.block_on(NeoDebug::log(err.to_string()));
             panic!("");
         };
 
@@ -413,9 +414,7 @@ impl NeoFuzzy {
                     )?;
                 }
 
-                if item_name.starts_with("> Empty directory")
-                    || item_name.starts_with("> File is a binary")
-                {
+                if item_name.starts_with("> Empty directory") {
                     self.pop_preview.buf.add_highlight(
                         lua,
                         self.ns_id as i32,
@@ -555,12 +554,13 @@ impl ExecSearch {
         let new_lines: Vec<_> = new_lines.into_iter().map(|line| line.1).collect();
 
         let mut db = CONTAINER.db.lock().await;
+
         let _ = db.insert_all(&new_lines).await;
         if let Err(test) = db.select(0..100).await {
-            let _ = NeoDebug::log(test).await;
+            NeoDebug::log(test).await;
         }
         if let Ok(test) = db.select(0..100).await {
-            let _ = NeoDebug::log(format!("{test:?}")).await;
+            NeoDebug::log(format!("{test:?}")).await;
         }
 
         *all_lines = new_lines;
@@ -589,12 +589,13 @@ impl ExecuteTask for ExecSearch {
                     let out = String::from_utf8_lossy(&out.stdout);
                     let mut new_lines = Vec::new();
 
-                    for line in out.lines() {
+                    for (i, line) in out.lines().enumerate() {
                         if self.search_type == FuzzySearch::Directory {
                             new_lines.push(LineOut {
                                 text: line.to_string(),
                                 icon: "".to_string(),
                                 hl_group: "Directory".to_string(),
+                                id: i as u32,
                             });
                         } else {
                             let path = PathBuf::from(line);
@@ -604,17 +605,18 @@ impl ExecuteTask for ExecSearch {
                                 text: line.to_string(),
                                 icon: dev_icon.icon.to_string(),
                                 hl_group: dev_icon.highlight.to_string(),
+                                id: i as u32,
                             });
                         }
                     }
 
-                    let _ = NeoDebug::log(format!("lines: {}", new_lines.len())).await;
+                    NeoDebug::log(format!("lines: {}", new_lines.len())).await;
                     Self::copy_new_to_all(new_lines).await;
 
                     self.sort_lines().await;
 
                     let elapsed_ms = now.elapsed().as_millis();
-                    let _ = NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
+                    NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
                 } else {
                     return Some(self as Box<dyn ExecuteTask>);
                 }
@@ -622,7 +624,7 @@ impl ExecuteTask for ExecSearch {
                 self.sort_lines().await;
 
                 let elapsed_ms = now.elapsed().as_millis();
-                let _ = NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
+                NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
             }
 
             None
@@ -742,7 +744,7 @@ impl ExecuteTask for ExecPreview {
             {
                 CONTAINER.search_state.write().await.update = true;
                 let elapsed_ms = now.elapsed().as_millis();
-                //let _ = NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
+                NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
                 None
             } else {
                 Some(self as Box<dyn ExecuteTask>)
@@ -761,7 +763,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let search_state = CONTAINER.search_state.try_write();
         let filtered_lines = CONTAINER.filtered_lines.try_read();
         let all_lines = CONTAINER.all_lines.try_read();
-        let preview = CONTAINER.preview.try_read();
+        let preview = CONTAINER.preview.try_write();
 
         if fuzzy.is_err()
             || search_state.is_err()
@@ -777,7 +779,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let mut search_state = search_state.unwrap();
         let fuzzy = fuzzy.unwrap();
         let all_lines = all_lines.unwrap();
-        let preview = preview.unwrap();
+        let preview: Vec<_> = preview.unwrap().drain(..).collect();
 
         if search_state.update {
             search_state.update = false;

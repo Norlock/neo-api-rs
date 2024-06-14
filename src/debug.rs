@@ -15,29 +15,26 @@ use crate::{
 pub struct NeoDebug;
 
 impl NeoDebug {
-    pub async fn log<AsStr: Display>(message: AsStr) -> io::Result<()> {
+    pub async fn log<AsStr: Display>(message: AsStr) {
         let mut dir = env::temp_dir();
-        dir.push("neo-api-log");
+        dir.push("neo-api-rs");
 
-        fs::create_dir_all(&dir).await?;
+        let _ = fs::create_dir_all(&dir).await;
 
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .append(true)
             .open(dir.join("debug.log"))
-            .await?;
+            .await.unwrap();
 
         let mut bytes = vec![];
-        writeln!(bytes, "{}", message)?;
-
-        file.write_all(&bytes).await?;
-
-        Ok(())
+        let _ = writeln!(bytes, "{}", message);
+        let _ = file.write_all(&bytes).await;
     }
 
     pub async fn clear_logs() -> io::Result<()> {
-        let log_file = env::temp_dir().join("neo-api-log/debug.log");
+        let log_file = env::temp_dir().join("neo-api-rs/debug.log");
 
         fs::write(log_file, b"").await
     }
@@ -48,7 +45,7 @@ impl NeoDebug {
         // TODO readonly
 
         let mut log_file = env::temp_dir();
-        log_file.push("neo-api-log/debug.log");
+        log_file.push("neo-api-rs/debug.log");
         let log_file = fs::read_to_string(log_file).await?;
 
         let mut lines = vec![];
