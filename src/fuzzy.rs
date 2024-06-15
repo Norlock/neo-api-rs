@@ -38,7 +38,7 @@ struct FilteredLine {
 
 struct FuzzyContainer {
     all_lines: RwLock<Vec<LineOut>>,
-    filtered_lines: RwLock<Vec<FilteredLine>>,
+    filtered_lines: RwLock<Vec<LineOut>>,
     fuzzy: RwLock<NeoFuzzy>,
     search_state: RwLock<SearchState>,
     preview: RwLock<Vec<String>>,
@@ -461,11 +461,9 @@ impl NeoFuzzy {
 pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.filtered_lines.read().await;
-    let all_lines = CONTAINER.all_lines.read().await;
 
     // TODO remove selected_idx just use cursor pos
-    let line_idx = filtered_lines[fuzzy.selected_idx].line_idx;
-    let selected = fuzzy.cwd.join(all_lines[line_idx].text.as_str());
+    let selected = fuzzy.cwd.join(&filtered_lines[fuzzy.selected_idx].text);
 
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.config.on_enter(lua, open_in, selected);
@@ -484,61 +482,61 @@ struct ExecSearch {
 
 impl ExecSearch {
     async fn sort_lines(self: Box<Self>) {
-        let search_query_len = self.search_query.chars().count();
+        //let search_query_len = self.search_query.chars().count();
 
-        let all_lines = CONTAINER.all_lines.read().await;
+        //let all_lines = CONTAINER.all_lines.read().await;
 
-        if search_query_len == 0 {
-            let max_len = all_lines.len().min(300);
+        //if search_query_len == 0 {
+            //let max_len = all_lines.len().min(300);
 
-            let mut sorted_lines = vec![];
+            //let mut sorted_lines = vec![];
 
-            for i in 0..max_len {
-                sorted_lines.push(FilteredLine {
-                    line_idx: i,
-                    score: 0,
-                })
-            }
+            //for i in 0..max_len {
+                //sorted_lines.push(FilteredLine {
+                    //line_idx: i,
+                    //score: 0,
+                //})
+            //}
 
-            *CONTAINER.filtered_lines.write().await = sorted_lines;
-        } else {
-            let mut sorted_lines = vec![];
+            //*CONTAINER.filtered_lines.write().await = sorted_lines;
+        //} else {
+            //let mut sorted_lines = vec![];
 
-            for (i, line) in all_lines.iter().enumerate() {
-                let mut current_search_idx = 0;
+            //for (i, line) in all_lines.iter().enumerate() {
+                //let mut current_search_idx = 0;
 
-                for line_char in line.text.chars() {
-                    let qry_char = self.search_query.chars().nth(current_search_idx).unwrap();
+                //for line_char in line.text.chars() {
+                    //let qry_char = self.search_query.chars().nth(current_search_idx).unwrap();
 
-                    if line_char == qry_char
-                        || line_char.to_lowercase().to_string() == qry_char.to_string()
-                    {
-                        current_search_idx += 1;
+                    //if line_char == qry_char
+                        //|| line_char.to_lowercase().to_string() == qry_char.to_string()
+                    //{
+                        //current_search_idx += 1;
 
-                        if search_query_len <= current_search_idx {
-                            sorted_lines.push(FilteredLine {
-                                score: levenshtein(&self.search_query, &line.text),
-                                line_idx: i,
-                            });
+                        //if search_query_len <= current_search_idx {
+                            //sorted_lines.push(FilteredLine {
+                                //score: levenshtein(&self.search_query, &line.text),
+                                //line_idx: i,
+                            //});
 
-                            break;
-                        }
-                    }
-                }
-            }
+                            //break;
+                        //}
+                    //}
+                //}
+            //}
 
-            sorted_lines.sort_by_key(|item| item.score);
+            //sorted_lines.sort_by_key(|item| item.score);
 
-            *CONTAINER.filtered_lines.write().await = sorted_lines;
-        };
+            //*CONTAINER.filtered_lines.write().await = sorted_lines;
+        //};
 
-        let mut search_state = CONTAINER.search_state.write().await;
-        search_state.last_search = self.search_query;
+        //let mut search_state = CONTAINER.search_state.write().await;
+        //search_state.last_search = self.search_query;
     }
 }
 
 impl ExecSearch {
-    async fn copy_new_to_all(new_lines: Vec<LineOut>) {
+    async fn insert_into_db(new_lines: Vec<LineOut>) {
         let mut new_lines: Vec<_> = new_lines
             .into_iter()
             .map(|line| (levenshtein("", &line.text), line))
@@ -550,13 +548,15 @@ impl ExecSearch {
         //new_lines = new_lines[..10_000].to_vec();
         //}
 
-        let mut all_lines = CONTAINER.all_lines.write().await;
         let new_lines: Vec<_> = new_lines.into_iter().map(|line| line.1).collect();
 
         let mut db = CONTAINER.db.lock().await;
-
         let _ = db.insert_all(&new_lines).await;
-        *all_lines = new_lines;
+
+        if let Ok(selection) = db.select("%").await {
+            //NeoDebug::log(format!("{selection:?}")).await;
+            *CONTAINER.filtered_lines.write().await = selection;
+        }
     }
 }
 
@@ -568,7 +568,7 @@ impl ExecuteTask for ExecSearch {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let now = Instant::now();
-            let first_search = CONTAINER.all_lines.read().await.is_empty();
+            let first_search = CONTAINER.filtered_lines.read().await.is_empty();
 
             if first_search {
                 let out = Command::new(&self.cmd)
@@ -604,9 +604,11 @@ impl ExecuteTask for ExecSearch {
                     }
 
                     NeoDebug::log(format!("lines: {}", new_lines.len())).await;
-                    Self::copy_new_to_all(new_lines).await;
+                    Self::insert_into_db(new_lines).await;
 
-                    self.sort_lines().await;
+                    let mut search_state = CONTAINER.search_state.write().await;
+                    search_state.last_search = "".to_string();
+                    search_state.update = true;
 
                     let elapsed_ms = now.elapsed().as_millis();
                     NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
@@ -616,10 +618,6 @@ impl ExecuteTask for ExecSearch {
             } else {
                 let mut db = CONTAINER.db.lock().await;
 
-                //if let Err(test) = db.select(0..100, "").await {
-                //NeoDebug::log(test).await;
-                //}
-
                 let mut query = '%'.to_string();
 
                 for char in self.search_query.chars() {
@@ -628,10 +626,13 @@ impl ExecuteTask for ExecSearch {
                 }
 
                 if let Ok(selection) = db.select(&query).await {
-                    NeoDebug::log(format!("{selection:?}")).await;
+                    //NeoDebug::log(format!("{selection:?}")).await;
+                    *CONTAINER.filtered_lines.write().await = selection;
                 }
 
-                self.sort_lines().await;
+                let mut search_state = CONTAINER.search_state.write().await;
+                search_state.last_search = self.search_query;
+                search_state.update = true;
 
                 let elapsed_ms = now.elapsed().as_millis();
                 NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
@@ -744,9 +745,7 @@ impl ExecuteTask for ExecPreview {
                     return None;
                 }
 
-                let all_lines = CONTAINER.all_lines.read().await;
-                let idx = filtered_lines[self.selected_idx].line_idx;
-                self.cwd.join(all_lines[idx].text.as_str())
+                self.cwd.join(&filtered_lines[self.selected_idx].text)
             };
 
             if path.is_dir() && preview_directory(&path).await.is_ok()
@@ -772,23 +771,20 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let fuzzy = CONTAINER.fuzzy.try_read();
         let search_state = CONTAINER.search_state.try_write();
         let filtered_lines = CONTAINER.filtered_lines.try_read();
-        let all_lines = CONTAINER.all_lines.try_read();
         let preview = CONTAINER.preview.try_write();
 
         if fuzzy.is_err()
             || search_state.is_err()
             || filtered_lines.is_err()
-            || all_lines.is_err()
             || preview.is_err()
         {
             RTM.spawn(NeoDebug::log("denied"));
             return Ok(());
         }
 
-        let new_lines = filtered_lines.unwrap().clone();
+        let sorted_lines = filtered_lines.unwrap().clone();
         let mut search_state = search_state.unwrap();
         let fuzzy = fuzzy.unwrap();
-        let all_lines = all_lines.unwrap();
         let preview: Vec<_> = preview.unwrap().drain(..).collect();
 
         if search_state.update {
@@ -800,8 +796,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
             let mut icon_lines = Vec::new();
             let mut hl_groups = Vec::new();
 
-            for item in new_lines.iter() {
-                let line = &all_lines[item.line_idx];
+            for line in sorted_lines.iter() {
                 icon_lines.push(format!(" {} {}", line.icon, line.text));
                 hl_groups.push(line.hl_group.as_str());
             }
