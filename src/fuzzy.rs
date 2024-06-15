@@ -556,13 +556,6 @@ impl ExecSearch {
         let mut db = CONTAINER.db.lock().await;
 
         let _ = db.insert_all(&new_lines).await;
-        if let Err(test) = db.select(0..100).await {
-            NeoDebug::log(test).await;
-        }
-        if let Ok(test) = db.select(0..100).await {
-            NeoDebug::log(format!("{test:?}")).await;
-        }
-
         *all_lines = new_lines;
     }
 }
@@ -621,6 +614,23 @@ impl ExecuteTask for ExecSearch {
                     return Some(self as Box<dyn ExecuteTask>);
                 }
             } else {
+                let mut db = CONTAINER.db.lock().await;
+
+                //if let Err(test) = db.select(0..100, "").await {
+                //NeoDebug::log(test).await;
+                //}
+
+                let mut query = '%'.to_string();
+
+                for char in self.search_query.chars() {
+                    query.push(char);
+                    query.push('%');
+                }
+
+                if let Ok(selection) = db.select(&query).await {
+                    NeoDebug::log(format!("{selection:?}")).await;
+                }
+
                 self.sort_lines().await;
 
                 let elapsed_ms = now.elapsed().as_millis();
