@@ -44,6 +44,7 @@ impl Diffuse {
         let mut diffuser = DIFFUSER.lock().await;
         diffuser.run = true;
 
+        let _ = RTM.enter();
         RTM.spawn(async {
             let mut interval = time::interval(Duration::from_millis(1));
 
@@ -51,7 +52,7 @@ impl Diffuse {
                 let mut diffuser = DIFFUSER.lock().await;
 
                 if !diffuser.run {
-                    return;
+                    break;
                 }
 
                 if let Some(current) = diffuser.queue.pop_front() {

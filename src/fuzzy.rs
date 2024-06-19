@@ -485,7 +485,6 @@ impl ExecSearch {
         let _ = db.insert_all(&new_lines).await;
 
         if let Ok(selection) = db.select("%", instant).await {
-            //NeoDebug::log(format!("{selection:?}")).await;
             *CONTAINER.sorted_lines.write().await = selection;
         }
     }
@@ -556,12 +555,8 @@ impl ExecuteTask for ExecSearch {
                 }
 
                 if let Ok(selection) = db.select(&query, &now).await {
-                    //NeoDebug::log(format!("{selection:?}")).await;
                     *CONTAINER.sorted_lines.write().await = selection;
                 }
-
-                //let mut search_state = CONTAINER.search_state.write().await;
-                //search_state.last_search = self.search_query;
 
                 let elapsed_ms = now.elapsed().as_millis();
                 NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
@@ -825,15 +820,15 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
 async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
 
-    fuzzy.pop_out.win.close(lua, false)?;
-    fuzzy.pop_cmd.win.close(lua, false)?;
-    fuzzy.pop_preview.win.close(lua, false)?;
-
     Diffuse::stop().await;
 
     NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
     NeoApi::stop_interval(lua, "fuzzy")?;
-    NeoApi::set_insert_mode(lua, false)
+    NeoApi::set_insert_mode(lua, false)?;
+
+    fuzzy.pop_out.win.close(lua, false)?;
+    fuzzy.pop_cmd.win.close(lua, false)?;
+    fuzzy.pop_preview.win.close(lua, false)
 }
 
 async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {

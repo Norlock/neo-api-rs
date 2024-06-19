@@ -1,10 +1,8 @@
-use std::env;
-
-use futures::TryStreamExt;
 use sqlx::sqlite::SqliteConnectOptions;
+use std::env;
 use tokio::{fs, time::Instant};
 
-use crate::{levenshtein, LineOut, NeoDebug, RTM};
+use crate::{LineOut, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
@@ -18,9 +16,9 @@ impl Database {
             let dir = env::temp_dir().join("neo-api-rs");
             fs::create_dir_all(&dir).await?;
 
-            let opts = SqliteConnectOptions::new()
-                .create_if_missing(true)
-                .filename(dir.join("fuzzy.db"));
+            let file = dir.join("fuzzy.db");
+            fs::write(&file, []).await?;
+            let opts = SqliteConnectOptions::new().filename(file);
 
             let pool = sqlx::SqlitePool::connect_with(opts).await?;
 
@@ -35,70 +33,70 @@ impl Database {
             .execute(&pool)
             .await?;
 
+            sqlx::query(
+                "CREATE VIRTUAL TABLE IF NOT EXISTS all_lines_fts USING fts5 (
+                    id, text
+                )",
+            )
+            .execute(&pool)
+            .await?;
+
             Ok(Self(pool))
         })
     }
 
-    /// TODO stream instead
     pub async fn select(
         &self,
         search_query: &str,
         instant: &Instant,
     ) -> sqlx::Result<Vec<LineOut>> {
-        if search_query == "%" {
-            return sqlx::query_as::<_, LineOut>("SELECT * FROM all_lines LIMIT 300")
-                .fetch_all(&self.0)
-                .await;
-        }
-
         let bef_elapsed_ms = instant.elapsed().as_millis();
 
-        let mut stream = sqlx::query_as::<_, LineOut>("SELECT * FROM all_lines WHERE text like ?")
-            .bind(search_query)
-            .fetch(&self.0);
-
-        let mut out = vec![];
-
-        while let Ok(Some(line)) = stream.try_next().await {
-            let score = levenshtein(search_query, &line.text) as u32;
-            out.push((score, line));
-        }
+        let out = sqlx::query_as::<_, LineOut>(
+            "SELECT 
+                * 
+            FROM 
+                all_lines a
+                INNER JOIN all_lines_fts f ON a.id = f.id
+            WHERE 
+                a.text LIKE ? ORDER BY bm25(all_lines_fts, 0, 1) LIMIT 300",
+        )
+        .bind(search_query)
+        .fetch_all(&self.0)
+        .await?;
 
         let aft_elapsed_ms = instant.elapsed().as_millis();
         NeoDebug::log(format!("select time: {}", aft_elapsed_ms - bef_elapsed_ms)).await;
 
-        drop(stream);
-
-        let bef_elapsed_ms = instant.elapsed().as_millis();
-
-        out.sort_by_key(|line| line.0);
-
-        let aft_elapsed_ms = instant.elapsed().as_millis();
-        NeoDebug::log(format!("sort time: {}", aft_elapsed_ms - bef_elapsed_ms)).await;
-
-        if 300 < out.len() {
-            Ok(out.drain(..300).map(|line| line.1).collect())
-        } else {
-            Ok(out.into_iter().map(|line| line.1).collect())
-        }
+        Ok(out)
     }
 
-    /// TODO insert stream wise one element at a time.
     pub async fn insert_all(&mut self, lines: &[LineOut]) -> sqlx::Result<()> {
+        sqlx::query("DELETE FROM all_lines_fts")
+            .execute(&self.0)
+            .await?;
+
         sqlx::query("DELETE FROM all_lines")
             .execute(&self.0)
             .await?;
 
         let mut tx = self.0.begin().await?;
 
-        for line in lines {
+        for (i, line) in lines.iter().enumerate() {
             let _stmt =
-                sqlx::query("INSERT into all_lines (text, icon, hl_group) VALUES (?1, ?2, ?3)")
+                sqlx::query("INSERT into all_lines (id, text, icon, hl_group) VALUES (?, ?, ?, ?)")
+                    .bind(i as u32)
                     .bind(&line.text)
                     .bind(&line.icon)
                     .bind(&line.hl_group)
                     .execute(&mut *tx)
                     .await?;
+
+            sqlx::query("INSERT into all_lines_fts (id, text) VALUES (?, ?)")
+                .bind(i as u32)
+                .bind(&line.text)
+                .execute(&mut *tx)
+                .await?;
         }
 
         tx.commit().await
