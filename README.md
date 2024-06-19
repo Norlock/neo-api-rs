@@ -51,3 +51,10 @@ local plugin_name = require('your-plugin-name')
 
 vim.keymap.set('n', '<leader>p', plugin_name.some_function, {})
 ```
+
+### Roadmap
+#### Fuzzy
+* Open preview at line buffer (maybe persist data between sessions)
+* Implement grep search
+
+

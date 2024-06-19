@@ -371,13 +371,12 @@ impl NeoFuzzy {
         ])
         .await;
 
-        Diffuse::start().await;
-
         *CONTAINER.fuzzy.write().await = fuzzy;
         CONTAINER.sorted_lines.write().await.clear();
 
-        let interval = lua.create_function(interval_write_out)?;
+        Diffuse::start().await;
 
+        let interval = lua.create_function(interval_write_out)?;
         NeoApi::start_interval(lua, "fuzzy", 32, interval)?;
 
         Ok(())
@@ -547,7 +546,7 @@ impl ExecuteTask for ExecSearch {
                     return Some(self as Box<dyn ExecuteTask>);
                 }
             } else {
-                let mut db = CONTAINER.db.lock().await;
+                let db = CONTAINER.db.lock().await;
 
                 let mut query = '%'.to_string();
 
@@ -595,12 +594,8 @@ async fn preview_file(path: &Path) -> io::Result<()> {
 
             let mut lines = vec![];
 
-            for (i, line) in file.lines().enumerate() {
+            for line in file.lines() {
                 lines.push(line.to_string());
-
-                if 100 <= i {
-                    break;
-                }
             }
 
             *CONTAINER.preview.write().await = lines;
@@ -703,11 +698,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let filtered_lines = CONTAINER.sorted_lines.try_read();
         let preview = CONTAINER.preview.try_write();
 
-        if fuzzy.is_err()
-            || search_state.is_err()
-            || filtered_lines.is_err()
-            || preview.is_err()
-        {
+        if fuzzy.is_err() || search_state.is_err() || filtered_lines.is_err() || preview.is_err() {
             RTM.spawn(NeoDebug::log("denied"));
             return Ok(());
         }
@@ -715,7 +706,9 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         let sorted_lines = filtered_lines.unwrap().clone();
         let mut search_state = search_state.unwrap();
         let fuzzy = fuzzy.unwrap();
-        let preview: Vec<_> = preview.unwrap().drain(..).collect();
+        let mut preview = preview.unwrap();
+
+        let preview = std::mem::take(&mut *preview);
 
         if search_state.update {
             search_state.update = false;
