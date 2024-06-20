@@ -1,5 +1,6 @@
 use mlua::prelude::LuaResult;
 use mlua::Lua;
+use std::time::Duration;
 use std::{env, fmt::Display};
 use std::io::Write;
 use tokio::{
@@ -31,6 +32,11 @@ impl NeoDebug {
         let mut bytes = vec![];
         let _ = writeln!(bytes, "{}", message);
         let _ = file.write_all(&bytes).await;
+    }
+
+    pub async fn log_duration(before: Duration, after: Duration, tag: &str) {
+        let message = format!("{tag}: {}ms", after.as_millis() - before.as_millis()); 
+        Self::log(message).await
     }
 
     pub async fn clear_logs() -> io::Result<()> {

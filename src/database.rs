@@ -6,10 +6,6 @@ use crate::{LineOut, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
-pub trait DatabaseQuery {
-    fn insert(&self) -> String;
-}
-
 impl Database {
     pub fn init() -> sqlx::Result<Self> {
         RTM.block_on(async {
@@ -81,7 +77,7 @@ impl Database {
         Ok(out)
     }
 
-    pub async fn insert_all(&mut self, lines: &[LineOut]) -> sqlx::Result<()> {
+    pub async fn clean_up_tables(&self) -> sqlx::Result<()> {
         sqlx::query("DELETE FROM all_lines_fts")
             .execute(&self.0)
             .await?;
@@ -90,22 +86,44 @@ impl Database {
             .execute(&self.0)
             .await?;
 
+        Ok(())
+    }
+
+    pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {
         let mut tx = self.0.begin().await?;
+        let mut idx = 0;
 
-        for (i, line) in lines.iter().enumerate() {
-            sqlx::query("INSERT into all_lines (id, text, icon, hl_group) VALUES (?, ?, ?, ?)")
-                .bind(i as u32)
-                .bind(&line.text)
-                .bind(&line.icon)
-                .bind(&line.hl_group)
-                .execute(&mut *tx)
-                .await?;
+        for chunks in lines.chunks(1000) {
+            let mut qry_str = "INSERT INTO all_lines (id, text, icon, hl_group) VALUES".to_string();
+            let mut qry_fts_str = "INSERT INTO all_lines_fts (id, text) VALUES".to_string();
 
-            sqlx::query("INSERT into all_lines_fts (id, text) VALUES (?, ?)")
-                .bind(i as u32)
-                .bind(&line.text)
-                .execute(&mut *tx)
-                .await?;
+            for i in 0..chunks.len() {
+                if i == 0 {
+                    qry_str.push_str("(?, ?, ?, ?)");
+                    qry_fts_str.push_str("(?, ?)");
+                } else {
+                    qry_str.push_str(", (?, ?, ?, ?)");
+                    qry_fts_str.push_str(", (?, ?)");
+                }
+            }
+
+            let mut query = sqlx::query(&qry_str);
+            let mut query_fts = sqlx::query(&qry_fts_str);
+
+            for line in chunks {
+                query = query
+                    .bind(idx)
+                    .bind(&line.text)
+                    .bind(&line.icon)
+                    .bind(&line.hl_group);
+
+                query_fts = query_fts.bind(idx).bind(&line.text);
+
+                idx += 1;
+            }
+
+            query.execute(&mut *tx).await?;
+            query_fts.execute(&mut *tx).await?;
         }
 
         tx.commit().await

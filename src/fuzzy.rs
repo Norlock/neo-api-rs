@@ -463,7 +463,6 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.sorted_lines.read().await;
 
-    // TODO remove selected_idx just use cursor pos
     let selected = fuzzy.cwd.join(&filtered_lines[fuzzy.selected_idx].text);
 
     fuzzy.pop_cmd.win.close(lua, false)?;
@@ -492,8 +491,15 @@ impl ExecSearch {
 
         let new_lines: Vec<_> = new_lines.into_iter().map(|line| line.1).collect();
 
-        let mut db = CONTAINER.db.lock().await;
-        let _ = db.insert_all(&new_lines).await;
+        let before = instant.elapsed();
+
+        let db = CONTAINER.db.lock().await;
+        if let Err(err) = db.insert_all(&new_lines).await {
+            NeoDebug::log(err).await;
+        }
+
+        let after = instant.elapsed();
+        NeoDebug::log_duration(before, after, "insert collection").await;
 
         if let Ok(selection) = db.select("", instant).await {
             *CONTAINER.sorted_lines.write().await = selection;
@@ -715,8 +721,8 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         }
 
         let sorted_lines = filtered_lines.unwrap().clone();
-        let mut search_state = search_state.unwrap();
         let fuzzy = fuzzy.unwrap();
+        let mut search_state = search_state.unwrap();
         let mut preview = preview.unwrap();
 
         let preview = std::mem::take(&mut *preview);
@@ -841,6 +847,13 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
     NeoApi::stop_interval(lua, "fuzzy")?;
     NeoApi::set_insert_mode(lua, false)?;
+
+    let db = CONTAINER.db.lock().await;
+    RTM.spawn(async move {
+        if let Err(err) = db.clean_up_tables().await {
+            NeoDebug::log(err).await;
+        }
+    });
 
     fuzzy.pop_out.win.close(lua, false)?;
     fuzzy.pop_cmd.win.close(lua, false)?;
