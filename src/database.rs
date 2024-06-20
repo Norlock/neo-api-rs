@@ -16,9 +16,12 @@ impl Database {
             let dir = env::temp_dir().join("neo-api-rs");
             fs::create_dir_all(&dir).await?;
 
+            // TODO multiple db files pre cached
             let file = dir.join("fuzzy.db");
             fs::write(&file, []).await?;
-            let opts = SqliteConnectOptions::new().filename(file);
+            let opts = SqliteConnectOptions::new()
+                .filename(file)
+                .pragma("journal_mode", "MEMORY");
 
             let pool = sqlx::SqlitePool::connect_with(opts).await?;
 
@@ -52,18 +55,25 @@ impl Database {
     ) -> sqlx::Result<Vec<LineOut>> {
         let bef_elapsed_ms = instant.elapsed().as_millis();
 
-        let out = sqlx::query_as::<_, LineOut>(
-            "SELECT 
-                * 
-            FROM 
-                all_lines a
-                INNER JOIN all_lines_fts f ON a.id = f.id
-            WHERE 
-                a.text LIKE ? ORDER BY bm25(all_lines_fts, 0, 1) LIMIT 300",
-        )
-        .bind(search_query)
-        .fetch_all(&self.0)
-        .await?;
+        let out = if search_query == "" {
+            sqlx::query_as::<_, LineOut>("SELECT * FROM all_lines LIMIT 300")
+                .bind(search_query)
+                .fetch_all(&self.0)
+                .await?
+        } else {
+            sqlx::query_as::<_, LineOut>(
+                "SELECT 
+                    * 
+                FROM 
+                    all_lines a
+                    INNER JOIN all_lines_fts f ON a.id = f.id
+                WHERE 
+                    a.text LIKE ? ORDER BY bm25(all_lines_fts, 0, 1) LIMIT 300",
+            )
+            .bind(search_query)
+            .fetch_all(&self.0)
+            .await?
+        };
 
         let aft_elapsed_ms = instant.elapsed().as_millis();
         NeoDebug::log(format!("select time: {}", aft_elapsed_ms - bef_elapsed_ms)).await;
@@ -83,14 +93,13 @@ impl Database {
         let mut tx = self.0.begin().await?;
 
         for (i, line) in lines.iter().enumerate() {
-            let _stmt =
-                sqlx::query("INSERT into all_lines (id, text, icon, hl_group) VALUES (?, ?, ?, ?)")
-                    .bind(i as u32)
-                    .bind(&line.text)
-                    .bind(&line.icon)
-                    .bind(&line.hl_group)
-                    .execute(&mut *tx)
-                    .await?;
+            sqlx::query("INSERT into all_lines (id, text, icon, hl_group) VALUES (?, ?, ?, ?)")
+                .bind(i as u32)
+                .bind(&line.text)
+                .bind(&line.icon)
+                .bind(&line.hl_group)
+                .execute(&mut *tx)
+                .await?;
 
             sqlx::query("INSERT into all_lines_fts (id, text) VALUES (?, ?)")
                 .bind(i as u32)

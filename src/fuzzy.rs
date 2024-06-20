@@ -54,7 +54,7 @@ impl FuzzyConfig for DummyConfig {
     fn on_enter(&self, _lua: &Lua, _open_in: OpenIn, _item: PathBuf) {}
 
     fn search_type(&self) -> FuzzySearch {
-        FuzzySearch::File
+        FuzzySearch::Files
     }
 }
 
@@ -122,8 +122,19 @@ impl Default for NeoFuzzy {
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum FuzzySearch {
-    File,
-    Directory,
+    Files,
+    Directories,
+    GitFiles,
+}
+
+impl FuzzySearch {
+    /// Both Files + GitFiles
+    pub fn is_file_based(&self) -> bool {
+        match self {
+            Self::Files | Self::GitFiles => true,
+            _ => false,
+        }
+    }
 }
 
 pub enum Move {
@@ -327,11 +338,11 @@ impl NeoFuzzy {
         let cwd = config.cwd(lua);
 
         let args = match config.search_type() {
-            FuzzySearch::Directory => {
-                vec!["--type".to_string(), "directory".to_string()]
-            }
-            FuzzySearch::File => {
+            FuzzySearch::Files | FuzzySearch::GitFiles => {
                 vec!["--type".to_string(), "file".to_string()]
+            }
+            FuzzySearch::Directories => {
+                vec!["--type".to_string(), "directory".to_string()]
             }
         };
 
@@ -387,7 +398,7 @@ impl NeoFuzzy {
     }
 
     fn add_preview_highlight(&self, lua: &Lua, preview: &[String]) -> LuaResult<()> {
-        if self.config.search_type() == FuzzySearch::Directory {
+        if self.config.search_type() == FuzzySearch::Directories {
             self.pop_preview
                 .buf
                 .clear_namespace(lua, self.ns_id as i32, 0, -1)?;
@@ -484,7 +495,7 @@ impl ExecSearch {
         let mut db = CONTAINER.db.lock().await;
         let _ = db.insert_all(&new_lines).await;
 
-        if let Ok(selection) = db.select("%", instant).await {
+        if let Ok(selection) = db.select("", instant).await {
             *CONTAINER.sorted_lines.write().await = selection;
         }
     }
@@ -513,7 +524,7 @@ impl ExecuteTask for ExecSearch {
                     let mut new_lines = Vec::new();
 
                     for (i, line) in out.lines().enumerate() {
-                        if self.search_type == FuzzySearch::Directory {
+                        if self.search_type == FuzzySearch::Directories {
                             new_lines.push(LineOut {
                                 text: line.to_string(),
                                 icon: "".to_string(),
@@ -547,12 +558,17 @@ impl ExecuteTask for ExecSearch {
             } else {
                 let db = CONTAINER.db.lock().await;
 
-                let mut query = '%'.to_string();
+                let query = if self.search_query.is_empty() {
+                    "".to_string()
+                } else {
+                    let mut query = '%'.to_string();
 
-                for char in self.search_query.chars() {
-                    query.push(char);
-                    query.push('%');
-                }
+                    for char in self.search_query.chars() {
+                        query.push(char);
+                        query.push('%');
+                    }
+                    query
+                };
 
                 if let Ok(selection) = db.select(&query, &now).await {
                     *CONTAINER.sorted_lines.write().await = selection;
@@ -730,7 +746,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
             buf.set_lines(lua, 0, -1, false, &preview)?;
 
-            if fuzzy.config.search_type() == FuzzySearch::File {
+            if fuzzy.config.search_type().is_file_based() {
                 let ft = NeoApi::filetype_match(
                     lua,
                     FileTypeMatch {
