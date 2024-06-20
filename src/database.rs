@@ -2,46 +2,44 @@ use sqlx::sqlite::SqliteConnectOptions;
 use std::env;
 use tokio::{fs, time::Instant};
 
-use crate::{LineOut, NeoDebug, RTM};
+use crate::{LineOut, NeoDebug};
 
 pub struct Database(sqlx::SqlitePool);
 
 impl Database {
-    pub fn init() -> sqlx::Result<Self> {
-        RTM.block_on(async {
-            let dir = env::temp_dir().join("neo-api-rs");
-            fs::create_dir_all(&dir).await?;
+    pub async fn init() -> sqlx::Result<Self> {
+        let dir = env::temp_dir().join("neo-api-rs");
+        fs::create_dir_all(&dir).await?;
 
-            // TODO multiple db files pre cached
-            let file = dir.join("fuzzy.db");
-            fs::write(&file, []).await?;
-            let opts = SqliteConnectOptions::new()
-                .filename(file)
-                .pragma("journal_mode", "MEMORY");
+        // TODO multiple db files pre cached
+        let file = dir.join("fuzzy.db");
+        fs::write(&file, []).await?;
+        let opts = SqliteConnectOptions::new()
+            .filename(file)
+            .pragma("journal_mode", "MEMORY");
 
-            let pool = sqlx::SqlitePool::connect_with(opts).await?;
+        let pool = sqlx::SqlitePool::connect_with(opts).await?;
 
-            sqlx::query(
-                "CREATE TABLE IF NOT EXISTS all_lines (
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS all_lines (
                     id          INTEGER PRIMARY KEY,
                     text        TEXT NOT NULL,
                     icon        TEXT NOT NULL,
                     hl_group    TEXT NOT NULL
                 )",
-            )
-            .execute(&pool)
-            .await?;
+        )
+        .execute(&pool)
+        .await?;
 
-            sqlx::query(
-                "CREATE VIRTUAL TABLE IF NOT EXISTS all_lines_fts USING fts5 (
+        sqlx::query(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS all_lines_fts USING fts5 (
                     id, text
                 )",
-            )
-            .execute(&pool)
-            .await?;
+        )
+        .execute(&pool)
+        .await?;
 
-            Ok(Self(pool))
-        })
+        Ok(Self(pool))
     }
 
     pub async fn select(

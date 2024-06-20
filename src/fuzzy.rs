@@ -81,13 +81,16 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     }),
     preview: RwLock::new(Vec::new()),
     db: Mutex::new({
-        let result = Database::init();
-        if let Err(err) = result {
-            RTM.block_on(NeoDebug::log(err.to_string()));
-            panic!("");
-        };
+        RTM.block_on(async move {
+            let result = Database::init().await;
 
-        result.unwrap()
+            if let Err(err) = result {
+                NeoDebug::log(err.to_string()).await;
+                panic!("");
+            };
+
+            result.unwrap()
+        })
     }),
 });
 
