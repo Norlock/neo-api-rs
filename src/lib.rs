@@ -1,7 +1,7 @@
 mod bridge;
 mod buffer;
 mod diffuser;
-mod fuzzy;
+mod search;
 mod neo_api;
 mod neo_api_types;
 mod popup;
@@ -14,7 +14,7 @@ mod database;
 
 pub use bridge::*;
 pub use buffer::*;
-pub use fuzzy::*;
+pub use search::*;
 pub use neo_api::*;
 pub use neo_api_types::*;
 pub use popup::*;

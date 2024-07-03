@@ -140,7 +140,7 @@ impl FuzzySearch {
     }
 }
 
-pub enum Move {
+enum Move {
     Up,
     Down,
 }
@@ -485,15 +485,6 @@ struct ExecSearch {
 
 impl ExecSearch {
     async fn insert_into_db(new_lines: Vec<LineOut>, instant: &Instant) {
-        let mut new_lines: Vec<_> = new_lines
-            .into_iter()
-            .map(|line| (levenshtein("", &line.text), line))
-            .collect();
-
-        new_lines.sort_by_key(|kv| kv.0);
-
-        let new_lines: Vec<_> = new_lines.into_iter().map(|line| line.1).collect();
-
         let before = instant.elapsed();
 
         let db = CONTAINER.db.lock().await;
@@ -907,65 +898,6 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     RTM.spawn(Diffuse::queue([exec_search, exec_prev]));
 
     Ok(())
-}
-
-// TODO split on path
-pub fn levenshtein(a: &str, b: &str) -> usize {
-    let mut result = 0;
-
-    /* Shortcut optimizations / degenerate cases. */
-    if a == b {
-        return result;
-    }
-
-    let length_a = a.len();
-    let length_b = b.len();
-
-    if length_a == 0 {
-        return length_b;
-    } else if length_b == 0 {
-        return length_a;
-    }
-
-    /* Initialize the vector.
-     *
-     * This is why it’s fast, normally a matrix is used,
-     * here we use a single vector. */
-    let mut cache: Vec<usize> = (1..).take(length_a).collect();
-    let mut distance_a;
-    let mut distance_b;
-
-    /* Loop. */
-    for (index_b, code_b) in b.chars().enumerate() {
-        result = index_b;
-        distance_a = index_b;
-
-        for (index_a, code_a) in a.chars().enumerate() {
-            distance_b = if code_a == code_b {
-                distance_a
-            } else {
-                distance_a + 1
-            };
-
-            distance_a = cache[index_a];
-
-            result = if distance_a > result {
-                if distance_b > result {
-                    result + 1
-                } else {
-                    distance_b
-                }
-            } else if distance_b > distance_a {
-                distance_a + 1
-            } else {
-                distance_b
-            };
-
-            cache[index_a] = result;
-        }
-    }
-
-    result
 }
 
 fn is_binary(file: &Path) -> bool {
