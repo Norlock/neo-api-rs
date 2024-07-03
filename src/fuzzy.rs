@@ -1,4 +1,4 @@
-use mlua::prelude::LuaResult;
+use mlua::prelude::{LuaError, LuaResult};
 use mlua::Lua;
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{self};
 use tokio::process::Command;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::time::Instant;
 
 use crate::diffuser::{ChainResult, Diffuse, ExecuteTask};
@@ -66,8 +66,8 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 
 #[derive(Debug)]
 struct SearchState {
-    last_search: String,
     file_path: String,
+    db_filled: bool,
     update: bool,
 }
 
@@ -76,7 +76,7 @@ static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     fuzzy: RwLock::new(NeoFuzzy::default()),
     search_state: RwLock::new(SearchState {
         update: false,
-        last_search: "".to_string(),
+        db_filled: false,
         file_path: "".to_string(),
     }),
     preview: RwLock::new(Vec::new()),
@@ -454,7 +454,7 @@ impl NeoFuzzy {
             self.ns_id as i32,
             "NeoFuzzySelect",
             self.selected_idx,
-            0,
+            3,
             -1,
         )?;
 
@@ -504,9 +504,11 @@ impl ExecSearch {
         let after = instant.elapsed();
         NeoDebug::log_duration(before, after, "insert collection").await;
 
-        if let Ok(selection) = db.select("", instant).await {
+        if let Ok(selection) = db.select("%", "", instant).await {
             *CONTAINER.sorted_lines.write().await = selection;
         }
+
+        CONTAINER.search_state.write().await.db_filled = true;
     }
 }
 
@@ -518,7 +520,7 @@ impl ExecuteTask for ExecSearch {
     fn try_execute(self: Box<Self>) -> ChainResult {
         Box::pin(async move {
             let now = Instant::now();
-            let first_search = CONTAINER.sorted_lines.read().await.is_empty();
+            let first_search = !CONTAINER.search_state.read().await.db_filled;
 
             if first_search {
                 let out = Command::new(&self.cmd)
@@ -556,9 +558,6 @@ impl ExecuteTask for ExecSearch {
                     NeoDebug::log(format!("lines: {}", new_lines.len())).await;
                     Self::insert_into_db(new_lines, &now).await;
 
-                    let mut search_state = CONTAINER.search_state.write().await;
-                    search_state.last_search = "".to_string();
-
                     let elapsed_ms = now.elapsed().as_millis();
                     NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
                 } else {
@@ -567,19 +566,14 @@ impl ExecuteTask for ExecSearch {
             } else {
                 let db = CONTAINER.db.lock().await;
 
-                let query = if self.search_query.is_empty() {
-                    "".to_string()
-                } else {
-                    let mut query = '%'.to_string();
+                let mut query = '%'.to_string();
 
-                    for char in self.search_query.chars() {
-                        query.push(char);
-                        query.push('%');
-                    }
-                    query
-                };
+                for char in self.search_query.chars() {
+                    query.push(char);
+                    query.push('%');
+                }
 
-                if let Ok(selection) = db.select(&query, &now).await {
+                if let Ok(selection) = db.select(&query, &self.search_query, &now).await {
                     *CONTAINER.sorted_lines.write().await = selection;
                 }
 
@@ -711,22 +705,27 @@ impl ExecuteTask for ExecPreview {
     }
 }
 
+trait NeoTryLock<'a, T: ?Sized> {
+    fn interval_read(&'a self) -> LuaResult<RwLockReadGuard<'a, T>>;
+    fn interval_write(&'a self) -> LuaResult<RwLockWriteGuard<'a, T>>;
+}
+
+impl<'a, T: ?Sized> NeoTryLock<'a, T> for RwLock<T> {
+    fn interval_read(&'a self) -> LuaResult<RwLockReadGuard<'a, T>> {
+        self.try_read().map_err(LuaError::external)
+    }
+
+    fn interval_write(&'a self) -> LuaResult<RwLockWriteGuard<'a, T>> {
+        self.try_write().map_err(LuaError::external)
+    }
+}
+
 fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     fn execute(lua: &Lua) -> LuaResult<()> {
-        let fuzzy = CONTAINER.fuzzy.try_read();
-        let search_state = CONTAINER.search_state.try_write();
-        let filtered_lines = CONTAINER.sorted_lines.try_read();
-        let preview = CONTAINER.preview.try_write();
-
-        if fuzzy.is_err() || search_state.is_err() || filtered_lines.is_err() || preview.is_err() {
-            RTM.spawn(NeoDebug::log("denied"));
-            return Ok(());
-        }
-
-        let sorted_lines = filtered_lines.unwrap().clone();
-        let fuzzy = fuzzy.unwrap();
-        let mut search_state = search_state.unwrap();
-        let mut preview = preview.unwrap();
+        let fuzzy = CONTAINER.fuzzy.interval_read()?;
+        let sorted_lines = CONTAINER.sorted_lines.interval_read()?.clone();
+        let mut search_state = CONTAINER.search_state.interval_write()?;
+        let mut preview = CONTAINER.preview.interval_write()?;
 
         let preview = std::mem::take(&mut *preview);
 
@@ -783,7 +782,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     }
 
     if let Err(err) = execute(lua) {
-        NeoApi::notify(lua, &err)?;
+        RTM.spawn(NeoDebug::log(err));
     }
 
     Ok(())
@@ -851,11 +850,12 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     NeoApi::stop_interval(lua, "fuzzy")?;
     NeoApi::set_insert_mode(lua, false)?;
 
-    let db = CONTAINER.db.lock().await;
     RTM.spawn(async move {
+        let db = CONTAINER.db.lock().await;
         if let Err(err) = db.clean_up_tables().await {
             NeoDebug::log(err).await;
         }
+        CONTAINER.search_state.write().await.db_filled = false;
     });
 
     fuzzy.pop_out.win.close(lua, false)?;
