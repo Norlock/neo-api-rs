@@ -1,11 +1,26 @@
 use std::path::PathBuf;
-use tokio::{fs, time::Instant};
+use tokio::{fs, sync::Mutex, time::Instant};
 
-use crate::{LineOut, NeoDebug};
+use crate::{LineOut, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
 impl Database {
+    pub fn new() -> Mutex<Self> {
+        RTM.block_on(async move {
+            Mutex::new({
+                let result = Database::init().await;
+
+                if let Err(err) = result {
+                    NeoDebug::log(err.to_string()).await;
+                    panic!("");
+                };
+
+                result.unwrap()
+            })
+        })
+    }
+
     pub async fn init() -> sqlx::Result<Self> {
         let tmp = std::env::temp_dir().join("neo-api-rs");
         let file = tmp.join("fuzzy.db");
