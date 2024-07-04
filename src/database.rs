@@ -36,6 +36,7 @@ impl Database {
         let options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(file)
             .pragma("journal_mode", "MEMORY")
+            .pragma("case_sensitive_like", "ON")
             .extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;

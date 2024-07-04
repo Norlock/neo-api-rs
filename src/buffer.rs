@@ -55,6 +55,7 @@ impl NeoBuffer {
 
     //lfn.call(self.id())
     //}
+
     pub fn bufadd(lua: &Lua, path: &str) -> LuaResult<Self> {
         let lfn: LuaFunction = lua.load("vim.fn.bufadd").eval()?;
 

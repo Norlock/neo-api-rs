@@ -442,14 +442,4 @@ impl NeoApi {
             lfn.call(())
         }
     }
-
-    pub fn get_dev_icon(
-        lua: &Lua,
-        filename: &str,
-        extension: &str,
-    ) -> LuaResult<(Option<String>, Option<String>)> {
-        let lfn: LuaFunction = lua.load("require('nvim-web-devicons').get_icon").eval()?;
-
-        lfn.call((filename, extension))
-    }
 }
