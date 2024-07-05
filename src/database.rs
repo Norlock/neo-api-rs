@@ -57,11 +57,17 @@ impl Database {
 
     pub async fn select(
         &self,
-        sql_search_query: &str,
         search_query: &str,
         instant: &Instant,
     ) -> sqlx::Result<Vec<LineOut>> {
         let bef_elapsed_ms = instant.elapsed().as_millis();
+
+        let mut sql_query = '%'.to_string();
+
+        for char in search_query.chars() {
+            sql_query.push(char);
+            sql_query.push('%');
+        }
 
         let out = sqlx::query_as::<_, LineOut>(
             "SELECT 
@@ -71,7 +77,7 @@ impl Database {
             WHERE text like ? ORDER BY fuzzy_score(?, text)
             LIMIT 300",
         )
-        .bind(sql_search_query)
+        .bind(sql_query)
         .bind(search_query)
         .fetch_all(&self.0)
         .await?;

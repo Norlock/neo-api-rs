@@ -484,7 +484,7 @@ impl ExecSearch {
         let after = instant.elapsed();
         NeoDebug::log_duration(before, after, "insert collection").await;
 
-        if let Ok(selection) = db.select("%", "", instant).await {
+        if let Ok(selection) = db.select("", instant).await {
             *CONTAINER.sorted_lines.write().await = selection;
         }
 
@@ -546,14 +546,7 @@ impl ExecuteTask for ExecSearch {
             } else {
                 let db = CONTAINER.db.lock().await;
 
-                let mut query = '%'.to_string();
-
-                for char in self.search_query.chars() {
-                    query.push(char);
-                    query.push('%');
-                }
-
-                if let Ok(selection) = db.select(&query, &self.search_query, &now).await {
+                if let Ok(selection) = db.select(&self.search_query, &now).await {
                     *CONTAINER.sorted_lines.write().await = selection;
                 }
 
