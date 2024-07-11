@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{self};
 use tokio::process::Command;
-use tokio::sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::time::Instant;
 
 use crate::diffuser::{ChainResult, Diffuse, ExecuteTask};
@@ -27,7 +27,6 @@ pub struct LineOut {
     pub text: String,
     pub icon: String,
     pub hl_group: String,
-    pub id: u32,
 }
 
 struct FuzzyContainer {
@@ -35,7 +34,7 @@ struct FuzzyContainer {
     fuzzy: RwLock<NeoFuzzy>,
     search_state: RwLock<SearchState>,
     preview: RwLock<Vec<String>>,
-    db: Mutex<Database>,
+    db: Database,
 }
 
 pub trait FuzzyConfig: Send + Sync {
@@ -117,15 +116,21 @@ pub enum FuzzySearch {
     Files,
     Directories,
     GitFiles,
+    Buffer
 }
 
 impl FuzzySearch {
     /// Both Files + GitFiles
     pub fn is_file_based(&self) -> bool {
         match self {
-            Self::Files | Self::GitFiles => true,
+            Self::Files | Self::GitFiles | Self::Buffer => true,
             _ => false,
         }
+    }
+
+    pub fn execute_search(&self) -> String {
+        // TODO make
+        "".to_string()
     }
 }
 
@@ -336,6 +341,9 @@ impl NeoFuzzy {
             FuzzySearch::Directories => {
                 vec!["--type".to_string(), "directory".to_string()]
             }
+            FuzzySearch::Buffer => {
+                vec![]
+            }
         };
 
         let fuzzy = NeoFuzzy {
@@ -476,7 +484,7 @@ impl ExecSearch {
     async fn insert_into_db(new_lines: Vec<LineOut>, instant: &Instant) {
         let before = instant.elapsed();
 
-        let db = CONTAINER.db.lock().await;
+        let db = &CONTAINER.db;
         if let Err(err) = db.insert_all(&new_lines).await {
             NeoDebug::log(err).await;
         }
@@ -514,13 +522,12 @@ impl ExecuteTask for ExecSearch {
                     let out = String::from_utf8_lossy(&out.stdout);
                     let mut new_lines = Vec::new();
 
-                    for (i, line) in out.lines().enumerate() {
+                    for line in out.lines() {
                         if self.search_type == FuzzySearch::Directories {
                             new_lines.push(LineOut {
                                 text: line.to_string(),
                                 icon: "".to_string(),
                                 hl_group: "Directory".to_string(),
-                                id: i as u32,
                             });
                         } else {
                             let path = PathBuf::from(line);
@@ -530,7 +537,6 @@ impl ExecuteTask for ExecSearch {
                                 text: line.to_string(),
                                 icon: dev_icon.icon.to_string(),
                                 hl_group: dev_icon.highlight.to_string(),
-                                id: i as u32,
                             });
                         }
                     }
@@ -544,7 +550,7 @@ impl ExecuteTask for ExecSearch {
                     return Some(self as Box<dyn ExecuteTask>);
                 }
             } else {
-                let db = CONTAINER.db.lock().await;
+                let db = &CONTAINER.db;
 
                 if let Ok(selection) = db.select(&self.search_query, &now).await {
                     *CONTAINER.sorted_lines.write().await = selection;
@@ -824,7 +830,7 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     NeoApi::set_insert_mode(lua, false)?;
 
     RTM.spawn(async move {
-        let db = CONTAINER.db.lock().await;
+        let db = &CONTAINER.db;
         if let Err(err) = db.clean_up_tables().await {
             NeoDebug::log(err).await;
         }

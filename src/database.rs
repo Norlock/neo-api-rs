@@ -1,23 +1,21 @@
 use std::path::PathBuf;
-use tokio::{fs, sync::Mutex, time::Instant};
+use tokio::{fs, time::Instant};
 
 use crate::{LineOut, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
 impl Database {
-    pub fn new() -> Mutex<Self> {
+    pub fn new() -> Self {
         RTM.block_on(async move {
-            Mutex::new({
-                let result = Database::init().await;
+            let result = Database::init().await;
 
-                if let Err(err) = result {
-                    NeoDebug::log(err.to_string()).await;
-                    panic!("");
-                };
+            if let Err(err) = result {
+                NeoDebug::log(err.to_string()).await;
+                panic!("");
+            };
 
-                result.unwrap()
-            })
+            result.unwrap()
         })
     }
 
@@ -36,7 +34,6 @@ impl Database {
         let options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(file)
             .pragma("journal_mode", "MEMORY")
-            .pragma("case_sensitive_like", "ON")
             .extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;
@@ -62,25 +59,38 @@ impl Database {
     ) -> sqlx::Result<Vec<LineOut>> {
         let bef_elapsed_ms = instant.elapsed().as_millis();
 
-        let mut sql_query = '%'.to_string();
+        let mut like_query = '%'.to_string();
 
         for char in search_query.chars() {
-            sql_query.push(char);
-            sql_query.push('%');
+            like_query.push(char);
+            like_query.push('%');
         }
 
         let out = sqlx::query_as::<_, LineOut>(
-            "SELECT 
-                * 
+            "
+            WITH score AS (
+                SELECT id, fuzzy_score(?, text) fs FROM all_lines
+                WHERE text like ? ORDER BY fs LIMIT 300
+            )
+
+            SELECT 
+                l.* 
             FROM 
-                all_lines 
-            WHERE text like ? ORDER BY fuzzy_score(?, text)
-            LIMIT 300",
+                all_lines l LEFT JOIN score s ON l.id = s.id
+            WHERE 
+                s.fs < 4096",
         )
-        .bind(sql_query)
         .bind(search_query)
+        .bind(like_query)
         .fetch_all(&self.0)
-        .await?;
+        .await;
+
+        if let Err(err) = out {
+            NeoDebug::log(&err).await;
+            return Err(err);
+        }
+
+        let out = out.unwrap();
 
         let aft_elapsed_ms = instant.elapsed().as_millis();
         NeoDebug::log(format!("select time: {}", aft_elapsed_ms - bef_elapsed_ms)).await;
