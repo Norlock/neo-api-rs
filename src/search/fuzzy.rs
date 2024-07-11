@@ -24,9 +24,9 @@ const AUCMD_GRP: &str = "neo-fuzzy";
 
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub struct LineOut {
-    pub text: String,
-    pub icon: String,
-    pub hl_group: String,
+    pub text: Box<str>,
+    pub icon: Box<str>,
+    pub hl_group: Box<str>,
 }
 
 struct FuzzyContainer {
@@ -463,7 +463,7 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.sorted_lines.read().await;
 
-    let selected = fuzzy.cwd.join(&filtered_lines[fuzzy.selected_idx].text);
+    let selected = fuzzy.cwd.join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.config.on_enter(lua, open_in, selected);
@@ -525,18 +525,18 @@ impl ExecuteTask for ExecSearch {
                     for line in out.lines() {
                         if self.search_type == FuzzySearch::Directories {
                             new_lines.push(LineOut {
-                                text: line.to_string(),
-                                icon: "".to_string(),
-                                hl_group: "Directory".to_string(),
+                                text: line.into(),
+                                icon: "".into(),
+                                hl_group: "Directory".into(),
                             });
                         } else {
                             let path = PathBuf::from(line);
                             let dev_icon = DevIcon::get_icon(&path);
 
                             new_lines.push(LineOut {
-                                text: line.to_string(),
-                                icon: dev_icon.icon.to_string(),
-                                hl_group: dev_icon.highlight.to_string(),
+                                text: line.into(),
+                                icon: dev_icon.icon.into(),
+                                hl_group: dev_icon.highlight.into(),
                             });
                         }
                     }
@@ -663,7 +663,7 @@ impl ExecuteTask for ExecPreview {
                     return None;
                 }
 
-                self.cwd.join(&filtered_lines[self.selected_idx].text)
+                self.cwd.join(filtered_lines[self.selected_idx].text.as_ref())
             };
 
             if path.is_dir() && preview_directory(&path).await.is_ok()
@@ -702,7 +702,7 @@ impl<'a, T: ?Sized> NeoTryLock<'a, T> for RwLock<T> {
 fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     fn execute(lua: &Lua) -> LuaResult<()> {
         let fuzzy = CONTAINER.fuzzy.interval_read()?;
-        let sorted_lines = CONTAINER.sorted_lines.interval_read()?.clone();
+        let sorted_lines = CONTAINER.sorted_lines.interval_read()?;
         let mut search_state = CONTAINER.search_state.interval_write()?;
         let mut preview = CONTAINER.preview.interval_write()?;
 
@@ -719,7 +719,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
             for line in sorted_lines.iter() {
                 icon_lines.push(format!(" {} {}", line.icon, line.text));
-                hl_groups.push(line.hl_group.as_str());
+                hl_groups.push(line.hl_group.as_ref());
             }
 
             fuzzy
