@@ -23,6 +23,7 @@ pub use traits::*;
 pub use window::*;
 pub use debug::*;
 pub use database::*;
+pub use diffuser::ExecuteTask;
 
 pub use mlua;
 pub use tokio;

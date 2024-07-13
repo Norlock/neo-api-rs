@@ -15,19 +15,16 @@ static DIFFUSER: Lazy<Mutex<Diffuse>> = Lazy::new(|| Diffuse::default().into());
 #[derive(Default)]
 pub struct Diffuse {
     run: bool,
-    queue: VecDeque<Box<dyn ExecuteTask>>,
+    queue: VecDeque<Pin<Box<dyn ExecuteTask>>>,
 }
 
 unsafe impl Send for Diffuse {}
-unsafe impl Sync for Diffuse {}
 
 /// Will execute part and act like a chain where every part will use try_read / try_write
-pub type ChainLink = Option<Box<dyn ExecuteTask>>;
-pub type ChainResult = Pin<Box<dyn Future<Output = ChainLink> + Send>>;
+pub type ChainResult<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
 
-pub trait ExecuteTask: Send {
-    fn try_execute(self: Box<Self>) -> ChainResult;
-    fn failure_count(&mut self) -> &mut usize;
+pub trait ExecuteTask: Send + Sync {
+    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a>;
     fn id(&self) -> &str;
 }
 
@@ -36,7 +33,7 @@ impl Diffuse {
         let mut diffuser = DIFFUSER.lock().await;
 
         for new_task in task_list.into_iter() {
-            diffuser.queue.push_back(new_task);
+            diffuser.queue.push_back(new_task.into());
         }
     }
 
@@ -55,25 +52,14 @@ impl Diffuse {
                     break;
                 }
 
-                if let Some(current) = diffuser.queue.pop_front() {
-                    if let Some(mut next) = current.try_execute().await {
-                        *next.failure_count() += 1;
-                        let failure_count = *next.failure_count();
-
-                        NeoDebug::log(format!(
-                            "Task: {} failed {} times.",
-                            next.id(),
-                            failure_count
-                        ))
-                        .await;
-
-                        if *next.failure_count() < 100 {
-                            diffuser.queue.push_front(next);
-                        }
-                    }
-                }
+                let to_exec = std::mem::take(&mut diffuser.queue);
 
                 drop(diffuser);
+
+                for current in to_exec {
+                    current.as_ref().try_execute().await;
+                }
+
                 interval.tick().await;
             }
         });

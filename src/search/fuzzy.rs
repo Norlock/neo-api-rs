@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use tokio::fs;
 use tokio::io::{self};
 use tokio::process::Command;
@@ -116,7 +117,7 @@ pub enum FuzzySearch {
     Files,
     Directories,
     GitFiles,
-    Buffer
+    Buffer,
 }
 
 impl FuzzySearch {
@@ -372,11 +373,9 @@ impl NeoFuzzy {
                 cmd,
                 args,
                 search_type,
-                failure_count: 0,
             }),
             Box::new(ExecPreview {
                 cwd,
-                failure_count: 0,
                 selected_idx: 0,
             }),
         ])
@@ -463,7 +462,9 @@ pub async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.sorted_lines.read().await;
 
-    let selected = fuzzy.cwd.join(filtered_lines[fuzzy.selected_idx].text.as_ref());
+    let selected = fuzzy
+        .cwd
+        .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.config.on_enter(lua, open_in, selected);
@@ -477,7 +478,6 @@ struct ExecSearch {
     args: Vec<String>,
     search_query: String,
     search_type: FuzzySearch,
-    failure_count: usize,
 }
 
 impl ExecSearch {
@@ -505,7 +505,7 @@ impl ExecuteTask for ExecSearch {
         "search"
     }
 
-    fn try_execute(self: Box<Self>) -> ChainResult {
+    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
         Box::pin(async move {
             let now = Instant::now();
             let first_search = !CONTAINER.search_state.read().await.db_filled;
@@ -546,8 +546,6 @@ impl ExecuteTask for ExecSearch {
 
                     let elapsed_ms = now.elapsed().as_millis();
                     NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
-                } else {
-                    return Some(self as Box<dyn ExecuteTask>);
                 }
             } else {
                 let db = &CONTAINER.db;
@@ -559,13 +557,7 @@ impl ExecuteTask for ExecSearch {
                 let elapsed_ms = now.elapsed().as_millis();
                 NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
             }
-
-            None
         })
-    }
-
-    fn failure_count(&mut self) -> &mut usize {
-        &mut self.failure_count
     }
 }
 
@@ -642,7 +634,6 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
 struct ExecPreview {
     cwd: PathBuf,
     selected_idx: usize,
-    failure_count: usize,
 }
 
 impl ExecuteTask for ExecPreview {
@@ -650,7 +641,7 @@ impl ExecuteTask for ExecPreview {
         "preview"
     }
 
-    fn try_execute(self: Box<Self>) -> ChainResult {
+    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
         Box::pin(async move {
             let now = Instant::now();
 
@@ -660,10 +651,11 @@ impl ExecuteTask for ExecPreview {
                 if filtered_lines.is_empty() {
                     CONTAINER.preview.write().await.clear();
                     CONTAINER.search_state.write().await.update = true;
-                    return None;
+                    return;
                 }
 
-                self.cwd.join(filtered_lines[self.selected_idx].text.as_ref())
+                self.cwd
+                    .join(filtered_lines[self.selected_idx].text.as_ref())
             };
 
             if path.is_dir() && preview_directory(&path).await.is_ok()
@@ -672,15 +664,8 @@ impl ExecuteTask for ExecPreview {
                 CONTAINER.search_state.write().await.update = true;
                 let elapsed_ms = now.elapsed().as_millis();
                 NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
-                None
-            } else {
-                Some(self as Box<dyn ExecuteTask>)
             }
         })
-    }
-
-    fn failure_count(&mut self) -> &mut usize {
-        &mut self.failure_count
     }
 }
 
@@ -808,7 +793,6 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
 
         RTM.spawn(Diffuse::queue([Box::new(ExecPreview {
             cwd,
-            failure_count: 0,
             selected_idx,
         })]));
     }
@@ -874,12 +858,10 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         cmd,
         args,
         search_type,
-        failure_count: 0,
     });
 
     let exec_prev = Box::new(ExecPreview {
         cwd,
-        failure_count: 0,
         selected_idx: 0,
     });
 
