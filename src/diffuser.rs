@@ -5,7 +5,7 @@
 // Try to lock do something then next
 
 use once_cell::sync::Lazy;
-use std::{future::Future, pin::Pin, time::Duration};
+use std::time::Duration;
 use tokio::{sync::Mutex, time};
 
 use crate::RTM;
@@ -20,15 +20,22 @@ pub struct Diffuse {
 
 unsafe impl Send for Diffuse {}
 
-/// Will execute part and act like a chain where every part will use try_read / try_write
-pub type TaskResult<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
-
+#[async_trait::async_trait]
 pub trait ExecuteTask: Send {
-    fn execute<'a>(&'a self) -> TaskResult<'a>;
+    async fn execute(&self);
 }
 
+/// Use it if you don't need a task
+pub struct DummyTask;
+
+#[async_trait::async_trait]
+impl ExecuteTask for DummyTask {
+    async fn execute(&self) {}
+}
+
+
 impl Diffuse {
-    pub async fn queue<const N: usize>(task_list: [Box<dyn ExecuteTask>; N]) {
+    pub async fn queue(task_list: Vec<Box<dyn ExecuteTask>>) {
         let mut diffuser = DIFFUSER.lock().await;
 
         for new_task in task_list.into_iter() {
@@ -51,11 +58,11 @@ impl Diffuse {
                     break;
                 }
 
-                let to_exec = std::mem::take(&mut diffuser.queue);
+                let queue = std::mem::take(&mut diffuser.queue);
 
                 drop(diffuser);
 
-                for current in to_exec {
+                for current in queue {
                     current.execute().await;
                 }
 
