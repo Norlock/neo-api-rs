@@ -498,6 +498,59 @@ impl ExecSearch {
 
         CONTAINER.search_state.write().await.db_filled = true;
     }
+
+    async fn execute(self: Pin<&Self>) {
+        let now = Instant::now();
+        let first_search = !CONTAINER.search_state.read().await.db_filled;
+
+        if first_search {
+            let out = Command::new(&self.cmd)
+                .current_dir(&self.cwd)
+                .args(&self.args)
+                .output()
+                .await
+                .unwrap();
+
+            if out.status.success() {
+                let out = String::from_utf8_lossy(&out.stdout);
+                let mut new_lines = Vec::new();
+
+                for line in out.lines() {
+                    if self.search_type == FuzzySearch::Directories {
+                        new_lines.push(LineOut {
+                            text: line.into(),
+                            icon: "".into(),
+                            hl_group: "Directory".into(),
+                        });
+                    } else {
+                        let path = PathBuf::from(line);
+                        let dev_icon = DevIcon::get_icon(&path);
+
+                        new_lines.push(LineOut {
+                            text: line.into(),
+                            icon: dev_icon.icon.into(),
+                            hl_group: dev_icon.highlight.into(),
+                        });
+                    }
+                }
+
+                NeoDebug::log(format!("lines: {}", new_lines.len())).await;
+                Self::insert_into_db(new_lines, &now).await;
+
+                let elapsed_ms = now.elapsed().as_millis();
+                NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
+            }
+        } else {
+            let db = &CONTAINER.db;
+
+            if let Ok(selection) = db.select(&self.search_query, &now).await {
+                *CONTAINER.sorted_lines.write().await = selection;
+            }
+
+            let elapsed_ms = now.elapsed().as_millis();
+            NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
+        }
+    }
 }
 
 impl ExecuteTask for ExecSearch {
@@ -506,58 +559,7 @@ impl ExecuteTask for ExecSearch {
     }
 
     fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
-        Box::pin(async move {
-            let now = Instant::now();
-            let first_search = !CONTAINER.search_state.read().await.db_filled;
-
-            if first_search {
-                let out = Command::new(&self.cmd)
-                    .current_dir(&self.cwd)
-                    .args(&self.args)
-                    .output()
-                    .await
-                    .unwrap();
-
-                if out.status.success() {
-                    let out = String::from_utf8_lossy(&out.stdout);
-                    let mut new_lines = Vec::new();
-
-                    for line in out.lines() {
-                        if self.search_type == FuzzySearch::Directories {
-                            new_lines.push(LineOut {
-                                text: line.into(),
-                                icon: "".into(),
-                                hl_group: "Directory".into(),
-                            });
-                        } else {
-                            let path = PathBuf::from(line);
-                            let dev_icon = DevIcon::get_icon(&path);
-
-                            new_lines.push(LineOut {
-                                text: line.into(),
-                                icon: dev_icon.icon.into(),
-                                hl_group: dev_icon.highlight.into(),
-                            });
-                        }
-                    }
-
-                    NeoDebug::log(format!("lines: {}", new_lines.len())).await;
-                    Self::insert_into_db(new_lines, &now).await;
-
-                    let elapsed_ms = now.elapsed().as_millis();
-                    NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
-                }
-            } else {
-                let db = &CONTAINER.db;
-
-                if let Ok(selection) = db.select(&self.search_query, &now).await {
-                    *CONTAINER.sorted_lines.write().await = selection;
-                }
-
-                let elapsed_ms = now.elapsed().as_millis();
-                NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
-            }
-        })
+        Box::pin(self.execute())
     }
 }
 
@@ -636,36 +638,40 @@ struct ExecPreview {
     selected_idx: usize,
 }
 
+impl ExecPreview {
+    async fn run(self: Pin<&Self>) {
+        let now = Instant::now();
+
+        let path: PathBuf = {
+            let filtered_lines = CONTAINER.sorted_lines.read().await;
+
+            if filtered_lines.is_empty() {
+                CONTAINER.preview.write().await.clear();
+                CONTAINER.search_state.write().await.update = true;
+                return;
+            }
+
+            self.cwd
+                .join(filtered_lines[self.selected_idx].text.as_ref())
+        };
+
+        if path.is_dir() && preview_directory(&path).await.is_ok()
+            || path.is_file() && preview_file(&path).await.is_ok()
+        {
+            CONTAINER.search_state.write().await.update = true;
+            let elapsed_ms = now.elapsed().as_millis();
+            NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
+        }
+    }
+}
+
 impl ExecuteTask for ExecPreview {
     fn id(&self) -> &str {
         "preview"
     }
 
     fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
-        Box::pin(async move {
-            let now = Instant::now();
-
-            let path: PathBuf = {
-                let filtered_lines = CONTAINER.sorted_lines.read().await;
-
-                if filtered_lines.is_empty() {
-                    CONTAINER.preview.write().await.clear();
-                    CONTAINER.search_state.write().await.update = true;
-                    return;
-                }
-
-                self.cwd
-                    .join(filtered_lines[self.selected_idx].text.as_ref())
-            };
-
-            if path.is_dir() && preview_directory(&path).await.is_ok()
-                || path.is_file() && preview_file(&path).await.is_ok()
-            {
-                CONTAINER.search_state.write().await.update = true;
-                let elapsed_ms = now.elapsed().as_millis();
-                NeoDebug::log(format!("elapsed preview: {}", elapsed_ms)).await;
-            }
-        })
+        Box::pin(self.run())
     }
 }
 
