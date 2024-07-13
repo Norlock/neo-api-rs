@@ -12,7 +12,7 @@ I was busy with a fuzzy file searcher that would spawn async tasks on `text-chan
 
 I decided to make a queue so that all those async tasks would run serial instead of parallel to avoid potential deadlocks and avoid hammering the cpu and memory. 
 The async task trait has one function `execute` that would run something asynchronous. Since Rust 1.75 
-the standard library allows async fn to be used in traits: https://github.com/rust-lang/rust/pull/115822/. This would only work on none `dyn dispatched` objects, that means the following would work:
+the standard library allows async to be used in traits, but this would only work on none `dyn dispatched` objects, that means the following would work:
 
 ```rust
 struct TestComp {
@@ -66,7 +66,7 @@ async fn test() {
 }
 ```
 
-So this would make it impossible to compile the following code: 
+That means that this code also will not compile: 
 
 ```rust
 struct Diffuser {
@@ -95,7 +95,6 @@ pub struct Diffuse {
 
 unsafe impl Send for Diffuse {}
 
-/// Will execute part and act like a chain where every part will use try_read / try_write
 pub type TaskResult<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
 
 pub trait ExecuteTask: Send {
@@ -128,6 +127,7 @@ impl Diffuse {
 
                 let to_exec = std::mem::take(&mut diffuser.queue);
 
+                // Drop lock
                 drop(diffuser);
 
                 for current in to_exec {
@@ -145,7 +145,7 @@ impl Diffuse {
 }
 ```
 
-This trait can for example be implemented as following:
+This trait can be implemented as following:
 
 ```rust
 struct ExecPreview {
@@ -187,4 +187,4 @@ impl ExecuteTask for ExecPreview {
 }
 ```
 
-That's all, you can create all kind of task objects with different parameters. Hopefully this trick simplified async traits in dynamically dispatched objects for you. 
+That's all, you can create all kind of task objects with different parameters, hopefully this trick simplified async traits in dynamically dispatched objects for you. 
