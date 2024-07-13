@@ -887,3 +887,68 @@ impl<'a> IntoLua<'a> for FileTypeMatch {
         out.into_lua(lua)
     }
 }
+
+#[derive(Clone, Copy)]
+pub enum BufInfoOpts {
+    BufListed,
+    BufLoaded,
+    BufModified,
+    Buffer(NeoBuffer),
+}
+
+impl<'lua> IntoLua<'lua> for BufInfoOpts {
+    fn into_lua(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
+        let out = lua.create_table()?;
+
+        match self {
+            Self::BufListed => out.set("buflisted", true)?,
+            Self::BufLoaded => out.set("bufloaded", true)?,
+            Self::BufModified => out.set("bufmodified", true)?,
+            Self::Buffer(buf) => return buf.into_lua(lua),
+        }
+
+        out.into_lua(lua)
+    }
+}
+
+#[derive(FromTable, Debug)]
+pub struct BufInfo {
+    /// Buffer number
+    pub bufnr: u32,
+    /// TRUE if the buffer is modified.
+    pub changed: bool,
+    /// Number of changes made to the buffer.
+    pub changedtick: u32,
+    /**
+    TRUE if the buffer belongs to the command-line window cmdwin.
+    */
+    pub command: bool,
+    /// TRUE if the buffer is hidden.
+    pub hidden: bool,
+    /**
+    Timestamp in seconds, like
+    localtime(), when the buffer was last used.
+    */
+    pub lastused: u32,
+    /// TRUE if the buffer is listed.
+    pub listed: bool,
+    /**
+    Line number used for the buffer when
+    opened in the current window.
+    Only valid if the buffer has been
+    displayed in the window in the past.
+    If you want the line number of the
+    last known cursor position in a given
+    window, use line(): echo line('.', {winid}) */
+    pub lnum: u32,
+    /// Number of lines in the buffer (only valid when loaded)
+    pub linecount: u32,
+    /// TRUE if the buffer is loaded.
+    pub loaded: bool,
+    /// Full path to the file in the buffer.
+    pub name: String,
+    /// A reference to the dictionary with buffer-local variables.
+    pub variables: Vec<String>,
+    /// List of |window-ID|s that display this buffer
+    pub windows: Vec<u32>,
+}

@@ -29,20 +29,20 @@ pub struct LineOut {
     pub hl_group: Box<str>,
 }
 
-struct FuzzyContainer {
-    search_lines: RwLock<Vec<LineOut>>,
-    fuzzy: RwLock<NeoFuzzy>,
-    search_state: RwLock<SearchState>,
-    preview: RwLock<Vec<Box<str>>>,
-    db: Database,
+pub struct FuzzyContainer {
+    pub search_lines: RwLock<Vec<LineOut>>,
+    pub fuzzy: RwLock<NeoFuzzy>,
+    pub search_state: RwLock<SearchState>,
+    pub preview: RwLock<Vec<Box<str>>>,
+    pub db: Database,
 }
 
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self) -> PathBuf;
     fn search_type(&self) -> FuzzySearch;
     fn on_enter(&self, lua: &Lua, open_in: OpenIn, item: PathBuf);
-    fn search_task(&self, search_query: &str) -> Box<dyn ExecuteTask>;
-    fn preview_task(&self, selected_idx: usize) -> Box<dyn ExecuteTask>;
+    fn search_task(&self, lua: &Lua, search_query: &str) -> Box<dyn ExecuteTask>;
+    fn preview_task(&self, lua: &Lua, selected_idx: usize) -> Box<dyn ExecuteTask>;
 }
 
 struct DummyConfig;
@@ -58,11 +58,11 @@ impl FuzzyConfig for DummyConfig {
         FuzzySearch::Files
     }
 
-    fn search_task(&self, _search_query: &str) -> Box<dyn ExecuteTask> {
+    fn search_task(&self, _lua: &Lua, _search_query: &str) -> Box<dyn ExecuteTask> {
         Box::new(DummyTask)
     }
 
-    fn preview_task(&self, _selected_idx: usize) -> Box<dyn ExecuteTask> {
+    fn preview_task(&self, _lua: &Lua, _selected_idx: usize) -> Box<dyn ExecuteTask> {
         Box::new(DummyTask)
     }
 }
@@ -74,13 +74,13 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 }
 
 #[derive(Debug)]
-struct SearchState {
-    file_path: String,
-    db_filled: bool,
-    update: bool,
+pub struct SearchState {
+    pub file_path: String,
+    pub db_filled: bool,
+    pub update: bool,
 }
 
-static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
+pub static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     search_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(NeoFuzzy::default()),
     search_state: RwLock::new(SearchState {
@@ -342,8 +342,8 @@ impl NeoFuzzy {
         fuzzy.add_keymaps(lua)?;
 
         Diffuse::queue(vec![
-            fuzzy.config.search_task(""),
-            fuzzy.config.preview_task(0),
+            fuzzy.config.search_task(lua, ""),
+            fuzzy.config.preview_task(lua, 0),
         ])
         .await;
 
@@ -441,7 +441,7 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
 
 pub struct ExecStandardSearch {
     pub cwd: PathBuf,
-    pub args: Vec<String>,
+    pub args: Vec<&'static str>,
     pub search_query: String,
     pub search_type: FuzzySearch,
 }
@@ -746,7 +746,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
             })?,
         )?;
 
-        Diffuse::queue(vec![fuzzy.config.preview_task(selected_idx)]).await;
+        Diffuse::queue(vec![fuzzy.config.preview_task(lua, selected_idx)]).await;
     }
 
     Ok(())
@@ -801,8 +801,8 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     )?;
 
     Diffuse::queue(vec![
-        fuzzy.config.search_task(&search_query),
-        fuzzy.config.preview_task(0),
+        fuzzy.config.search_task(lua, &search_query),
+        fuzzy.config.preview_task(lua, 0),
     ])
     .await;
 

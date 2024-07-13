@@ -2,7 +2,7 @@ use crate::neo_api_types::{
     AutoCmd, AutoCmdEvent, AutoCmdOpts, ExtmarkOpts, LogLevel, Mode, OpenIn, OptValueType,
     StdpathType, Ui,
 };
-use crate::{CmdOpts, FileTypeMatch, KeymapOpts, NeoDebug};
+use crate::{BufInfo, BufInfoOpts, CmdOpts, FileTypeMatch, KeymapOpts, NeoDebug};
 use crate::{NeoWindow, RTM};
 use mlua::{
     prelude::{LuaFunction, LuaResult, LuaTable, LuaValue},
@@ -238,6 +238,12 @@ impl NeoApi {
         let win_id = lfn.call(())?;
 
         Ok(NeoWindow::new(win_id))
+    }
+
+    pub fn get_buf_info(lua: &Lua, opts: BufInfoOpts) -> LuaResult<Vec<BufInfo>> {
+        let lfn: LuaFunction = lua.load("vim.fn.getbufinfo").eval()?;
+
+        lfn.call(opts)
     }
 
     pub fn set_current_buf(lua: &Lua, buf_id: u32) -> LuaResult<()> {

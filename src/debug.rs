@@ -1,5 +1,6 @@
 use mlua::prelude::LuaResult;
 use mlua::Lua;
+use std::fmt::Debug;
 use std::time::Duration;
 use std::{env, fmt::Display};
 use std::io::Write;
@@ -31,6 +32,24 @@ impl NeoDebug {
 
         let mut bytes = vec![];
         let _ = writeln!(bytes, "{}", message);
+        let _ = file.write_all(&bytes).await;
+    }
+
+    pub async fn log_dbg<AsStr: Debug>(message: AsStr) {
+        let mut dir = env::temp_dir();
+        dir.push("neo-api-rs");
+
+        let _ = fs::create_dir_all(&dir).await;
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
+            .open(dir.join("debug.log"))
+            .await.unwrap();
+
+        let mut bytes = vec![];
+        let _ = writeln!(bytes, "{:?}", message);
         let _ = file.write_all(&bytes).await;
     }
 

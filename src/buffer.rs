@@ -21,6 +21,12 @@ impl<'a> FromLua<'a> for NeoBuffer {
     }
 }
 
+impl<'a> IntoLua<'a> for NeoBuffer {
+    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+        Ok(LuaValue::Integer(self.0 as i64))
+    }
+}
+
 impl NeoBuffer {
     pub const ZERO: Self = Self(0);
 

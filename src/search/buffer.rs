@@ -1,37 +1,40 @@
-//struct TestComp {
-    //text: String,
-//}
+use std::path::PathBuf;
 
-//impl Test for TestComp {
-    //async fn test(&self) -> &str {
-        //"hello"
-    //}
-//}
+use crate::{web_devicons::icons_default::DevIcon, BufInfo, ExecuteTask, FuzzyContainer, LineOut, NeoDebug, CONTAINER};
 
-//trait Test: Send {
-    //async fn test(&self) -> &str;
-//}
+pub struct BufferSearch {
+    pub cwd: PathBuf,
+    pub buf_infos: Vec<BufInfo>,
+}
 
-//async fn test() {
-    //let a: Box<dyn Test> = Box::new(TestComp {
-        //text: "asd".to_string(),
-    //});
+#[async_trait::async_trait]
+impl ExecuteTask for BufferSearch {
+    async fn execute(&self) {
+        NeoDebug::log_dbg(&self.buf_infos).await;
+        //NeoApi::get_buf_info(lua)
 
-    ////let b = TestComp {
-        ////text: "asd".to_string(),
-    ////};
+        let mut new_lines = vec![];
 
-    //println!("{}", a.test().await);
-    //println!("{}", b.test().await);
-//}
+        for buf_info in self.buf_infos.iter() {
+            let path = PathBuf::from(&buf_info.name);
+            let dev_icon = DevIcon::get_icon(&path);
 
+            if let Ok(path) = path.strip_prefix(&self.cwd) {
+                new_lines.push(LineOut {
+                    text: path.to_string_lossy().into(),
+                    icon: dev_icon.icon.into(),
+                    hl_group: dev_icon.highlight.into(),
+                });
+            } else { 
+                new_lines.push(LineOut {
+                    text: path.to_string_lossy().into(),
+                    icon: dev_icon.icon.into(),
+                    hl_group: dev_icon.highlight.into(),
+                });
+            }
+        } 
 
-//mod tests {
-
-    //use super::*;
-
-    //#[tokio::test]
-    //async fn check_async() {
-        //test().await;
-    //}
-//}
+        let mut lines = CONTAINER.search_lines.write().await;
+        *lines = new_lines;
+    }
+}
