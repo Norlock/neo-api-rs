@@ -1,25 +1,15 @@
-//use std::{pin::Pin, sync::Arc};
-
-//use futures::{future::Shared, Future, FutureExt, TryFutureExt};
-
 //struct TestComp {
     //text: String,
 //}
 
 //impl Test for TestComp {
-    ////fn test(self: Box<&Self>) -> Pin<Box<dyn Future<Output = bool> + Send>> {
-    ////fn test(self: Box<&Self>) -> impl Future<Output = bool> {
-    //fn test(self: Box<Self>) -> Box<dyn Future<Output = Pin<Box<bool>>> + Send> {
-        //Box::pin(async move {
-            //tokio::fs::read("buffer.rs").await;
-
-            //true
-        //})
+    //async fn test(&self) -> &str {
+        //"hello"
     //}
 //}
 
 //trait Test: Send {
-    //fn test(self: Box<Self>) -> Box<dyn Future<Output = Pin<Box<bool>>> + Send>;
+    //async fn test(&self) -> &str;
 //}
 
 //async fn test() {
@@ -27,10 +17,21 @@
         //text: "asd".to_string(),
     //});
 
-    ////a.t\
-    ////a.
-
-    ////a.te
+    ////let b = TestComp {
+        ////text: "asd".to_string(),
+    ////};
 
     //println!("{}", a.test().await);
+    //println!("{}", b.test().await);
+//}
+
+
+//mod tests {
+
+    //use super::*;
+
+    //#[tokio::test]
+    //async fn check_async() {
+        //test().await;
+    //}
 //}

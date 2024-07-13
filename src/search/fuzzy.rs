@@ -4,14 +4,13 @@ use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use tokio::fs;
 use tokio::io::{self};
 use tokio::process::Command;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::time::Instant;
 
-use crate::diffuser::{ChainResult, Diffuse, ExecuteTask};
+use crate::diffuser::{TaskResult, Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, FileTypeMatch, HLOpts, Mode,
@@ -499,7 +498,7 @@ impl ExecSearch {
         CONTAINER.search_state.write().await.db_filled = true;
     }
 
-    async fn execute(self: Pin<&Self>) {
+    async fn execute(&self) {
         let now = Instant::now();
         let first_search = !CONTAINER.search_state.read().await.db_filled;
 
@@ -554,11 +553,7 @@ impl ExecSearch {
 }
 
 impl ExecuteTask for ExecSearch {
-    fn id(&self) -> &str {
-        "search"
-    }
-
-    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
+    fn execute<'a>(&'a self) -> TaskResult<'a> {
         Box::pin(self.execute())
     }
 }
@@ -639,7 +634,7 @@ struct ExecPreview {
 }
 
 impl ExecPreview {
-    async fn run(self: Pin<&Self>) {
+    async fn run(&self) {
         let now = Instant::now();
 
         let path: PathBuf = {
@@ -666,11 +661,7 @@ impl ExecPreview {
 }
 
 impl ExecuteTask for ExecPreview {
-    fn id(&self) -> &str {
-        "preview"
-    }
-
-    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a> {
+    fn execute<'a>(&'a self) -> TaskResult<'a> {
         Box::pin(self.run())
     }
 }

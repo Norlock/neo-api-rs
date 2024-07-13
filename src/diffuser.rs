@@ -5,27 +5,26 @@
 // Try to lock do something then next
 
 use once_cell::sync::Lazy;
-use std::{collections::VecDeque, future::Future, pin::Pin, time::Duration};
+use std::{future::Future, pin::Pin, time::Duration};
 use tokio::{sync::Mutex, time};
 
-use crate::{NeoDebug, RTM};
+use crate::RTM;
 
 static DIFFUSER: Lazy<Mutex<Diffuse>> = Lazy::new(|| Diffuse::default().into());
 
 #[derive(Default)]
 pub struct Diffuse {
     run: bool,
-    queue: VecDeque<Pin<Box<dyn ExecuteTask>>>,
+    queue: Vec<Box<dyn ExecuteTask>>,
 }
 
 unsafe impl Send for Diffuse {}
 
 /// Will execute part and act like a chain where every part will use try_read / try_write
-pub type ChainResult<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
+pub type TaskResult<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
 
-pub trait ExecuteTask: Send + Sync {
-    fn try_execute<'a>(self: Pin<&'a Self>) -> ChainResult<'a>;
-    fn id(&self) -> &str;
+pub trait ExecuteTask: Send {
+    fn execute<'a>(&'a self) -> TaskResult<'a>;
 }
 
 impl Diffuse {
@@ -33,7 +32,7 @@ impl Diffuse {
         let mut diffuser = DIFFUSER.lock().await;
 
         for new_task in task_list.into_iter() {
-            diffuser.queue.push_back(new_task.into());
+            diffuser.queue.push(new_task);
         }
     }
 
@@ -57,7 +56,7 @@ impl Diffuse {
                 drop(diffuser);
 
                 for current in to_exec {
-                    current.as_ref().try_execute().await;
+                    current.execute().await;
                 }
 
                 interval.tick().await;
