@@ -1,9 +1,6 @@
 use mlua::{prelude::LuaResult, Lua};
-use std::path::{Path, PathBuf};
-use tokio::{
-    fs::{self, OpenOptions},
-    io::AsyncWriteExt,
-};
+use std::{collections::BTreeSet, io, path::PathBuf};
+use tokio::fs::{self};
 
 use crate::{ExecuteTask, LineOut, NeoApi, NeoDebug, StdpathType, CONTAINER, RTM};
 
@@ -29,9 +26,9 @@ impl ExecuteTask for ExecRecentDirectories {
 
         for line in directories_str.lines().rev() {
             let root = format!("{}/", std::env!("HOME"));
-            let line = line.strip_prefix(&root).unwrap();
-
-            new_lines.push(LineOut::new_directory(line.into()));
+            if let Some(line) = line.strip_prefix(&root) {
+                new_lines.push(LineOut::new_directory(line.into()));
+            }
         }
 
         RTM.spawn(NeoDebug::log_dbg(new_lines.clone()));
@@ -50,25 +47,40 @@ impl ExecRecentDirectories {
         })
     }
 
-    pub async fn store_directory(recent_directories: PathBuf, dir_path: PathBuf) {
-        NeoDebug::log_dbg(&recent_directories).await;
-        NeoDebug::log_dbg(&dir_path).await;
+    pub async fn store_directory(recent_directories: PathBuf, dir_path: PathBuf) -> io::Result<()> {
+        //let mut file = OpenOptions::new()
+        //.write(true)
+        //.create(true)
+        //.append(true)
+        //.open(recent_directories)
+        //.await
+        //.unwrap();
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(recent_directories)
-            .await
-            .unwrap();
+        let new_line = dir_path.to_string_lossy().to_string();
 
-        let message = format!("{}\n", dir_path.to_string_lossy());
+        let directories = fs::read(&recent_directories).await?;
+        let directories_str = String::from_utf8_lossy(&directories).to_string();
 
-        let result = file.write_all(message.as_bytes()).await;
+        let mut lines = BTreeSet::from([new_line]);
+
+        for line in directories_str.lines() {
+            lines.insert(line.to_string());
+        }
+
+        let mut out = String::new();
+
+        for line in lines.iter() {
+            out.push_str(line);
+            out.push_str("\n");
+        }
+
+        let result = fs::write(recent_directories, out).await;
 
         if let Err(e) = result {
             RTM.spawn(NeoDebug::log(e));
         }
+
+        Ok(())
         //fs::write(path, contents)
     }
 }
