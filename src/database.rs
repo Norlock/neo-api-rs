@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use tokio::{fs, time::Instant};
+use tokio::time::Instant;
 
 use crate::{LineOut, NeoDebug, RTM};
 
@@ -25,8 +25,7 @@ impl Database {
             .to_string_lossy()
             .to_string();
 
-        let options = sqlx::sqlite::SqliteConnectOptions::new()
-            .extension(crate_path);
+        let options = sqlx::sqlite::SqliteConnectOptions::new().extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;
 

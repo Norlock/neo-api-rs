@@ -28,6 +28,9 @@ impl ExecuteTask for ExecRecentDirectories {
         let mut new_lines = Vec::new();
 
         for line in directories_str.lines().rev() {
+            let root = format!("{}/", std::env!("HOME"));
+            let line = line.strip_prefix(&root).unwrap();
+
             new_lines.push(LineOut::new_directory(line.into()));
         }
 
