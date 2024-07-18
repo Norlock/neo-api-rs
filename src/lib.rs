@@ -27,6 +27,7 @@ pub use diffuser::{ExecuteTask, DummyTask};
 
 pub use mlua;
 pub use tokio;
+pub use async_trait;
 
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;

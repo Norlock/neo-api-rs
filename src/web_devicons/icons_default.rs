@@ -15,7 +15,6 @@ struct DevIconsContainer {
 }
 
 // https://github.com/nvim-tree/nvim-web-devicons
-// b77921f
 static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
     let dev_icon_from_filename = HashMap::from_iter([
         (
@@ -23,7 +22,6 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#005f87",
-                cterm_color: "24",
                 name: "GradleBuildScript",
             },
         ),
@@ -32,7 +30,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#005f87",
-                cterm_color: "24",
+
                 name: "GradleSettings",
             },
         ),
@@ -41,7 +39,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Babelrc",
             },
         ),
@@ -50,7 +48,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "BashProfile",
             },
         ),
@@ -59,7 +57,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Bashrc",
             },
         ),
@@ -68,7 +66,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -77,7 +75,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#41535b",
-                cterm_color: "239",
+
                 name: "DsStore",
             },
         ),
@@ -86,7 +84,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fff2f2",
-                cterm_color: "255",
+
                 name: "EditorConfig",
             },
         ),
@@ -95,7 +93,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#faf743",
-                cterm_color: "227",
+
                 name: "Env",
             },
         ),
@@ -104,7 +102,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4b32c3",
-                cterm_color: "56",
+
                 name: "Eslintrc",
             },
         ),
@@ -113,7 +111,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4b32c3",
-                cterm_color: "56",
+
                 name: "EslintIgnore",
             },
         ),
@@ -122,7 +120,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f54d27",
-                cterm_color: "196",
+
                 name: "GitAttributes",
             },
         ),
@@ -131,7 +129,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f54d27",
-                cterm_color: "196",
+
                 name: "GitConfig",
             },
         ),
@@ -140,7 +138,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f54d27",
-                cterm_color: "196",
+
                 name: "GitIgnore",
             },
         ),
@@ -149,7 +147,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e24329",
-                cterm_color: "196",
+
                 name: "GitlabCI",
             },
         ),
@@ -158,7 +156,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f54d27",
-                cterm_color: "196",
+
                 name: "GitModules",
             },
         ),
@@ -167,7 +165,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "GTK",
             },
         ),
@@ -176,7 +174,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Gvimrc",
             },
         ),
@@ -185,7 +183,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00a2ff",
-                cterm_color: "75",
+
                 name: "Luaurc",
             },
         ),
@@ -194,7 +192,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰊢",
                 color: "#41535b",
-                cterm_color: "239",
+
                 name: "Mailmap",
             },
         ),
@@ -203,7 +201,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#E8274B",
-                cterm_color: "197",
+
                 name: "NPMIgnore",
             },
         ),
@@ -212,7 +210,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#E8274B",
-                cterm_color: "197",
+
                 name: "NPMrc",
             },
         ),
@@ -221,7 +219,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4285F4",
-                cterm_color: "33",
+
                 name: "PrettierConfig",
             },
         ),
@@ -230,7 +228,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#854CC7",
-                cterm_color: "98",
+
                 name: "SettingsJson",
             },
         ),
@@ -239,7 +237,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰣇",
                 color: "#0f94d2",
-                cterm_color: "67",
+
                 name: "SRCINFO",
             },
         ),
@@ -248,7 +246,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Vimrc",
             },
         ),
@@ -257,7 +255,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "Xauthority",
             },
         ),
@@ -266,7 +264,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "XInitrc",
             },
         ),
@@ -275,7 +273,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "Xresources",
             },
         ),
@@ -284,7 +282,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "Xsession",
             },
         ),
@@ -293,7 +291,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Zshprofile",
             },
         ),
@@ -302,7 +300,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Zshenv",
             },
         ),
@@ -311,7 +309,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Zshrc",
             },
         ),
@@ -320,7 +318,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Gvimrc",
             },
         ),
@@ -329,7 +327,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Vimrc",
             },
         ),
@@ -338,7 +336,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰟔",
                 color: "#2266ba",
-                cterm_color: "25",
+
                 name: "R",
             },
         ),
@@ -347,7 +345,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Avif",
             },
         ),
@@ -356,7 +354,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Brewfile",
             },
         ),
@@ -365,7 +363,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2f2f2f",
-                cterm_color: "236",
+
                 name: "BSPWM",
             },
         ),
@@ -374,7 +372,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "BazelBuild",
             },
         ),
@@ -383,7 +381,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰓙",
                 color: "#75B4FB",
-                cterm_color: "75",
+
                 name: "Checkhealth",
             },
         ),
@@ -392,7 +390,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "CMakeLists",
             },
         ),
@@ -401,7 +399,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f54d27",
-                cterm_color: "196",
+
                 name: "GitCommit",
             },
         ),
@@ -410,7 +408,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -419,7 +417,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -428,7 +426,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Config",
             },
         ),
@@ -437,7 +435,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -446,7 +444,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "License",
             },
         ),
@@ -455,7 +453,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "License",
             },
         ),
@@ -464,7 +462,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -473,7 +471,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -482,7 +480,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -491,7 +489,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FF8700",
-                cterm_color: "208",
+
                 name: "TypoScriptSetup",
             },
         ),
@@ -500,7 +498,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Favicon",
             },
         ),
@@ -509,7 +507,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCadCache",
             },
         ),
@@ -518,7 +516,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCadFootprintTable",
             },
         ),
@@ -527,7 +525,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCADConfig",
             },
         ),
@@ -536,7 +534,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Gemfile",
             },
         ),
@@ -545,7 +543,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Makefile",
             },
         ),
@@ -554,7 +552,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#005f87",
-                cterm_color: "24",
+
                 name: "GradleWrapperScript",
             },
         ),
@@ -563,7 +561,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#005f87",
-                cterm_color: "24",
+
                 name: "GradleProperties",
             },
         ),
@@ -572,7 +570,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#005f87",
-                cterm_color: "24",
+
                 name: "GradleWrapperProperties",
             },
         ),
@@ -581,7 +579,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4a687c",
-                cterm_color: "24",
+
                 name: "Groovy",
             },
         ),
@@ -590,7 +588,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Gruntfile",
             },
         ),
@@ -599,7 +597,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Gruntfile",
             },
         ),
@@ -608,7 +606,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Gruntfile",
             },
         ),
@@ -617,7 +615,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Gruntfile",
             },
         ),
@@ -626,7 +624,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "GTK",
             },
         ),
@@ -635,7 +633,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Gulpfile",
             },
         ),
@@ -644,7 +642,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Gulpfile",
             },
         ),
@@ -653,7 +651,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Gulpfile",
             },
         ),
@@ -662,7 +660,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Gulpfile",
             },
         ),
@@ -671,7 +669,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00aaae",
-                cterm_color: "37",
+
                 name: "Hyprland",
             },
         ),
@@ -680,7 +678,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e8ebee",
-                cterm_color: "255",
+
                 name: "i3",
             },
         ),
@@ -689,7 +687,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e8ebee",
-                cterm_color: "255",
+
                 name: "i3",
             },
         ),
@@ -698,7 +696,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1c99f3",
-                cterm_color: "32",
+
                 name: "Cantorrc",
             },
         ),
@@ -707,7 +705,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1c99f3",
-                cterm_color: "32",
+
                 name: "Kalgebrarc",
             },
         ),
@@ -716,7 +714,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1c99f3",
-                cterm_color: "32",
+
                 name: "KDEglobals",
             },
         ),
@@ -725,7 +723,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#83b8f2",
-                cterm_color: "110",
+
                 name: "KdenliveLayoutsrc",
             },
         ),
@@ -734,7 +732,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#83b8f2",
-                cterm_color: "110",
+
                 name: "Kdenliverc",
             },
         ),
@@ -743,7 +741,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f245fb",
-                cterm_color: "201",
+
                 name: "Kritadisplayrc",
             },
         ),
@@ -752,7 +750,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f245fb",
-                cterm_color: "201",
+
                 name: "Kritarc",
             },
         ),
@@ -761,7 +759,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d0bf41",
-                cterm_color: "185",
+
                 name: "License",
             },
         ),
@@ -770,7 +768,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#909090",
-                cterm_color: "246",
+
                 name: "LXDEConfigFile",
             },
         ),
@@ -779,7 +777,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0192d3",
-                cterm_color: "32",
+
                 name: "LXQtConfigFile",
             },
         ),
@@ -788,7 +786,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Makefile",
             },
         ),
@@ -797,7 +795,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "MixLock",
             },
         ),
@@ -806,7 +804,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#3b1342",
-                cterm_color: "53",
+
                 name: "Mpv",
             },
         ),
@@ -815,7 +813,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#E8274B",
-                cterm_color: "197",
+
                 name: "NodeModules",
             },
         ),
@@ -824,7 +822,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e8274b",
-                cterm_color: "197",
+
                 name: "PackageJson",
             },
         ),
@@ -833,7 +831,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7a0d21",
-                cterm_color: "52",
+
                 name: "PackageLockJson",
             },
         ),
@@ -842,7 +840,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0f94d2",
-                cterm_color: "67",
+
                 name: "PKGBUILD",
             },
         ),
@@ -851,7 +849,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f6822b",
-                cterm_color: "208",
+
                 name: "Platformio",
             },
         ),
@@ -860,7 +858,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7a0d21",
-                cterm_color: "52",
+
                 name: "Maven",
             },
         ),
@@ -869,7 +867,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Procfile",
             },
         ),
@@ -878,7 +876,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ec6b23",
-                cterm_color: "202",
+
                 name: "PrusaSlicer",
             },
         ),
@@ -887,7 +885,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ec6b23",
-                cterm_color: "202",
+
                 name: "PrusaSlicer",
             },
         ),
@@ -896,7 +894,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffbc03",
-                cterm_color: "214",
+
                 name: "Py.typed",
             },
         ),
@@ -905,7 +903,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#40cd52",
-                cterm_color: "77",
+
                 name: "Qt",
             },
         ),
@@ -914,7 +912,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰟔",
                 color: "#2266ba",
-                cterm_color: "25",
+
                 name: "R",
             },
         ),
@@ -923,7 +921,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Rakefile",
             },
         ),
@@ -932,7 +930,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Rmd",
             },
         ),
@@ -941,7 +939,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff3e00",
-                cterm_color: "196",
+
                 name: "SvelteConfig",
             },
         ),
@@ -950,7 +948,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2f2f2f",
-                cterm_color: "236",
+
                 name: "BSPWM",
             },
         ),
@@ -959,7 +957,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCadSymbolTable",
             },
         ),
@@ -968,7 +966,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱏿",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "TailwindConfig",
             },
         ),
@@ -977,7 +975,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱏿",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "TailwindConfig",
             },
         ),
@@ -986,7 +984,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱏿",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "TailwindConfig",
             },
         ),
@@ -995,7 +993,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#14ba19",
-                cterm_color: "34",
+
                 name: "Tmux",
             },
         ),
@@ -1004,7 +1002,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#14ba19",
-                cterm_color: "34",
+
                 name: "Tmux",
             },
         ),
@@ -1013,7 +1011,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "TSConfig",
             },
         ),
@@ -1022,7 +1020,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d0bf41",
-                cterm_color: "185",
+
                 name: "License",
             },
         ),
@@ -1031,7 +1029,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1563FF",
-                cterm_color: "27",
+
                 name: "Vagrantfile",
             },
         ),
@@ -1040,7 +1038,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕼",
                 color: "#ee7a00",
-                cterm_color: "208",
+
                 name: "VLC",
             },
         ),
@@ -1049,7 +1047,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰜫",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Webpack",
             },
         ),
@@ -1058,7 +1056,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffbb01",
-                cterm_color: "214",
+
                 name: "Weston",
             },
         ),
@@ -1067,7 +1065,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "BazelWorkspace",
             },
         ),
@@ -1076,7 +1074,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fd4d5d",
-                cterm_color: "203",
+
                 name: "xmonad",
             },
         ),
@@ -1085,7 +1083,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fd4d5d",
-                cterm_color: "203",
+
                 name: "xmonad",
             },
         ),
@@ -1094,7 +1092,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fd4d5d",
-                cterm_color: "203",
+
                 name: "xmonad",
             },
         ),
@@ -1103,7 +1101,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "XorgConf",
             },
         ),
@@ -1112,7 +1110,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e54d18",
-                cterm_color: "196",
+
                 name: "XSettingsdConf",
             },
         ),
@@ -1121,7 +1119,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f69a1b",
-                cterm_color: "172",
+
                 name: "ZigObjectNotation",
             },
         ),
@@ -1133,7 +1131,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "3gp",
             },
         ),
@@ -1142,7 +1140,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "3DObjectFile",
             },
         ),
@@ -1151,7 +1149,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "7z",
             },
         ),
@@ -1160,7 +1158,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dcddd6",
-                cterm_color: "253",
+
                 name: "StaticLibraryArchive",
             },
         ),
@@ -1169,7 +1167,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "AdvancedAudioCoding",
             },
         ),
@@ -1178,7 +1176,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "AudioInterchangeFileFormat",
             },
         ),
@@ -1187,7 +1185,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "AudioInterchangeFileFormat",
             },
         ),
@@ -1196,7 +1194,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "MonkeysAudio",
             },
         ),
@@ -1205,7 +1203,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Ai",
             },
         ),
@@ -1214,7 +1212,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#34a853",
-                cterm_color: "35",
+
                 name: "Android",
             },
         ),
@@ -1223,7 +1221,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#34a853",
-                cterm_color: "35",
+
                 name: "apk",
             },
         ),
@@ -1232,7 +1230,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "App",
             },
         ),
@@ -1241,7 +1239,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8085",
-                cterm_color: "66",
+
                 name: "AppleScript",
             },
         ),
@@ -1250,7 +1248,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰦝",
                 color: "#576d7f",
-                cterm_color: "242",
+
                 name: "Asc",
             },
         ),
@@ -1259,7 +1257,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨖",
                 color: "#ffb713",
-                cterm_color: "214",
+
                 name: "Ass",
             },
         ),
@@ -1268,7 +1266,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e23f67",
-                cterm_color: "197",
+
                 name: "Astro",
             },
         ),
@@ -1277,7 +1275,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d5a5e",
-                cterm_color: "240",
+
                 name: "Awk",
             },
         ),
@@ -1286,7 +1284,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0078d4",
-                cterm_color: "32",
+
                 name: "AzureCli",
             },
         ),
@@ -1295,7 +1293,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰁯",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Backup",
             },
         ),
@@ -1304,7 +1302,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Bash",
             },
         ),
@@ -1313,7 +1311,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#C1F12E",
-                cterm_color: "191",
+
                 name: "Bat",
             },
         ),
@@ -1322,7 +1320,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Bazel",
             },
         ),
@@ -1331,7 +1329,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱉟",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "BibTeX",
             },
         ),
@@ -1340,7 +1338,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Bicep",
             },
         ),
@@ -1349,7 +1347,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9f74b3",
-                cterm_color: "133",
+
                 name: "BicepParameters",
             },
         ),
@@ -1358,7 +1356,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "Bin",
             },
         ),
@@ -1367,7 +1365,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f05340",
-                cterm_color: "203",
+
                 name: "Blade",
             },
         ),
@@ -1376,7 +1374,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰂫",
                 color: "#ea7600",
-                cterm_color: "208",
+
                 name: "Blender",
             },
         ),
@@ -1385,7 +1383,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Bmp",
             },
         ),
@@ -1394,7 +1392,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰺾",
                 color: "#5796E2",
-                cterm_color: "68",
+
                 name: "Blueprint",
             },
         ),
@@ -1403,7 +1401,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "BoundaryRepresentation",
             },
         ),
@@ -1412,7 +1410,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Bz",
             },
         ),
@@ -1421,7 +1419,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Bz2",
             },
         ),
@@ -1430,7 +1428,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Bz3",
             },
         ),
@@ -1439,7 +1437,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Bzl",
             },
         ),
@@ -1448,7 +1446,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#599eff",
-                cterm_color: "111",
+
                 name: "C",
             },
         ),
@@ -1457,7 +1455,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f34b7d",
-                cterm_color: "204",
+
                 name: "CPlusPlus",
             },
         ),
@@ -1466,7 +1464,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "Cache",
             },
         ),
@@ -1475,7 +1473,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "Asciinema",
             },
         ),
@@ -1484,7 +1482,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "⚙",
                 color: "#005ca5",
-                cterm_color: "25",
+
                 name: "Cobol",
             },
         ),
@@ -1493,7 +1491,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f34b7d",
-                cterm_color: "204",
+
                 name: "CPlusPlus",
             },
         ),
@@ -1502,7 +1500,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f34b7d",
-                cterm_color: "204",
+
                 name: "CPlusPlusModule",
             },
         ),
@@ -1511,7 +1509,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Configuration",
             },
         ),
@@ -1520,7 +1518,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Cjs",
             },
         ),
@@ -1529,7 +1527,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8dc149",
-                cterm_color: "113",
+
                 name: "Clojure",
             },
         ),
@@ -1538,7 +1536,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8dc149",
-                cterm_color: "113",
+
                 name: "ClojureC",
             },
         ),
@@ -1547,7 +1545,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "ClojureJS",
             },
         ),
@@ -1556,7 +1554,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "ClojureDart",
             },
         ),
@@ -1565,7 +1563,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "CMake",
             },
         ),
@@ -1574,7 +1572,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "⚙",
                 color: "#005ca5",
-                cterm_color: "25",
+
                 name: "Cobol",
             },
         ),
@@ -1583,7 +1581,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "⚙",
                 color: "#005ca5",
-                cterm_color: "25",
+
                 name: "Cobol",
             },
         ),
@@ -1592,7 +1590,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Coffee",
             },
         ),
@@ -1601,7 +1599,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Conf",
             },
         ),
@@ -1610,7 +1608,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "ConfigRu",
             },
         ),
@@ -1619,7 +1617,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cp",
             },
         ),
@@ -1628,7 +1626,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cpp",
             },
         ),
@@ -1637,7 +1635,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cppm",
             },
         ),
@@ -1646,7 +1644,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "⚙",
                 color: "#005ca5",
-                cterm_color: "25",
+
                 name: "Cobol",
             },
         ),
@@ -1655,7 +1653,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#c8c8c8",
-                cterm_color: "251",
+
                 name: "Crystal",
             },
         ),
@@ -1664,7 +1662,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#44cda8",
-                cterm_color: "43",
+
                 name: "Crdownload",
             },
         ),
@@ -1673,7 +1671,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰌛",
                 color: "#596706",
-                cterm_color: "58",
+
                 name: "Cs",
             },
         ),
@@ -1682,7 +1680,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d5a5e",
-                cterm_color: "240",
+
                 name: "Csh",
             },
         ),
@@ -1691,7 +1689,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱦗",
                 color: "#512bd4",
-                cterm_color: "56",
+
                 name: "RazorPage",
             },
         ),
@@ -1700,7 +1698,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Cson",
             },
         ),
@@ -1709,7 +1707,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰪮",
                 color: "#512bd4",
-                cterm_color: "56",
+
                 name: "CSharpProject",
             },
         ),
@@ -1718,7 +1716,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#42a5f5",
-                cterm_color: "75",
+
                 name: "Css",
             },
         ),
@@ -1727,7 +1725,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Csv",
             },
         ),
@@ -1736,7 +1734,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cts",
             },
         ),
@@ -1745,7 +1743,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "cuda",
             },
         ),
@@ -1754,7 +1752,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰲹",
                 color: "#ed95ae",
-                cterm_color: "211",
+
                 name: "Cue",
             },
         ),
@@ -1763,7 +1761,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "cudah",
             },
         ),
@@ -1772,7 +1770,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cxx",
             },
         ),
@@ -1781,7 +1779,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Cxxm",
             },
         ),
@@ -1790,7 +1788,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#427819",
-                cterm_color: "28",
+
                 name: "D",
             },
         ),
@@ -1799,7 +1797,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d59855",
-                cterm_color: "172",
+
                 name: "TypeScriptDeclaration",
             },
         ),
@@ -1808,7 +1806,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#03589C",
-                cterm_color: "25",
+
                 name: "Dart",
             },
         ),
@@ -1817,7 +1815,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dad8d8",
-                cterm_color: "188",
+
                 name: "Db",
             },
         ),
@@ -1826,7 +1824,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "Dconf",
             },
         ),
@@ -1835,7 +1833,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#563d7c",
-                cterm_color: "54",
+
                 name: "DesktopEntry",
             },
         ),
@@ -1844,7 +1842,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#41535b",
-                cterm_color: "239",
+
                 name: "Diff",
             },
         ),
@@ -1853,7 +1851,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d2c0b",
-                cterm_color: "52",
+
                 name: "Dll",
             },
         ),
@@ -1862,7 +1860,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈬",
                 color: "#185abd",
-                cterm_color: "26",
+
                 name: "Doc",
             },
         ),
@@ -1871,7 +1869,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡨",
                 color: "#458ee6",
-                cterm_color: "68",
+
                 name: "Dockerfile",
             },
         ),
@@ -1880,7 +1878,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈬",
                 color: "#185abd",
-                cterm_color: "26",
+
                 name: "Docx",
             },
         ),
@@ -1889,7 +1887,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱁉",
                 color: "#30638e",
-                cterm_color: "24",
+
                 name: "Dot",
             },
         ),
@@ -1898,7 +1896,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#44cda8",
-                cterm_color: "43",
+
                 name: "Download",
             },
         ),
@@ -1907,7 +1905,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffafaf",
-                cterm_color: "217",
+
                 name: "Drools",
             },
         ),
@@ -1916,7 +1914,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0061FE",
-                cterm_color: "27",
+
                 name: "Dropbox",
             },
         ),
@@ -1925,7 +1923,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dad8d8",
-                cterm_color: "188",
+
                 name: "Dump",
             },
         ),
@@ -1934,7 +1932,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "AutoCADDwg",
             },
         ),
@@ -1943,7 +1941,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "AutoCADDxf",
             },
         ),
@@ -1952,7 +1950,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eab16d",
-                cterm_color: "215",
+
                 name: "Ebook",
             },
         ),
@@ -1961,7 +1959,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Edn",
             },
         ),
@@ -1970,7 +1968,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Eex",
             },
         ),
@@ -1979,7 +1977,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Ejs",
             },
         ),
@@ -1988,7 +1986,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "Elf",
             },
         ),
@@ -1997,7 +1995,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8172be",
-                cterm_color: "97",
+
                 name: "Elisp",
             },
         ),
@@ -2006,7 +2004,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8172be",
-                cterm_color: "97",
+
                 name: "Elisp",
             },
         ),
@@ -2015,7 +2013,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Elm",
             },
         ),
@@ -2024,7 +2022,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8172be",
-                cterm_color: "97",
+
                 name: "Elisp",
             },
         ),
@@ -2033,7 +2031,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#faf743",
-                cterm_color: "227",
+
                 name: "Env",
             },
         ),
@@ -2042,7 +2040,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "EmbeddedOpenTypeFont",
             },
         ),
@@ -2051,7 +2049,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FFA61A",
-                cterm_color: "214",
+
                 name: "Epp",
             },
         ),
@@ -2060,7 +2058,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eab16d",
-                cterm_color: "215",
+
                 name: "Epub",
             },
         ),
@@ -2069,7 +2067,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Erb",
             },
         ),
@@ -2078,7 +2076,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#B83998",
-                cterm_color: "163",
+
                 name: "Erl",
             },
         ),
@@ -2087,7 +2085,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Ex",
             },
         ),
@@ -2096,7 +2094,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "Exe",
             },
         ),
@@ -2105,7 +2103,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Exs",
             },
         ),
@@ -2114,7 +2112,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Fsharp",
             },
         ),
@@ -2123,7 +2121,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Fusion360",
             },
         ),
@@ -2132,7 +2130,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱈚",
                 color: "#734f96",
-                cterm_color: "97",
+
                 name: "Fortran",
             },
         ),
@@ -2141,7 +2139,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "3DObjectFile",
             },
         ),
@@ -2150,7 +2148,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2159,7 +2157,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2168,7 +2166,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2177,7 +2175,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2186,7 +2184,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2195,7 +2193,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2204,7 +2202,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2213,7 +2211,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2222,7 +2220,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cb0d0d",
-                cterm_color: "160",
+
                 name: "FreeCAD",
             },
         ),
@@ -2231,7 +2229,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#44cda8",
-                cterm_color: "43",
+
                 name: "Fdmdownload",
             },
         ),
@@ -2240,7 +2238,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0075aa",
-                cterm_color: "24",
+
                 name: "FreeLosslessAudioCodec",
             },
         ),
@@ -2249,7 +2247,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "FIGletFontControl",
             },
         ),
@@ -2258,7 +2256,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "FIGletFontFormat",
             },
         ),
@@ -2267,7 +2265,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fff3d7",
-                cterm_color: "230",
+
                 name: "Fennel",
             },
         ),
@@ -2276,7 +2274,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d5a5e",
-                cterm_color: "240",
+
                 name: "Fish",
             },
         ),
@@ -2285,7 +2283,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Fs",
             },
         ),
@@ -2294,7 +2292,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Fsi",
             },
         ),
@@ -2303,7 +2301,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Fsscript",
             },
         ),
@@ -2312,7 +2310,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Fsx",
             },
         ),
@@ -2321,7 +2319,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰐫",
                 color: "#1471ad",
-                cterm_color: "32",
+
                 name: "GCode",
             },
         ),
@@ -2330,7 +2328,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "GDScript",
             },
         ),
@@ -2339,7 +2337,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Gemspec",
             },
         ),
@@ -2348,7 +2346,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Gif",
             },
         ),
@@ -2357,7 +2355,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#F14C28",
-                cterm_color: "196",
+
                 name: "GitLogo",
             },
         ),
@@ -2366,7 +2364,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FFB13B",
-                cterm_color: "214",
+
                 name: "BinaryGLTF",
             },
         ),
@@ -2375,7 +2373,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Makefile",
             },
         ),
@@ -2384,7 +2382,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Go",
             },
         ),
@@ -2393,7 +2391,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "GodotProject",
             },
         ),
@@ -2402,7 +2400,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e535ab",
-                cterm_color: "199",
+
                 name: "GraphQL",
             },
         ),
@@ -2411,7 +2409,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e535ab",
-                cterm_color: "199",
+
                 name: "GraphQL",
             },
         ),
@@ -2420,7 +2418,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "GTK",
             },
         ),
@@ -2429,7 +2427,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱁉",
                 color: "#30638e",
-                cterm_color: "24",
+
                 name: "Gv",
             },
         ),
@@ -2438,7 +2436,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Gz",
             },
         ),
@@ -2447,7 +2445,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "H",
             },
         ),
@@ -2456,7 +2454,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eaeae1",
-                cterm_color: "255",
+
                 name: "Haml",
             },
         ),
@@ -2465,7 +2463,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ea8220",
-                cterm_color: "208",
+
                 name: "Haxe",
             },
         ),
@@ -2474,7 +2472,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f0772b",
-                cterm_color: "202",
+
                 name: "Hbs",
             },
         ),
@@ -2483,7 +2481,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2e63ff",
-                cterm_color: "27",
+
                 name: "Hexadecimal",
             },
         ),
@@ -2492,7 +2490,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Heex",
             },
         ),
@@ -2501,7 +2499,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Hh",
             },
         ),
@@ -2510,7 +2508,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Hpp",
             },
         ),
@@ -2519,7 +2517,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#B83998",
-                cterm_color: "163",
+
                 name: "Hrl",
             },
         ),
@@ -2528,7 +2526,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Hs",
             },
         ),
@@ -2537,7 +2535,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e34c26",
-                cterm_color: "196",
+
                 name: "Htm",
             },
         ),
@@ -2546,7 +2544,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e44d26",
-                cterm_color: "196",
+
                 name: "Html",
             },
         ),
@@ -2555,7 +2553,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰡘",
                 color: "#4242c7",
-                cterm_color: "56",
+
                 name: "Huff",
             },
         ),
@@ -2564,7 +2562,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff0288",
-                cterm_color: "198",
+
                 name: "Hurl",
             },
         ),
@@ -2573,7 +2571,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Hxx",
             },
         ),
@@ -2582,7 +2580,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Ixx",
             },
         ),
@@ -2591,7 +2589,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Ico",
             },
         ),
@@ -2600,7 +2598,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2B2e83",
-                cterm_color: "18",
+
                 name: "Ical",
             },
         ),
@@ -2609,7 +2607,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2B2e83",
-                cterm_color: "18",
+
                 name: "Icalendar",
             },
         ),
@@ -2618,7 +2616,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2B2e83",
-                cterm_color: "18",
+
                 name: "Ics",
             },
         ),
@@ -2627,7 +2625,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2B2e83",
-                cterm_color: "18",
+
                 name: "Ifb",
             },
         ),
@@ -2636,7 +2634,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Ifc",
             },
         ),
@@ -2645,7 +2643,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Ige",
             },
         ),
@@ -2654,7 +2652,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Iges",
             },
         ),
@@ -2663,7 +2661,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Igs",
             },
         ),
@@ -2672,7 +2670,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d0bec8",
-                cterm_color: "181",
+
                 name: "Image",
             },
         ),
@@ -2681,7 +2679,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d0bec8",
-                cterm_color: "181",
+
                 name: "Img",
             },
         ),
@@ -2690,7 +2688,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "ImportConfiguration",
             },
         ),
@@ -2699,7 +2697,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffcd",
-                cterm_color: "230",
+
                 name: "Info",
             },
         ),
@@ -2708,7 +2706,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Ini",
             },
         ),
@@ -2717,7 +2715,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#56b6c2",
-                cterm_color: "73",
+
                 name: "Arduino",
             },
         ),
@@ -2726,7 +2724,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#d0bec8",
-                cterm_color: "181",
+
                 name: "Iso",
             },
         ),
@@ -2735,7 +2733,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#51a0cf",
-                cterm_color: "74",
+
                 name: "Notebook",
             },
         ),
@@ -2744,7 +2742,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Java",
             },
         ),
@@ -2753,7 +2751,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a270ba",
-                cterm_color: "133",
+
                 name: "Jl",
             },
         ),
@@ -2762,7 +2760,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0078cd",
-                cterm_color: "32",
+
                 name: "JWM",
             },
         ),
@@ -2771,7 +2769,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Jpeg",
             },
         ),
@@ -2780,7 +2778,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Jpg",
             },
         ),
@@ -2789,7 +2787,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Js",
             },
         ),
@@ -2798,7 +2796,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Json",
             },
         ),
@@ -2807,7 +2805,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Json5",
             },
         ),
@@ -2816,7 +2814,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "Jsonc",
             },
         ),
@@ -2825,7 +2823,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "Jsx",
             },
         ),
@@ -2834,7 +2832,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "JpegXl",
             },
         ),
@@ -2843,7 +2841,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰯄",
                 color: "#737672",
-                cterm_color: "243",
+
                 name: "Kbx",
             },
         ),
@@ -2852,7 +2850,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#529b34",
-                cterm_color: "71",
+
                 name: "Kdb",
             },
         ),
@@ -2861,7 +2859,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#529b34",
-                cterm_color: "71",
+
                 name: "Kdbx",
             },
         ),
@@ -2870,7 +2868,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#83b8f2",
-                cterm_color: "110",
+
                 name: "Kdenlive",
             },
         ),
@@ -2879,7 +2877,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#83b8f2",
-                cterm_color: "110",
+
                 name: "Kdenlive",
             },
         ),
@@ -2888,7 +2886,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2897,7 +2895,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2906,7 +2904,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2915,7 +2913,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2924,7 +2922,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2933,7 +2931,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2942,7 +2940,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2951,7 +2949,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "KiCad",
             },
         ),
@@ -2960,7 +2958,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dcddd6",
-                cterm_color: "253",
+
                 name: "LinuxKernelObject",
             },
         ),
@@ -2969,7 +2967,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f245fb",
-                cterm_color: "201",
+
                 name: "Krita",
             },
         ),
@@ -2978,7 +2976,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f245fb",
-                cterm_color: "201",
+
                 name: "Krita",
             },
         ),
@@ -2987,7 +2985,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f245fb",
-                cterm_color: "201",
+
                 name: "Krita",
             },
         ),
@@ -2996,7 +2994,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d5a5e",
-                cterm_color: "240",
+
                 name: "Ksh",
             },
         ),
@@ -3005,7 +3003,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7F52FF",
-                cterm_color: "99",
+
                 name: "Kotlin",
             },
         ),
@@ -3014,7 +3012,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7F52FF",
-                cterm_color: "99",
+
                 name: "KotlinScript",
             },
         ),
@@ -3023,7 +3021,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#bbbbbb",
-                cterm_color: "250",
+
                 name: "Lock",
             },
         ),
@@ -3032,7 +3030,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Leex",
             },
         ),
@@ -3041,7 +3039,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#563d7c",
-                cterm_color: "54",
+
                 name: "Less",
             },
         ),
@@ -3050,7 +3048,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "LibrecadFontFile",
             },
         ),
@@ -3059,7 +3057,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Lhs",
             },
         ),
@@ -3068,7 +3066,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d2c0b",
-                cterm_color: "52",
+
                 name: "Lib",
             },
         ),
@@ -3077,7 +3075,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "License",
             },
         ),
@@ -3086,7 +3084,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#95BF47",
-                cterm_color: "106",
+
                 name: "Liquid",
             },
         ),
@@ -3095,7 +3093,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#bbbbbb",
-                cterm_color: "250",
+
                 name: "Lock",
             },
         ),
@@ -3104,7 +3102,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰌱",
                 color: "#dddddd",
-                cterm_color: "253",
+
                 name: "Log",
             },
         ),
@@ -3113,7 +3111,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨖",
                 color: "#ffb713",
-                cterm_color: "214",
+
                 name: "Lrc",
             },
         ),
@@ -3122,7 +3120,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#51a0cf",
-                cterm_color: "74",
+
                 name: "Lua",
             },
         ),
@@ -3131,7 +3129,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#51a0cf",
-                cterm_color: "74",
+
                 name: "Lua",
             },
         ),
@@ -3140,7 +3138,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00a2ff",
-                cterm_color: "75",
+
                 name: "Luau",
             },
         ),
@@ -3149,7 +3147,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰲹",
                 color: "#ed95ae",
-                cterm_color: "211",
+
                 name: "M3u",
             },
         ),
@@ -3158,7 +3156,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰲹",
                 color: "#ed95ae",
-                cterm_color: "211",
+
                 name: "M3u8",
             },
         ),
@@ -3167,7 +3165,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "MPEG4",
             },
         ),
@@ -3176,7 +3174,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "M4V",
             },
         ),
@@ -3185,7 +3183,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a51b16",
-                cterm_color: "124",
+
                 name: "Magnet",
             },
         ),
@@ -3194,7 +3192,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Makefile",
             },
         ),
@@ -3203,7 +3201,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dddddd",
-                cterm_color: "253",
+
                 name: "Markdown",
             },
         ),
@@ -3212,7 +3210,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰔉",
                 color: "#B83998",
-                cterm_color: "163",
+
                 name: "Material",
             },
         ),
@@ -3221,7 +3219,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dddddd",
-                cterm_color: "253",
+
                 name: "Md",
             },
         ),
@@ -3230,7 +3228,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Md5",
             },
         ),
@@ -3239,7 +3237,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Mdx",
             },
         ),
@@ -3248,7 +3246,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰌪",
                 color: "#87c095",
-                cterm_color: "108",
+
                 name: "Mint",
             },
         ),
@@ -3257,7 +3255,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f1e05a",
-                cterm_color: "185",
+
                 name: "Mjs",
             },
         ),
@@ -3266,7 +3264,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Makefile",
             },
         ),
@@ -3275,7 +3273,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "Mkv",
             },
         ),
@@ -3284,7 +3282,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Ml",
             },
         ),
@@ -3293,7 +3291,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Mli",
             },
         ),
@@ -3302,7 +3300,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#599eff",
-                cterm_color: "111",
+
                 name: "ObjectiveC",
             },
         ),
@@ -3311,7 +3309,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "ObjectiveCPlusPlus",
             },
         ),
@@ -3320,7 +3318,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "∞",
                 color: "#9772FB",
-                cterm_color: "135",
+
                 name: "Motoko",
             },
         ),
@@ -3329,7 +3327,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eab16d",
-                cterm_color: "215",
+
                 name: "Mobi",
             },
         ),
@@ -3338,7 +3336,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "MOV",
             },
         ),
@@ -3347,7 +3345,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "MPEGAudioLayerIII",
             },
         ),
@@ -3356,7 +3354,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "Mp4",
             },
         ),
@@ -3365,7 +3363,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Mpp",
             },
         ),
@@ -3374,7 +3372,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#137be1",
-                cterm_color: "33",
+
                 name: "Thunderbird",
             },
         ),
@@ -3383,7 +3381,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Mts",
             },
         ),
@@ -3392,7 +3390,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Mustache",
             },
         ),
@@ -3401,7 +3399,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffcd",
-                cterm_color: "230",
+
                 name: "Nfo",
             },
         ),
@@ -3410,7 +3408,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f3d400",
-                cterm_color: "220",
+
                 name: "Nim",
             },
         ),
@@ -3419,7 +3417,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7ebae4",
-                cterm_color: "110",
+
                 name: "Nix",
             },
         ),
@@ -3428,7 +3426,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#85ea2d",
-                cterm_color: "112",
+
                 name: "Nswag",
             },
         ),
@@ -3437,7 +3435,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: ">",
                 color: "#3aa675",
-                cterm_color: "36",
+
                 name: "Nushell",
             },
         ),
@@ -3446,7 +3444,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "ObjectFile",
             },
         ),
@@ -3455,7 +3453,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "3DObjectFile",
             },
         ),
@@ -3464,7 +3462,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0075aa",
-                cterm_color: "24",
+
                 name: "OggVorbis",
             },
         ),
@@ -3473,7 +3471,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0075aa",
-                cterm_color: "24",
+
                 name: "OpusAudioFile",
             },
         ),
@@ -3482,7 +3480,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#77AA99",
-                cterm_color: "73",
+
                 name: "OrgMode",
             },
         ),
@@ -3491,7 +3489,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "OpenTypeFont",
             },
         ),
@@ -3500,7 +3498,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9F0500",
-                cterm_color: "124",
+
                 name: "Out",
             },
         ),
@@ -3509,7 +3507,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#44cda8",
-                cterm_color: "43",
+
                 name: "Part",
             },
         ),
@@ -3518,7 +3516,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#41535b",
-                cterm_color: "239",
+
                 name: "Patch",
             },
         ),
@@ -3527,7 +3525,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "PackedResource",
             },
         ),
@@ -3536,7 +3534,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0075aa",
-                cterm_color: "24",
+
                 name: "PulseCodeModulation",
             },
         ),
@@ -3545,7 +3543,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#b30b00",
-                cterm_color: "124",
+
                 name: "Pdf",
             },
         ),
@@ -3554,7 +3552,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Php",
             },
         ),
@@ -3563,7 +3561,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Pl",
             },
         ),
@@ -3572,7 +3570,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰲹",
                 color: "#ed95ae",
-                cterm_color: "211",
+
                 name: "Pls",
             },
         ),
@@ -3581,7 +3579,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "3DObjectFile",
             },
         ),
@@ -3590,7 +3588,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Pm",
             },
         ),
@@ -3599,7 +3597,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Png",
             },
         ),
@@ -3608,7 +3606,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2596be",
-                cterm_color: "31",
+
                 name: "Localization",
             },
         ),
@@ -3617,7 +3615,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2596be",
-                cterm_color: "31",
+
                 name: "Localization",
             },
         ),
@@ -3626,7 +3624,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FFA61A",
-                cterm_color: "214",
+
                 name: "Pp",
             },
         ),
@@ -3635,7 +3633,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈧",
                 color: "#cb4a32",
-                cterm_color: "160",
+
                 name: "Ppt",
             },
         ),
@@ -3644,7 +3642,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5a67d8",
-                cterm_color: "62",
+
                 name: "Prisma",
             },
         ),
@@ -3653,7 +3651,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e4b854",
-                cterm_color: "179",
+
                 name: "Prolog",
             },
         ),
@@ -3662,7 +3660,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨊",
                 color: "#4273ca",
-                cterm_color: "68",
+
                 name: "PsScriptfile",
             },
         ),
@@ -3671,7 +3669,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨊",
                 color: "#6975c4",
-                cterm_color: "68",
+
                 name: "PsManifestfile",
             },
         ),
@@ -3680,7 +3678,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨊",
                 color: "#6975c4",
-                cterm_color: "68",
+
                 name: "PsScriptModulefile",
             },
         ),
@@ -3689,7 +3687,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Psb",
             },
         ),
@@ -3698,7 +3696,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Psd",
             },
         ),
@@ -3707,7 +3705,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰷖",
                 color: "#e3c58e",
-                cterm_color: "222",
+
                 name: "Pub",
             },
         ),
@@ -3716,7 +3714,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5aa7e4",
-                cterm_color: "39",
+
                 name: "Pxd",
             },
         ),
@@ -3725,7 +3723,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5aa7e4",
-                cterm_color: "39",
+
                 name: "Pxi",
             },
         ),
@@ -3734,7 +3732,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffbc03",
-                cterm_color: "214",
+
                 name: "Py",
             },
         ),
@@ -3743,7 +3741,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffe291",
-                cterm_color: "222",
+
                 name: "Pyc",
             },
         ),
@@ -3752,7 +3750,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffe291",
-                cterm_color: "222",
+
                 name: "Pyd",
             },
         ),
@@ -3761,7 +3759,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffbc03",
-                cterm_color: "214",
+
                 name: "Pyi",
             },
         ),
@@ -3770,7 +3768,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffe291",
-                cterm_color: "222",
+
                 name: "Pyo",
             },
         ),
@@ -3779,7 +3777,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5aa7e4",
-                cterm_color: "39",
+
                 name: "Pyx",
             },
         ),
@@ -3788,7 +3786,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2596be",
-                cterm_color: "31",
+
                 name: "Localization",
             },
         ),
@@ -3797,7 +3795,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#40cd52",
-                cterm_color: "77",
+
                 name: "Qt",
             },
         ),
@@ -3806,7 +3804,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#40cd52",
-                cterm_color: "77",
+
                 name: "Qt",
             },
         ),
@@ -3815,7 +3813,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#40cd52",
-                cterm_color: "77",
+
                 name: "Qt",
             },
         ),
@@ -3824,7 +3822,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#90a850",
-                cterm_color: "107",
+
                 name: "Query",
             },
         ),
@@ -3833,7 +3831,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰟔",
                 color: "#2266ba",
-                cterm_color: "25",
+
                 name: "R",
             },
         ),
@@ -3842,7 +3840,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Rake",
             },
         ),
@@ -3851,7 +3849,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Rar",
             },
         ),
@@ -3860,7 +3858,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱦘",
                 color: "#512bd4",
-                cterm_color: "56",
+
                 name: "RazorPage",
             },
         ),
@@ -3869,7 +3867,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#701516",
-                cterm_color: "52",
+
                 name: "Rb",
             },
         ),
@@ -3878,7 +3876,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "ReScript",
             },
         ),
@@ -3887,7 +3885,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f55385",
-                cterm_color: "204",
+
                 name: "ReScriptInterface",
             },
         ),
@@ -3896,7 +3894,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dea584",
-                cterm_color: "216",
+
                 name: "Rlib",
             },
         ),
@@ -3905,7 +3903,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Rmd",
             },
         ),
@@ -3914,7 +3912,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰗆",
                 color: "#358a5b",
-                cterm_color: "29",
+
                 name: "Rproj",
             },
         ),
@@ -3923,7 +3921,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dea584",
-                cterm_color: "216",
+
                 name: "Rs",
             },
         ),
@@ -3932,7 +3930,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FB9D3B",
-                cterm_color: "215",
+
                 name: "Rss",
             },
         ),
@@ -3941,7 +3939,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f55385",
-                cterm_color: "204",
+
                 name: "Sass",
             },
         ),
@@ -3950,7 +3948,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "sbt",
             },
         ),
@@ -3959,7 +3957,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f9d72c",
-                cterm_color: "220",
+
                 name: "OpenSCAD",
             },
         ),
@@ -3968,7 +3966,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "Scala",
             },
         ),
@@ -3977,7 +3975,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cc3e44",
-                cterm_color: "167",
+
                 name: "ScalaScript",
             },
         ),
@@ -3986,7 +3984,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰘧",
                 color: "#eeeeee",
-                cterm_color: "255",
+
                 name: "Scheme",
             },
         ),
@@ -3995,7 +3993,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f55385",
-                cterm_color: "204",
+
                 name: "Scss",
             },
         ),
@@ -4004,7 +4002,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4d5a5e",
-                cterm_color: "240",
+
                 name: "Sh",
             },
         ),
@@ -4013,7 +4011,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Sha1",
             },
         ),
@@ -4022,7 +4020,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Sha224",
             },
         ),
@@ -4031,7 +4029,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Sha256",
             },
         ),
@@ -4040,7 +4038,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Sha384",
             },
         ),
@@ -4049,7 +4047,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰕥",
                 color: "#8c86af",
-                cterm_color: "103",
+
                 name: "Sha512",
             },
         ),
@@ -4058,7 +4056,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "λ",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Sig",
             },
         ),
@@ -4067,7 +4065,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "λ",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Signature",
             },
         ),
@@ -4076,7 +4074,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "SketchUp",
             },
         ),
@@ -4085,7 +4083,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "SolidWorksAsm",
             },
         ),
@@ -4094,7 +4092,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "SolidWorksPrt",
             },
         ),
@@ -4103,7 +4101,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e34c26",
-                cterm_color: "196",
+
                 name: "Slim",
             },
         ),
@@ -4112,7 +4110,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#854CC7",
-                cterm_color: "98",
+
                 name: "Sln",
             },
         ),
@@ -4121,7 +4119,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "SolveSpace",
             },
         ),
@@ -4130,7 +4128,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "λ",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Sml",
             },
         ),
@@ -4139,7 +4137,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dcddd6",
-                cterm_color: "253",
+
                 name: "SharedObject",
             },
         ),
@@ -4148,7 +4146,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Solidity",
             },
         ),
@@ -4157,7 +4155,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "SpecJs",
             },
         ),
@@ -4166,7 +4164,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "JavaScriptReactSpec",
             },
         ),
@@ -4175,7 +4173,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "SpecTs",
             },
         ),
@@ -4184,7 +4182,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1354bf",
-                cterm_color: "26",
+
                 name: "TypeScriptReactSpec",
             },
         ),
@@ -4193,7 +4191,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dad8d8",
-                cterm_color: "188",
+
                 name: "Sql",
             },
         ),
@@ -4202,7 +4200,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dad8d8",
-                cterm_color: "188",
+
                 name: "Sql",
             },
         ),
@@ -4211,7 +4209,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dad8d8",
-                cterm_color: "188",
+
                 name: "Sql",
             },
         ),
@@ -4220,7 +4218,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨖",
                 color: "#ffb713",
-                cterm_color: "214",
+
                 name: "Srt",
             },
         ),
@@ -4229,7 +4227,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨖",
                 color: "#ffb713",
-                cterm_color: "214",
+
                 name: "Ssa",
             },
         ),
@@ -4238,7 +4236,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "3DObjectFile",
             },
         ),
@@ -4247,7 +4245,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2596be",
-                cterm_color: "31",
+
                 name: "Localization",
             },
         ),
@@ -4256,7 +4254,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Ste",
             },
         ),
@@ -4265,7 +4263,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Step",
             },
         ),
@@ -4274,7 +4272,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰻫",
                 color: "#839463",
-                cterm_color: "101",
+
                 name: "Stp",
             },
         ),
@@ -4283,7 +4281,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8dc149",
-                cterm_color: "113",
+
                 name: "Styl",
             },
         ),
@@ -4292,7 +4290,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰨖",
                 color: "#ffb713",
-                cterm_color: "214",
+
                 name: "Sub",
             },
         ),
@@ -4301,7 +4299,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Sublime",
             },
         ),
@@ -4310,7 +4308,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#854CC7",
-                cterm_color: "98",
+
                 name: "Suo",
             },
         ),
@@ -4319,7 +4317,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "SystemVerilog",
             },
         ),
@@ -4328,7 +4326,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff3e00",
-                cterm_color: "196",
+
                 name: "Svelte",
             },
         ),
@@ -4337,7 +4335,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "SystemVerilog",
             },
         ),
@@ -4346,7 +4344,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰜡",
                 color: "#FFB13B",
-                cterm_color: "214",
+
                 name: "Svg",
             },
         ),
@@ -4355,7 +4353,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Swift",
             },
         ),
@@ -4364,7 +4362,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Tor",
             },
         ),
@@ -4373,7 +4371,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰛓",
                 color: "#1e5cb3",
-                cterm_color: "25",
+
                 name: "Tcl",
             },
         ),
@@ -4382,7 +4380,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰛓",
                 color: "#1e5cb3",
-                cterm_color: "25",
+
                 name: "Tcl",
             },
         ),
@@ -4391,7 +4389,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dbbd30",
-                cterm_color: "178",
+
                 name: "Templ",
             },
         ),
@@ -4400,7 +4398,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#31B53E",
-                cterm_color: "34",
+
                 name: "Terminal",
             },
         ),
@@ -4409,7 +4407,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#cbcb41",
-                cterm_color: "185",
+
                 name: "TestJs",
             },
         ),
@@ -4418,7 +4416,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#20c2e3",
-                cterm_color: "45",
+
                 name: "JavaScriptReactTest",
             },
         ),
@@ -4427,7 +4425,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "TestTs",
             },
         ),
@@ -4436,7 +4434,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1354bf",
-                cterm_color: "26",
+
                 name: "TypeScriptReactTest",
             },
         ),
@@ -4445,7 +4443,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#3D6117",
-                cterm_color: "22",
+
                 name: "Tex",
             },
         ),
@@ -4454,7 +4452,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5F43E9",
-                cterm_color: "93",
+
                 name: "Terraform",
             },
         ),
@@ -4463,7 +4461,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5F43E9",
-                cterm_color: "93",
+
                 name: "TFVars",
             },
         ),
@@ -4472,7 +4470,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Tgz",
             },
         ),
@@ -4481,7 +4479,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#14ba19",
-                cterm_color: "34",
+
                 name: "Tmux",
             },
         ),
@@ -4490,7 +4488,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9c4221",
-                cterm_color: "124",
+
                 name: "Toml",
             },
         ),
@@ -4499,7 +4497,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#44cda8",
-                cterm_color: "43",
+
                 name: "Torrent",
             },
         ),
@@ -4508,7 +4506,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "GodotTextResource",
             },
         ),
@@ -4517,7 +4515,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "TypeScript",
             },
         ),
@@ -4526,7 +4524,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "GodotTextScene",
             },
         ),
@@ -4535,7 +4533,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FF8700",
-                cterm_color: "208",
+
                 name: "TypoScriptConfig",
             },
         ),
@@ -4544,7 +4542,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1354bf",
-                cterm_color: "26",
+
                 name: "Tsx",
             },
         ),
@@ -4553,7 +4551,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "TrueTypeFont",
             },
         ),
@@ -4562,7 +4560,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8dc149",
-                cterm_color: "113",
+
                 name: "Twig",
             },
         ),
@@ -4571,7 +4569,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Txz",
             },
         ),
@@ -4580,7 +4578,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FF8700",
-                cterm_color: "208",
+
                 name: "TypoScript",
             },
         ),
@@ -4589,7 +4587,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈙",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Txt",
             },
         ),
@@ -4598,7 +4596,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0c306e",
-                cterm_color: "17",
+
                 name: "UI",
             },
         ),
@@ -4607,7 +4605,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Verilog",
             },
         ),
@@ -4616,7 +4614,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7239b3",
-                cterm_color: "91",
+
                 name: "Vala",
             },
         ),
@@ -4625,7 +4623,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Verilog",
             },
         ),
@@ -4634,7 +4632,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "VHDL",
             },
         ),
@@ -4643,7 +4641,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰍛",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "VHDL",
             },
         ),
@@ -4652,7 +4650,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#019833",
-                cterm_color: "28",
+
                 name: "Vim",
             },
         ),
@@ -4661,7 +4659,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5d87bf",
-                cterm_color: "67",
+
                 name: "Vlang",
             },
         ),
@@ -4670,7 +4668,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#854CC7",
-                cterm_color: "98",
+
                 name: "Vsix",
             },
         ),
@@ -4679,7 +4677,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#8dc149",
-                cterm_color: "113",
+
                 name: "Vue",
             },
         ),
@@ -4688,7 +4686,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5c4cdb",
-                cterm_color: "62",
+
                 name: "Wasm",
             },
         ),
@@ -4697,7 +4695,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "WaveformAudioFile",
             },
         ),
@@ -4706,7 +4704,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#FD971F",
-                cterm_color: "208",
+
                 name: "Webm",
             },
         ),
@@ -4715,7 +4713,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f1e05a",
-                cterm_color: "185",
+
                 name: "Webmanifest",
             },
         ),
@@ -4724,7 +4722,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a074c4",
-                cterm_color: "140",
+
                 name: "Webp",
             },
         ),
@@ -4733,7 +4731,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰜫",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Webpack",
             },
         ),
@@ -4742,7 +4740,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00afff",
-                cterm_color: "39",
+
                 name: "WindowsMediaAudio",
             },
         ),
@@ -4751,7 +4749,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "WebOpenFontFormat",
             },
         ),
@@ -4760,7 +4758,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ECECEC",
-                cterm_color: "255",
+
                 name: "WebOpenFontFormat",
             },
         ),
@@ -4769,7 +4767,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "VRML",
             },
         ),
@@ -4778,7 +4776,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰆧",
                 color: "#888888",
-                cterm_color: "102",
+
                 name: "VRML",
             },
         ),
@@ -4787,7 +4785,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#599eff",
-                cterm_color: "111",
+
                 name: "Logos",
             },
         ),
@@ -4796,7 +4794,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#519aba",
-                cterm_color: "74",
+
                 name: "Logos",
             },
         ),
@@ -4805,7 +4803,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰙳",
                 color: "#512bd4",
-                cterm_color: "56",
+
                 name: "Xaml",
             },
         ),
@@ -4814,7 +4812,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#635b46",
-                cterm_color: "240",
+
                 name: "GIMP",
             },
         ),
@@ -4823,7 +4821,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "XcPlayground",
             },
         ),
@@ -4832,7 +4830,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2596be",
-                cterm_color: "31",
+
                 name: "XcLocalization",
             },
         ),
@@ -4841,7 +4839,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈛",
                 color: "#207245",
-                cterm_color: "29",
+
                 name: "Xls",
             },
         ),
@@ -4850,7 +4848,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰈛",
                 color: "#207245",
-                cterm_color: "29",
+
                 name: "Xlsx",
             },
         ),
@@ -4859,7 +4857,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰗀",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Xml",
             },
         ),
@@ -4868,7 +4866,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff1b01",
-                cterm_color: "196",
+
                 name: "Xpi",
             },
         ),
@@ -4877,7 +4875,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e37933",
-                cterm_color: "166",
+
                 name: "Xul",
             },
         ),
@@ -4886,7 +4884,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Xz",
             },
         ),
@@ -4895,7 +4893,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Yaml",
             },
         ),
@@ -4904,7 +4902,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6d8086",
-                cterm_color: "66",
+
                 name: "Yml",
             },
         ),
@@ -4913,7 +4911,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f69a1b",
-                cterm_color: "172",
+
                 name: "Zig",
             },
         ),
@@ -4922,7 +4920,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Zip",
             },
         ),
@@ -4931,7 +4929,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#89e051",
-                cterm_color: "113",
+
                 name: "Zsh",
             },
         ),
@@ -4940,7 +4938,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#eca517",
-                cterm_color: "214",
+
                 name: "Zst",
             },
         ),
@@ -4952,7 +4950,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#A2AAAD",
-                cterm_color: "248",
+
                 name: "Apple",
             },
         ),
@@ -4961,7 +4959,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00A4EF",
-                cterm_color: "39",
+
                 name: "Windows",
             },
         ),
@@ -4970,7 +4968,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fdfdfb",
-                cterm_color: "231",
+
                 name: "Linux",
             },
         ),
@@ -4979,7 +4977,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff4649",
-                cterm_color: "203",
+
                 name: "Almalinux",
             },
         ),
@@ -4988,7 +4986,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0d597f",
-                cterm_color: "24",
+
                 name: "Alpine",
             },
         ),
@@ -4997,7 +4995,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#c00000",
-                cterm_color: "124",
+
                 name: "AOSC",
             },
         ),
@@ -5006,7 +5004,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰣇",
                 color: "#0f94d2",
-                cterm_color: "67",
+
                 name: "Arch",
             },
         ),
@@ -5015,7 +5013,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#86bba3",
-                cterm_color: "108",
+
                 name: "Archcraft",
             },
         ),
@@ -5024,7 +5022,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#503f42",
-                cterm_color: "238",
+
                 name: "Archlabs",
             },
         ),
@@ -5033,7 +5031,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6690eb",
-                cterm_color: "68",
+
                 name: "ArcoLinux",
             },
         ),
@@ -5042,7 +5040,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#41b4d7",
-                cterm_color: "38",
+
                 name: "Artix",
             },
         ),
@@ -5051,7 +5049,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#189fc8",
-                cterm_color: "38",
+
                 name: "BigLinux",
             },
         ),
@@ -5060,7 +5058,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a2518d",
-                cterm_color: "132",
+
                 name: "Centos",
             },
         ),
@@ -5069,7 +5067,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a900ff",
-                cterm_color: "129",
+
                 name: "CrystalLinux",
             },
         ),
@@ -5078,7 +5076,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a80030",
-                cterm_color: "88",
+
                 name: "Debian",
             },
         ),
@@ -5087,7 +5085,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2ca7f8",
-                cterm_color: "39",
+
                 name: "Deepin",
             },
         ),
@@ -5096,7 +5094,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#404a52",
-                cterm_color: "238",
+
                 name: "Devuan",
             },
         ),
@@ -5105,7 +5103,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#5890c2",
-                cterm_color: "67",
+
                 name: "Elementary",
             },
         ),
@@ -5114,7 +5112,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7b3db9",
-                cterm_color: "91",
+
                 name: "Endeavour",
             },
         ),
@@ -5123,7 +5121,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#072a5e",
-                cterm_color: "17",
+
                 name: "Fedora",
             },
         ),
@@ -5132,7 +5130,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#c90f02",
-                cterm_color: "160",
+
                 name: "FreeBSD",
             },
         ),
@@ -5141,7 +5139,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2974e1",
-                cterm_color: "33",
+
                 name: "GarudaLinux",
             },
         ),
@@ -5150,7 +5148,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰣨",
                 color: "#b1abce",
-                cterm_color: "146",
+
                 name: "Gentoo",
             },
         ),
@@ -5159,7 +5157,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffcc00",
-                cterm_color: "220",
+
                 name: "Guix",
             },
         ),
@@ -5168,7 +5166,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#c0c0c0",
-                cterm_color: "250",
+
                 name: "HyperbolaGNULinuxLibre",
             },
         ),
@@ -5177,7 +5175,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ff430f",
-                cterm_color: "196",
+
                 name: "Illumos",
             },
         ),
@@ -5186,7 +5184,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2777ff",
-                cterm_color: "69",
+
                 name: "Kali",
             },
         ),
@@ -5195,7 +5193,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#20a6a4",
-                cterm_color: "37",
+
                 name: "KDEneon",
             },
         ),
@@ -5204,7 +5202,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#007ac2",
-                cterm_color: "32",
+
                 name: "Kubuntu",
             },
         ),
@@ -5213,7 +5211,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fab402",
-                cterm_color: "214",
+
                 name: "LocOS",
             },
         ),
@@ -5222,7 +5220,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#474747",
-                cterm_color: "238",
+
                 name: "LXLE",
             },
         ),
@@ -5231,7 +5229,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󰣭",
                 color: "#66af3d",
-                cterm_color: "70",
+
                 name: "Mint",
             },
         ),
@@ -5240,7 +5238,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#2397d4",
-                cterm_color: "67",
+
                 name: "Mageia",
             },
         ),
@@ -5249,7 +5247,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#33b959",
-                cterm_color: "35",
+
                 name: "Manjaro",
             },
         ),
@@ -5258,7 +5256,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "MXLinux",
             },
         ),
@@ -5267,7 +5265,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#7ab1db",
-                cterm_color: "110",
+
                 name: "NixOS",
             },
         ),
@@ -5276,7 +5274,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#f2ca30",
-                cterm_color: "220",
+
                 name: "OpenBSD",
             },
         ),
@@ -5285,7 +5283,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#6fb424",
-                cterm_color: "70",
+
                 name: "openSUSE",
             },
         ),
@@ -5294,7 +5292,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#797dac",
-                cterm_color: "103",
+
                 name: "ParabolaGNULinuxLibre",
             },
         ),
@@ -5303,7 +5301,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#54deff",
-                cterm_color: "45",
+
                 name: "Parrot",
             },
         ),
@@ -5312,7 +5310,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#48b9c7",
-                cterm_color: "73",
+
                 name: "Pop_OS",
             },
         ),
@@ -5321,7 +5319,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#009900",
-                cterm_color: "28",
+
                 name: "postmarketOS",
             },
         ),
@@ -5330,7 +5328,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a2aeb9",
-                cterm_color: "145",
+
                 name: "PuppyLinux",
             },
         ),
@@ -5339,7 +5337,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#3774d8",
-                cterm_color: "33",
+
                 name: "QubesOS",
             },
         ),
@@ -5348,7 +5346,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#be1848",
-                cterm_color: "161",
+
                 name: "RaspberryPiOS",
             },
         ),
@@ -5357,7 +5355,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "󱄛",
                 color: "#EE0000",
-                cterm_color: "196",
+
                 name: "Redhat",
             },
         ),
@@ -5366,7 +5364,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0fb37d",
-                cterm_color: "36",
+
                 name: "RockyLinux",
             },
         ),
@@ -5375,7 +5373,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#c6c6c6",
-                cterm_color: "251",
+
                 name: "Sabayon",
             },
         ),
@@ -5384,7 +5382,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#475fa9",
-                cterm_color: "61",
+
                 name: "Slackware",
             },
         ),
@@ -5393,7 +5391,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4b5163",
-                cterm_color: "239",
+
                 name: "Solus",
             },
         ),
@@ -5402,7 +5400,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#56347c",
-                cterm_color: "54",
+
                 name: "Tails",
             },
         ),
@@ -5411,7 +5409,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0f58b6",
-                cterm_color: "25",
+
                 name: "TrisquelGNULinux",
             },
         ),
@@ -5420,7 +5418,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dd4814",
-                cterm_color: "196",
+
                 name: "Ubuntu",
             },
         ),
@@ -5429,7 +5427,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fabd4d",
-                cterm_color: "214",
+
                 name: "VanillaOS",
             },
         ),
@@ -5438,7 +5436,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#295340",
-                cterm_color: "23",
+
                 name: "Void",
             },
         ),
@@ -5447,7 +5445,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#888fe2",
-                cterm_color: "104",
+
                 name: "XeroLinux",
             },
         ),
@@ -5456,7 +5454,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#14a1e8",
-                cterm_color: "39",
+
                 name: "Zorin",
             },
         ),
@@ -5468,7 +5466,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4e5361",
-                cterm_color: "240",
+
                 name: "Budgie",
             },
         ),
@@ -5477,7 +5475,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#dc682e",
-                cterm_color: "166",
+
                 name: "Cinnamon",
             },
         ),
@@ -5486,7 +5484,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "GNOME",
             },
         ),
@@ -5495,7 +5493,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#a4a4a4",
-                cterm_color: "248",
+
                 name: "LXDE",
             },
         ),
@@ -5504,7 +5502,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0191d2",
-                cterm_color: "32",
+
                 name: "LXQt",
             },
         ),
@@ -5513,7 +5511,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#9bda5c",
-                cterm_color: "113",
+
                 name: "MATE",
             },
         ),
@@ -5522,7 +5520,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1b89f4",
-                cterm_color: "33",
+
                 name: "KDEPlasma",
             },
         ),
@@ -5531,7 +5529,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00aadf",
-                cterm_color: "74",
+
                 name: "Xfce",
             },
         ),
@@ -5543,7 +5541,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#535d6c",
-                cterm_color: "59",
+
                 name: "awesome",
             },
         ),
@@ -5552,7 +5550,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#4f4f4f",
-                cterm_color: "239",
+
                 name: "BSPWM",
             },
         ),
@@ -5561,7 +5559,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#1177aa",
-                cterm_color: "31",
+
                 name: "dwm",
             },
         ),
@@ -5570,7 +5568,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "Enlightenment",
             },
         ),
@@ -5579,7 +5577,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#555555",
-                cterm_color: "240",
+
                 name: "Fluxbox",
             },
         ),
@@ -5588,7 +5586,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#00aaae",
-                cterm_color: "37",
+
                 name: "Hyprland",
             },
         ),
@@ -5597,7 +5595,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#e8ebee",
-                cterm_color: "255",
+
                 name: "i3",
             },
         ),
@@ -5606,7 +5604,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#0078cd",
-                cterm_color: "32",
+
                 name: "JWM",
             },
         ),
@@ -5615,7 +5613,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#ffffff",
-                cterm_color: "231",
+
                 name: "Qtile",
             },
         ),
@@ -5624,7 +5622,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#68751c",
-                cterm_color: "64",
+
                 name: "Sway",
             },
         ),
@@ -5633,7 +5631,7 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
             DevIcon {
                 icon: "",
                 color: "#fd4d5d",
-                cterm_color: "203",
+
                 name: "xmonad",
             },
         ),
@@ -5652,7 +5650,6 @@ static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
 pub struct DevIcon {
     pub icon: &'static str,
     pub color: &'static str,
-    pub cterm_color: &'static str,
     pub name: &'static str,
 }
 
@@ -5669,7 +5666,6 @@ impl DevIcon {
                 &format!("DevIcon{}", dev_icon.name),
                 HLOpts {
                     fg: Some(dev_icon.color.to_string()),
-                    ctermfg: Some(dev_icon.cterm_color.to_string()),
                     ..Default::default()
                 },
             )?;

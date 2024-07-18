@@ -20,20 +20,12 @@ impl Database {
     }
 
     pub async fn init() -> sqlx::Result<Self> {
-        let tmp = std::env::temp_dir().join("neo-api-rs");
-        let file = tmp.join("fuzzy.db");
-
-        fs::create_dir_all(&tmp).await?;
-        fs::write(&file, []).await?;
-
         let crate_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("src/extensions/fuzzy")
             .to_string_lossy()
             .to_string();
 
         let options = sqlx::sqlite::SqliteConnectOptions::new()
-            .filename(file)
-            .pragma("journal_mode", "MEMORY")
             .extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;

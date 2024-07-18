@@ -13,20 +13,33 @@ use tokio::time::Instant;
 use crate::diffuser::{Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, DummyTask, FileTypeMatch,
-    HLOpts, Mode, NeoApi, NeoBuffer, NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder,
-    PopupRelative, PopupSize, PopupStyle, TextType, RTM,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, DummyTask,
+    ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer,
+    NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
+    PopupStyle, StdpathType, TextType, VirtTextPos, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
+const TAB_BTN_SELECTED: &str = "TabButtonSelected";
+const TAB_BTN: &str = "TabButton";
 
 #[derive(Clone, Debug, sqlx::FromRow)]
 pub struct LineOut {
     pub text: Box<str>,
     pub icon: Box<str>,
     pub hl_group: Box<str>,
+}
+
+impl LineOut {
+    pub fn new_directory(text: Box<str>) -> Self {
+        Self {
+            text,
+            icon: "".into(),
+            hl_group: "Directory".into(),
+        }
+    }
 }
 
 pub struct FuzzyContainer {
@@ -40,9 +53,10 @@ pub struct FuzzyContainer {
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self) -> PathBuf;
     fn search_type(&self) -> FuzzySearch;
+    fn search_task(&self, lua: &Lua, search_query: &str, tab_idx: usize) -> Box<dyn ExecuteTask>;
+    fn preview_task(&self, lua: &Lua, selected_idx: usize, tab_idx: usize) -> Box<dyn ExecuteTask>;
     fn on_enter(&self, lua: &Lua, open_in: OpenIn, item: PathBuf);
-    fn search_task(&self, lua: &Lua, search_query: &str) -> Box<dyn ExecuteTask>;
-    fn preview_task(&self, lua: &Lua, selected_idx: usize) -> Box<dyn ExecuteTask>;
+    fn tabs(&self) -> Vec<Box<str>>;
 }
 
 struct DummyConfig;
@@ -58,12 +72,26 @@ impl FuzzyConfig for DummyConfig {
         FuzzySearch::Files
     }
 
-    fn search_task(&self, _lua: &Lua, _search_query: &str) -> Box<dyn ExecuteTask> {
+    fn search_task(
+        &self,
+        _lua: &Lua,
+        _search_query: &str,
+        _tab_idx: usize,
+    ) -> Box<dyn ExecuteTask> {
         Box::new(DummyTask)
     }
 
-    fn preview_task(&self, _lua: &Lua, _selected_idx: usize) -> Box<dyn ExecuteTask> {
+    fn preview_task(
+        &self,
+        _lua: &Lua,
+        _selected_idx: usize,
+        _tab_idx: usize,
+    ) -> Box<dyn ExecuteTask> {
         Box::new(DummyTask)
+    }
+
+    fn tabs(&self) -> Vec<Box<str>> {
+        vec![]
     }
 }
 
@@ -76,7 +104,7 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 #[derive(Debug)]
 pub struct SearchState {
     pub file_path: String,
-    pub db_filled: bool,
+    pub db_count: usize,
     pub update: bool,
 }
 
@@ -85,7 +113,7 @@ pub static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
     fuzzy: RwLock::new(NeoFuzzy::default()),
     search_state: RwLock::new(SearchState {
         update: false,
-        db_filled: false,
+        db_count: 0,
         file_path: "".to_string(),
     }),
     preview: RwLock::new(Vec::new()),
@@ -97,7 +125,10 @@ pub struct NeoFuzzy {
     pub pop_cmd: NeoPopup,
     pub pop_out: NeoPopup,
     pub pop_preview: NeoPopup,
+    pub pop_tabs: NeoPopup,
     pub selected_idx: usize,
+    pub selected_tab_idx: usize,
+    pub tabs_count: usize,
     pub ns_id: u32,
     pub config: Box<dyn FuzzyConfig>,
 }
@@ -108,7 +139,11 @@ impl Default for NeoFuzzy {
             pop_cmd: NeoPopup::default(),
             pop_out: NeoPopup::default(),
             pop_preview: NeoPopup::default(),
+            pop_tabs: NeoPopup::default(),
             selected_idx: 0,
+            tabs_count: 0,
+            // TODO persist last use tabidx
+            selected_tab_idx: 0,
             ns_id: 0,
             config: Box::new(DummyConfig),
         }
@@ -160,6 +195,31 @@ impl NeoFuzzy {
                 ..Default::default()
             },
         )?;
+
+        NeoTheme::set_hl(
+            lua,
+            0,
+            TAB_BTN_SELECTED,
+            HLOpts {
+                fg: Some("#ffffff".into()),
+                //bg: Some("#1c96c5".into()),
+                bg: Some("#151515".into()),
+                ..Default::default()
+            },
+        )?;
+
+        NeoTheme::set_hl(
+            lua,
+            0,
+            TAB_BTN,
+            HLOpts {
+                fg: Some("#777777".into()),
+                bg: Some("#151515".into()),
+                ..Default::default()
+            },
+        )?;
+
+        DevIcon::init(lua)?;
 
         Ok(())
     }
@@ -214,6 +274,13 @@ impl NeoFuzzy {
             Mode::Insert,
             "<Enter>",
             lua.create_async_function(|lua, ()| open_item(lua, OpenIn::Buffer))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<Tab>",
+            lua.create_async_function(select_tab)?,
         )
     }
 
@@ -226,7 +293,7 @@ impl NeoFuzzy {
 
         let ui = &NeoApi::list_uis(lua)?[0];
 
-        let pop_cmd_row = ui.height - 6;
+        let pop_cmd_row = 2;
         let pop_cmd_col = 4;
         let pop_cmd_height = 1;
         let pop_cmd_width = if ui.width % 2 == 0 {
@@ -235,8 +302,8 @@ impl NeoFuzzy {
             ui.width - 9
         };
 
-        let out_preview_height = pop_cmd_row - 4;
-        let out_preview_row = 2;
+        let out_preview_height = ui.height - 10;
+        let out_preview_row = pop_cmd_row + 3;
 
         let out_width = pop_cmd_width / 2;
         let out_col = pop_cmd_col;
@@ -248,14 +315,30 @@ impl NeoFuzzy {
             NeoBuffer::create(lua, false, true)?,
             true,
             crate::WinOptions {
-                width: Some(PopupSize::Fixed(pop_cmd_width)),
+                width: Some(PopupSize::Fixed(out_width)),
                 height: Some(PopupSize::Fixed(pop_cmd_height)),
                 row: Some(PopupSize::Fixed(pop_cmd_row)),
                 col: Some(PopupSize::Fixed(pop_cmd_col)),
                 relative: PopupRelative::Editor,
-                border: PopupBorder::Single,
+                border: PopupBorder::Rounded,
                 style: Some(PopupStyle::Minimal),
-                title: Some(TextType::String(" Search query ".to_string())),
+                title: Some(TextType::String(" Search ".to_string())),
+                ..Default::default()
+            },
+        )?;
+
+        let pop_tabs = NeoPopup::open(
+            lua,
+            NeoBuffer::create(lua, false, true)?,
+            false,
+            crate::WinOptions {
+                width: Some(PopupSize::Fixed(preview_width)),
+                height: Some(PopupSize::Fixed(pop_cmd_height)),
+                row: Some(PopupSize::Fixed(pop_cmd_row)),
+                col: Some(PopupSize::Fixed(preview_col)),
+                relative: PopupRelative::Editor,
+                border: PopupBorder::Rounded,
+                style: Some(PopupStyle::Minimal),
                 ..Default::default()
             },
         )?;
@@ -270,7 +353,7 @@ impl NeoFuzzy {
                 row: Some(PopupSize::Fixed(out_preview_row)),
                 col: Some(PopupSize::Fixed(out_col)),
                 relative: PopupRelative::Editor,
-                border: crate::PopupBorder::Single,
+                border: crate::PopupBorder::Rounded,
                 focusable: Some(false),
                 style: Some(PopupStyle::Minimal),
                 ..Default::default()
@@ -289,7 +372,7 @@ impl NeoFuzzy {
                 row: Some(PopupSize::Fixed(out_preview_row)),
                 col: Some(PopupSize::Fixed(preview_col)),
                 relative: PopupRelative::Editor,
-                border: crate::PopupBorder::Single,
+                border: crate::PopupBorder::Rounded,
                 focusable: Some(false),
                 style: Some(PopupStyle::Minimal),
                 noautocmd: true,
@@ -330,11 +413,16 @@ impl NeoFuzzy {
             },
         )?;
 
+        let tabs_count = config.tabs().len();
+
         let fuzzy = NeoFuzzy {
             pop_cmd,
             pop_out,
             pop_preview,
+            pop_tabs,
             selected_idx: 0,
+            selected_tab_idx: 0,
+            tabs_count,
             ns_id,
             config,
         };
@@ -342,8 +430,8 @@ impl NeoFuzzy {
         fuzzy.add_keymaps(lua)?;
 
         Diffuse::queue(vec![
-            fuzzy.config.search_task(lua, ""),
-            fuzzy.config.preview_task(lua, 0),
+            fuzzy.config.search_task(lua, "", fuzzy.selected_tab_idx),
+            fuzzy.config.preview_task(lua, 0, fuzzy.selected_tab_idx),
         ])
         .await;
 
@@ -424,14 +512,57 @@ impl NeoFuzzy {
     }
 }
 
+async fn select_tab(lua: &Lua, _: ()) -> LuaResult<()> {
+    let mut fuzzy = CONTAINER.fuzzy.write().await;
+
+    if fuzzy.selected_tab_idx + 1 < fuzzy.tabs_count {
+        fuzzy.selected_tab_idx += 1;
+    } else {
+        fuzzy.selected_tab_idx = 0;
+    }
+
+    exec_default_search(lua, &fuzzy).await
+}
+
+async fn exec_default_search(lua: &Lua, fuzzy: &NeoFuzzy) -> LuaResult<()> {
+    let search_query = NeoApi::get_current_line(lua)?;
+
+    Diffuse::queue(vec![
+        fuzzy
+            .config
+            .search_task(lua, &search_query, fuzzy.selected_tab_idx),
+        fuzzy
+            .config
+            .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
+    ])
+    .await;
+
+    RTM.spawn(NeoDebug::log(format!("Mem usage: {:?}", lua.used_memory())));
+
+    Ok(())
+}
+
 async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.search_lines.read().await;
+
+    if filtered_lines.is_empty() {
+        return Ok(());
+    }
 
     let selected = fuzzy
         .config
         .cwd()
         .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
+
+    if fuzzy.config.search_type() == FuzzySearch::Directories {
+
+        let dir = ExecRecentDirectories::new(lua).unwrap();
+        RTM.spawn(ExecRecentDirectories::store_directory(
+            dir.recent_directories.clone(),
+            selected.clone(),
+        ));
+    }
 
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.config.on_enter(lua, open_in, selected);
@@ -462,7 +593,7 @@ impl ExecStandardSearch {
             *CONTAINER.search_lines.write().await = selection;
         }
 
-        CONTAINER.search_state.write().await.db_filled = true;
+        CONTAINER.search_state.write().await.db_count = new_lines.len();
     }
 }
 
@@ -470,7 +601,7 @@ impl ExecStandardSearch {
 impl ExecuteTask for ExecStandardSearch {
     async fn execute(&self) {
         let now = Instant::now();
-        let first_search = !CONTAINER.search_state.read().await.db_filled;
+        let first_search = CONTAINER.search_state.read().await.db_count == 0;
 
         if first_search {
             let out = Command::new("fd")
@@ -486,11 +617,7 @@ impl ExecuteTask for ExecStandardSearch {
 
                 for line in out.lines() {
                     if self.search_type == FuzzySearch::Directories {
-                        new_lines.push(LineOut {
-                            text: line.into(),
-                            icon: "".into(),
-                            hl_group: "Directory".into(),
-                        });
+                        new_lines.push(LineOut::new_directory(line.into()));
                     } else {
                         let path = PathBuf::from(line);
                         let dev_icon = DevIcon::get_icon(&path);
@@ -503,7 +630,6 @@ impl ExecuteTask for ExecStandardSearch {
                     }
                 }
 
-                NeoDebug::log(format!("lines: {}", new_lines.len())).await;
                 Self::insert_into_db(new_lines, &now).await;
 
                 let elapsed_ms = now.elapsed().as_millis();
@@ -643,7 +769,7 @@ impl<'a, T: ?Sized> NeoTryLock<'a, T> for RwLock<T> {
 fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     fn execute(lua: &Lua) -> LuaResult<()> {
         let fuzzy = CONTAINER.fuzzy.interval_read()?;
-        let sorted_lines = CONTAINER.search_lines.interval_read()?;
+        let search_lines = CONTAINER.search_lines.interval_read()?;
         let mut search_state = CONTAINER.search_state.interval_write()?;
         let mut preview = CONTAINER.preview.interval_write()?;
 
@@ -652,13 +778,14 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
         if search_state.update {
             search_state.update = false;
             let file_path = search_state.file_path.to_string();
+            let info_text = format!(" ({}/{}) ", search_lines.len(), search_state.db_count);
 
             drop(search_state);
 
             let mut icon_lines = Vec::new();
             let mut hl_groups = Vec::new();
 
-            for line in sorted_lines.iter() {
+            for line in search_lines.iter() {
                 icon_lines.push(format!(" {} {}", line.icon, line.text));
                 hl_groups.push(line.hl_group.as_ref());
             }
@@ -696,6 +823,40 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
             }
 
             fuzzy.add_preview_highlight(lua, &preview)?;
+
+            let buf = &fuzzy.pop_cmd.buf;
+
+            let opts = ExtmarkOpts {
+                id: Some(333),
+                virt_text: Some(vec![HLText::new(info_text, "Comment".to_string())]),
+                virt_text_pos: Some(VirtTextPos::RightAlign),
+                ..Default::default()
+            };
+
+            buf.set_extmarks(lua, fuzzy.ns_id, 0, 0, opts)?;
+
+            let buf = &fuzzy.pop_tabs.buf;
+
+            // TODO fetch tabs somewhere
+            let mut hl_texts: Vec<_> = vec![];
+
+            for (i, tab) in fuzzy.config.tabs().iter().enumerate() {
+                if i == fuzzy.selected_tab_idx {
+                    hl_texts.push(HLText::new(tab.as_ref(), TAB_BTN_SELECTED));
+                } else {
+                    hl_texts.push(HLText::new(tab.as_ref(), TAB_BTN));
+                }
+
+                hl_texts.push(HLText::new(" ", ""));
+            }
+
+            let opts = ExtmarkOpts {
+                id: Some(333),
+                virt_text: Some(hl_texts),
+                ..Default::default()
+            };
+
+            buf.set_extmarks(lua, fuzzy.ns_id, 0, 0, opts)?;
         }
 
         Ok(())
@@ -746,7 +907,12 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
             })?,
         )?;
 
-        Diffuse::queue(vec![fuzzy.config.preview_task(lua, selected_idx)]).await;
+        Diffuse::queue(vec![fuzzy.config.preview_task(
+            lua,
+            selected_idx,
+            fuzzy.selected_tab_idx,
+        )])
+        .await;
     }
 
     Ok(())
@@ -770,16 +936,16 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         if let Err(err) = db.clean_up_tables().await {
             NeoDebug::log(err).await;
         }
-        CONTAINER.search_state.write().await.db_filled = false;
+        CONTAINER.search_state.write().await.db_count = 0;
     });
 
     fuzzy.pop_out.win.close(lua, false)?;
     fuzzy.pop_cmd.win.close(lua, false)?;
-    fuzzy.pop_preview.win.close(lua, false)
+    fuzzy.pop_preview.win.close(lua, false)?;
+    fuzzy.pop_tabs.win.close(lua, false)
 }
 
 async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
-    let search_query = NeoApi::get_current_line(lua)?;
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
     fuzzy.selected_idx = 0;
@@ -800,11 +966,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         })?,
     )?;
 
-    Diffuse::queue(vec![
-        fuzzy.config.search_task(lua, &search_query),
-        fuzzy.config.preview_task(lua, 0),
-    ])
-    .await;
+    exec_default_search(lua, &fuzzy).await?;
 
     Ok(())
 }

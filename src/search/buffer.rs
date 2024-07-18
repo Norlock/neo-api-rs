@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{web_devicons::icons_default::DevIcon, BufInfo, ExecuteTask, FuzzyContainer, LineOut, NeoDebug, CONTAINER};
+use crate::{web_devicons::icons_default::DevIcon, BufInfo, ExecuteTask, LineOut, NeoDebug, CONTAINER};
 
 pub struct BufferSearch {
     pub cwd: PathBuf,
@@ -11,7 +11,6 @@ pub struct BufferSearch {
 impl ExecuteTask for BufferSearch {
     async fn execute(&self) {
         NeoDebug::log_dbg(&self.buf_infos).await;
-        //NeoApi::get_buf_info(lua)
 
         let mut new_lines = vec![];
 

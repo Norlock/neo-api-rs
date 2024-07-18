@@ -48,9 +48,8 @@ impl NeoDebug {
             .open(dir.join("debug.log"))
             .await.unwrap();
 
-        let mut bytes = vec![];
-        let _ = writeln!(bytes, "{:?}", message);
-        let _ = file.write_all(&bytes).await;
+        let message = format!("{:?}", message);
+        let _ = file.write_all(message.as_bytes()).await;
     }
 
     pub async fn log_duration(before: Duration, after: Duration, tag: &str) {

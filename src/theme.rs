@@ -32,7 +32,7 @@ pub struct HLOpts {
     /// Don't override existing definition |:hi-default|
     pub default: bool,
 
-    pub ctermfg: Option<String>,
+    pub ctermfg: Option<u32>,
     pub ctermbg: Option<String>,
     // pub cterm todo
     pub force: bool,

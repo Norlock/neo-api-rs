@@ -262,6 +262,14 @@ impl NeoBuffer {
         lfn.call((self.id(), start, end, strict_indexing, lines))
     }
 
+    pub fn set_text(
+        &self, lua: &Lua,
+        start_row: u32, start_col: u32, end_row: u32, end_col: u32) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_text").eval()?;
+
+        lfn.call((self.id(), start_row, start_col, end_row, end_col))
+    }
+
     pub fn get_lines(
         &self,
         lua: &Lua,
