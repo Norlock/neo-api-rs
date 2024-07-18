@@ -69,7 +69,11 @@ impl ExecRecentDirectories {
 
         let mut out = String::new();
 
-        for line in lines.iter() {
+        for (i, line) in lines.iter().enumerate() {
+            if i == 50 {
+                break;
+            }
+
             out.push_str(line);
             out.push_str("\n");
         }
@@ -81,6 +85,5 @@ impl ExecRecentDirectories {
         }
 
         Ok(())
-        //fs::write(path, contents)
     }
 }

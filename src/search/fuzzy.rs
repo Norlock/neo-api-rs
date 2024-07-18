@@ -16,7 +16,7 @@ use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, DummyTask,
     ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer,
     NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
-    PopupStyle, StdpathType, TextType, VirtTextPos, RTM,
+    PopupStyle, TextType, VirtTextPos, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -556,7 +556,6 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
         .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
     if fuzzy.config.search_type() == FuzzySearch::Directories {
-
         let dir = ExecRecentDirectories::new(lua).unwrap();
         RTM.spawn(ExecRecentDirectories::store_directory(
             dir.recent_directories.clone(),
