@@ -1,7 +1,12 @@
-use std::path::PathBuf;
-use tokio::time::Instant;
+use std::{
+    alloc::System,
+    env,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+use tokio::{fs, time::Instant};
 
-use crate::{LineOut, NeoDebug, RTM};
+use crate::{LineOut, NeoDebug, CONTAINER, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
@@ -12,7 +17,8 @@ impl Database {
 
             if let Err(err) = result {
                 NeoDebug::log(err.to_string()).await;
-                panic!("");
+                //std::process::exit(0);
+                panic!();
             };
 
             result.unwrap()
@@ -25,7 +31,23 @@ impl Database {
             .to_string_lossy()
             .to_string();
 
-        let options = sqlx::sqlite::SqliteConnectOptions::new().extension(crate_path);
+        let tmp = env::temp_dir().join("neo-api-rs");
+
+        if let Ok(false) = fs::try_exists(&tmp).await {
+            fs::create_dir(&tmp).await?;
+        }
+
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+
+        let filename = format!("fuzzy_{}.sqlite", since_the_epoch.as_secs());
+
+        let options = sqlx::sqlite::SqliteConnectOptions::new()
+            .filename(tmp.join(filename))
+            .create_if_missing(true)
+            .extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;
 
@@ -43,13 +65,7 @@ impl Database {
         Ok(Self(pool))
     }
 
-    pub async fn select(
-        &self,
-        search_query: &str,
-        instant: &Instant,
-    ) -> sqlx::Result<Vec<LineOut>> {
-        let bef_elapsed_ms = instant.elapsed().as_millis();
-
+    pub async fn select(&self, search_query: &str) -> sqlx::Result<Vec<LineOut>> {
         let mut like_query = '%'.to_string();
 
         for char in search_query.chars() {
@@ -61,15 +77,14 @@ impl Database {
             "
             WITH score AS (
                 SELECT id, fuzzy_score(?, text) fs FROM all_lines
-                WHERE text like ? ORDER BY fs LIMIT 300
+                WHERE text like ? AND fs < 4096 ORDER BY fs LIMIT 300
             )
 
             SELECT 
                 l.* 
             FROM 
-                all_lines l LEFT JOIN score s ON l.id = s.id
-            WHERE 
-                s.fs < 4096",
+                score s LEFT JOIN all_lines l ON l.id = s.id
+            ",
         )
         .bind(search_query)
         .bind(like_query)
@@ -79,22 +94,17 @@ impl Database {
         if let Err(err) = out {
             NeoDebug::log(&err).await;
             return Err(err);
+        } else {
+            Ok(out.unwrap())
         }
-
-        let out = out.unwrap();
-
-        let aft_elapsed_ms = instant.elapsed().as_millis();
-        NeoDebug::log(format!("select time: {}", aft_elapsed_ms - bef_elapsed_ms)).await;
-
-        Ok(out)
     }
 
-    pub async fn clean_up_tables(&self) -> sqlx::Result<()> {
-        sqlx::query("DELETE FROM all_lines")
-            .execute(&self.0)
-            .await?;
+    pub async fn empty_lines(&self) {
+        if let Err(err) = sqlx::query("DELETE FROM all_lines").execute(&self.0).await {
+            NeoDebug::log(err).await;
+        }
 
-        Ok(())
+        CONTAINER.search_state.write().await.db_count = 0;
     }
 
     pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {

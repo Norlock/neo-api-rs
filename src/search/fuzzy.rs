@@ -6,7 +6,6 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{self};
-use tokio::process::Command;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tokio::time::Instant;
 
@@ -16,7 +15,7 @@ use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, DummyTask,
     ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer,
     NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
-    PopupStyle, TextType, VirtTextPos, RTM,
+    PopupStyle, RemoveRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -53,7 +52,7 @@ pub struct FuzzyContainer {
 pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self) -> PathBuf;
     fn search_type(&self) -> FuzzySearch;
-    fn search_task(&self, lua: &Lua, search_query: &str, tab_idx: usize) -> Box<dyn ExecuteTask>;
+    fn search_task(&self, lua: &Lua, search_query: String, tab_idx: usize) -> Box<dyn ExecuteTask>;
     fn preview_task(&self, lua: &Lua, selected_idx: usize, tab_idx: usize) -> Box<dyn ExecuteTask>;
     fn on_enter(&self, lua: &Lua, open_in: OpenIn, item: PathBuf);
     fn tabs(&self) -> Vec<Box<str>>;
@@ -75,7 +74,7 @@ impl FuzzyConfig for DummyConfig {
     fn search_task(
         &self,
         _lua: &Lua,
-        _search_query: &str,
+        _search_query: String,
         _tab_idx: usize,
     ) -> Box<dyn ExecuteTask> {
         Box::new(DummyTask)
@@ -269,6 +268,17 @@ impl NeoFuzzy {
             lua.create_async_function(|lua, ()| open_item(lua, OpenIn::VSplit))?,
         )?;
 
+        if self.config.search_type() == FuzzySearch::Directories
+            || self.config.search_type() == FuzzySearch::Buffer
+        {
+            buf.set_keymap(
+                lua,
+                Mode::Insert,
+                "<C-d>",
+                lua.create_async_function(delete_entry)?,
+            )?;
+        }
+
         buf.set_keymap(
             lua,
             Mode::Insert,
@@ -430,7 +440,9 @@ impl NeoFuzzy {
         fuzzy.add_keymaps(lua)?;
 
         Diffuse::queue(vec![
-            fuzzy.config.search_task(lua, "", fuzzy.selected_tab_idx),
+            fuzzy
+                .config
+                .search_task(lua, "".to_string(), fuzzy.selected_tab_idx),
             fuzzy.config.preview_task(lua, 0, fuzzy.selected_tab_idx),
         ])
         .await;
@@ -521,7 +533,11 @@ async fn select_tab(lua: &Lua, _: ()) -> LuaResult<()> {
         fuzzy.selected_tab_idx = 0;
     }
 
-    exec_default_search(lua, &fuzzy).await
+    // TODO Make better
+    RTM.block_on(CONTAINER.db.empty_lines());
+    exec_default_search(lua, &fuzzy).await;
+
+    Ok(())
 }
 
 async fn exec_default_search(lua: &Lua, fuzzy: &NeoFuzzy) -> LuaResult<()> {
@@ -530,7 +546,7 @@ async fn exec_default_search(lua: &Lua, fuzzy: &NeoFuzzy) -> LuaResult<()> {
     Diffuse::queue(vec![
         fuzzy
             .config
-            .search_task(lua, &search_query, fuzzy.selected_tab_idx),
+            .search_task(lua, search_query, fuzzy.selected_tab_idx),
         fuzzy
             .config
             .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
@@ -555,8 +571,9 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
         .cwd()
         .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
-    if fuzzy.config.search_type() == FuzzySearch::Directories {
-        let dir = ExecRecentDirectories::new(lua).unwrap();
+    if fuzzy.config.search_type() == FuzzySearch::Directories && fuzzy.selected_tab_idx != 1 {
+        let dir = ExecRecentDirectories::new(lua, "".to_string())?;
+
         RTM.spawn(ExecRecentDirectories::store_directory(
             dir.recent_directories.clone(),
             selected.clone(),
@@ -567,84 +584,6 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
     fuzzy.config.on_enter(lua, open_in, selected);
 
     Ok(())
-}
-
-pub struct ExecStandardSearch {
-    pub cwd: PathBuf,
-    pub args: Vec<&'static str>,
-    pub search_query: String,
-    pub search_type: FuzzySearch,
-}
-
-impl ExecStandardSearch {
-    async fn insert_into_db(new_lines: Vec<LineOut>, instant: &Instant) {
-        let before = instant.elapsed();
-
-        let db = &CONTAINER.db;
-        if let Err(err) = db.insert_all(&new_lines).await {
-            NeoDebug::log(err).await;
-        }
-
-        let after = instant.elapsed();
-        NeoDebug::log_duration(before, after, "insert collection").await;
-
-        if let Ok(selection) = db.select("", instant).await {
-            *CONTAINER.search_lines.write().await = selection;
-        }
-
-        CONTAINER.search_state.write().await.db_count = new_lines.len();
-    }
-}
-
-#[async_trait::async_trait]
-impl ExecuteTask for ExecStandardSearch {
-    async fn execute(&self) {
-        let now = Instant::now();
-        let first_search = CONTAINER.search_state.read().await.db_count == 0;
-
-        if first_search {
-            let out = Command::new("fd")
-                .current_dir(&self.cwd)
-                .args(&self.args)
-                .output()
-                .await
-                .unwrap();
-
-            if out.status.success() {
-                let out = String::from_utf8_lossy(&out.stdout);
-                let mut new_lines = Vec::new();
-
-                for line in out.lines() {
-                    if self.search_type == FuzzySearch::Directories {
-                        new_lines.push(LineOut::new_directory(line.into()));
-                    } else {
-                        let path = PathBuf::from(line);
-                        let dev_icon = DevIcon::get_icon(&path);
-
-                        new_lines.push(LineOut {
-                            text: line.into(),
-                            icon: dev_icon.icon.into(),
-                            hl_group: dev_icon.highlight.into(),
-                        });
-                    }
-                }
-
-                Self::insert_into_db(new_lines, &now).await;
-
-                let elapsed_ms = now.elapsed().as_millis();
-                NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
-            }
-        } else {
-            let db = &CONTAINER.db;
-
-            if let Ok(selection) = db.select(&self.search_query, &now).await {
-                *CONTAINER.search_lines.write().await = selection;
-            }
-
-            let elapsed_ms = now.elapsed().as_millis();
-            NeoDebug::log(format!("elapsed search: {}", elapsed_ms)).await;
-        }
-    }
 }
 
 async fn preview_file(path: &Path) -> io::Result<()> {
@@ -917,31 +856,43 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     Ok(())
 }
 
+async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
+    let fuzzy = CONTAINER.fuzzy.read().await;
+
+    let st = fuzzy.config.search_type();
+
+    if st == FuzzySearch::Buffer {
+        // TODO
+    } else if st == FuzzySearch::Directories && fuzzy.selected_tab_idx == 1 {
+        let task = RemoveRecentDirectory::new(lua, fuzzy.selected_idx)?;
+
+        Diffuse::queue(vec![Box::new(task)]).await;
+    }
+
+    Ok(())
+}
+
 fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
     NeoWindow::CURRENT.close(lua, true)
 }
 
 async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
-    let fuzzy = CONTAINER.fuzzy.read().await;
-
     Diffuse::stop().await;
 
     NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
     NeoApi::stop_interval(lua, "fuzzy")?;
     NeoApi::set_insert_mode(lua, false)?;
 
-    RTM.spawn(async move {
-        let db = &CONTAINER.db;
-        if let Err(err) = db.clean_up_tables().await {
-            NeoDebug::log(err).await;
-        }
-        CONTAINER.search_state.write().await.db_count = 0;
-    });
+    let fuzzy = CONTAINER.fuzzy.read().await;
 
     fuzzy.pop_out.win.close(lua, false)?;
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.pop_preview.win.close(lua, false)?;
-    fuzzy.pop_tabs.win.close(lua, false)
+    fuzzy.pop_tabs.win.close(lua, false)?;
+
+    RTM.spawn(CONTAINER.db.empty_lines());
+
+    Ok(())
 }
 
 async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
