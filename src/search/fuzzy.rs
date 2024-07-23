@@ -12,10 +12,7 @@ use tokio::time::Instant;
 use crate::diffuser::{Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, CmdOpts, Database, DummyTask,
-    ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer,
-    NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
-    PopupStyle, RemoveRecentDirectory, TextType, VirtTextPos, RTM,
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, DummyTask, ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer, NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle, RemoveRecentDirectory, StoreRecentDirectory, TextType, VirtTextPos, RTM
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
@@ -533,9 +530,18 @@ async fn select_tab(lua: &Lua, _: ()) -> LuaResult<()> {
         fuzzy.selected_tab_idx = 0;
     }
 
-    // TODO Make better
-    RTM.block_on(CONTAINER.db.empty_lines());
-    exec_default_search(lua, &fuzzy).await;
+    let search_query = NeoApi::get_current_line(lua)?;
+
+    Diffuse::queue(vec![
+        Box::new(ClearResultsTask),
+        fuzzy
+            .config
+            .search_task(lua, search_query, fuzzy.selected_tab_idx),
+        fuzzy
+            .config
+            .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
+    ])
+    .await;
 
     Ok(())
 }
@@ -553,7 +559,7 @@ async fn exec_default_search(lua: &Lua, fuzzy: &NeoFuzzy) -> LuaResult<()> {
     ])
     .await;
 
-    RTM.spawn(NeoDebug::log(format!("Mem usage: {:?}", lua.used_memory())));
+    //RTM.spawn(NeoDebug::log(format!("Mem usage: {:?}", lua.used_memory())));
 
     Ok(())
 }
@@ -572,12 +578,9 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
         .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
     if fuzzy.config.search_type() == FuzzySearch::Directories && fuzzy.selected_tab_idx != 1 {
-        let dir = ExecRecentDirectories::new(lua, "".to_string())?;
+        let store_task = StoreRecentDirectory::new(lua, selected.clone())?;
 
-        RTM.spawn(ExecRecentDirectories::store_directory(
-            dir.recent_directories.clone(),
-            selected.clone(),
-        ));
+        Diffuse::queue(vec![Box::new(store_task)]).await;
     }
 
     fuzzy.pop_cmd.win.close(lua, false)?;

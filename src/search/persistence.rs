@@ -101,38 +101,6 @@ impl ExecRecentDirectories {
             search_query,
         })
     }
-
-    pub async fn store_directory(recent_directories: PathBuf, dir_path: PathBuf) -> io::Result<()> {
-        let new_line = dir_path.to_string_lossy().to_string();
-
-        let directories = fs::read(&recent_directories).await?;
-        let directories_str = String::from_utf8_lossy(&directories).to_string();
-
-        let mut lines = BTreeSet::from([new_line]);
-
-        for line in directories_str.lines() {
-            lines.insert(line.to_string());
-        }
-
-        let mut out = String::new();
-
-        for (i, line) in lines.iter().enumerate() {
-            if i == HISTORY_COUNT {
-                break;
-            }
-
-            out.push_str(line);
-            out.push_str("\n");
-        }
-
-        let result = fs::write(recent_directories, out).await;
-
-        if let Err(e) = result {
-            RTM.spawn(NeoDebug::log(e));
-        }
-
-        Ok(())
-    }
 }
 
 pub struct RemoveRecentDirectory {
@@ -223,4 +191,65 @@ impl ExecuteTask for ExecStandardSearch {
         let elapsed_ms = instant.elapsed().as_millis();
         NeoDebug::log(format!("elapsed search init: {}", elapsed_ms)).await;
     }
+}
+
+pub struct ClearResultsTask;
+
+#[async_trait::async_trait]
+impl ExecuteTask for ClearResultsTask {
+    async fn execute(&self) {
+        CONTAINER.db.empty_lines().await;
+    }
+}
+
+pub struct StoreRecentDirectory {
+    pub recent_directories: PathBuf,
+    pub dir_path: PathBuf,
+}
+
+#[async_trait::async_trait]
+impl ExecuteTask for StoreRecentDirectory {
+    // TODO store in DB
+    async fn execute(&self) {
+        if let Err(err) = store_directory(&self.recent_directories, &self.dir_path).await {
+            NeoDebug::log(err).await;
+        }
+    }
+}
+
+impl StoreRecentDirectory {
+    pub fn new(lua: &Lua, dir_path: PathBuf) -> LuaResult<Self> {
+        let stdpath = NeoApi::stdpath(lua, StdpathType::Data)?;
+
+        Ok(Self {
+            recent_directories: stdpath.join(RECENT_DIR_FILE),
+            dir_path,
+        })
+    }
+}
+
+async fn store_directory(recent_directories: &Path, dir_path: &Path) -> io::Result<()> {
+    let new_line = dir_path.to_string_lossy().to_string();
+
+    let directories = fs::read(recent_directories).await?;
+    let directories_str = String::from_utf8_lossy(&directories).to_string();
+
+    let mut lines = BTreeSet::from([new_line]);
+
+    for line in directories_str.lines() {
+        lines.insert(line.to_string());
+    }
+
+    let mut out = String::new();
+
+    for (i, line) in lines.iter().enumerate() {
+        if i == HISTORY_COUNT {
+            break;
+        }
+
+        out.push_str(line);
+        out.push_str("\n");
+    }
+
+    fs::write(recent_directories, out).await
 }

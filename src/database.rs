@@ -1,10 +1,10 @@
+use sqlx::sqlite::SqliteJournalMode;
 use std::{
-    alloc::System,
     env,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::{fs, time::Instant};
+use tokio::fs;
 
 use crate::{LineOut, NeoDebug, CONTAINER, RTM};
 
@@ -47,6 +47,7 @@ impl Database {
         let options = sqlx::sqlite::SqliteConnectOptions::new()
             .filename(tmp.join(filename))
             .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal)
             .extension(crate_path);
 
         let pool = sqlx::SqlitePool::connect_with(options).await?;
