@@ -1,9 +1,9 @@
 use mlua::prelude::{LuaError, LuaResult};
 use mlua::Lua;
-use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use tokio::fs;
 use tokio::io::{self};
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -104,7 +104,7 @@ pub struct SearchState {
     pub update: bool,
 }
 
-pub static CONTAINER: Lazy<FuzzyContainer> = Lazy::new(|| FuzzyContainer {
+pub static CONTAINER: LazyLock<FuzzyContainer> = LazyLock::new(|| FuzzyContainer {
     search_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(NeoFuzzy::default()),
     search_state: RwLock::new(SearchState {

@@ -1,8 +1,7 @@
-use std::{collections::HashMap, ffi::OsStr, path::Path};
+use std::{collections::HashMap, ffi::OsStr, path::Path, sync::LazyLock};
 
 use mlua::prelude::LuaResult;
 use mlua::Lua;
-use once_cell::sync::Lazy;
 
 use crate::{HLOpts, NeoTheme};
 
@@ -15,7 +14,7 @@ struct DevIconsContainer {
 }
 
 // https://github.com/nvim-tree/nvim-web-devicons
-static DEV_ICONS: Lazy<DevIconsContainer> = Lazy::new(|| {
+static DEV_ICONS: LazyLock<DevIconsContainer> = LazyLock::new(|| {
     let dev_icon_from_filename = HashMap::from_iter([
         (
             OsStr::new("build.gradle"),

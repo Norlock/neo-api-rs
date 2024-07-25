@@ -4,13 +4,12 @@
 // Create Linked list with actions
 // Try to lock do something then next
 
-use once_cell::sync::Lazy;
-use std::time::Duration;
+use std::{sync::LazyLock, time::Duration};
 use tokio::{sync::Mutex, time};
 
 use crate::RTM;
 
-static DIFFUSER: Lazy<Mutex<Diffuse>> = Lazy::new(|| Diffuse::default().into());
+static DIFFUSER: LazyLock<Mutex<Diffuse>> = LazyLock::new(|| Diffuse::default().into());
 
 #[derive(Default)]
 pub struct Diffuse {

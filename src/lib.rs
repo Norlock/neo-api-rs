@@ -29,8 +29,8 @@ pub use mlua;
 pub use tokio;
 pub use async_trait;
 
-use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
+use std::sync::LazyLock;
 
 /// Tokio runtime multithreaded
-pub static RTM: Lazy<Runtime> = Lazy::new(|| tokio::runtime::Runtime::new().unwrap());
+pub static RTM: LazyLock<Runtime> = LazyLock::new(|| tokio::runtime::Runtime::new().unwrap());

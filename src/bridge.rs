@@ -1,10 +1,9 @@
 use mlua::prelude::{LuaError, LuaResult};
-use once_cell::sync::Lazy;
-use std::{any::Any, collections::HashMap};
+use std::{any::Any, collections::HashMap, sync::LazyLock};
 use tokio::sync::RwLock;
 
-pub static LUA_BRIDGE: Lazy<RwLock<NeoBridge>> =
-    Lazy::new(|| RwLock::new(NeoBridge(HashMap::new())));
+pub static LUA_BRIDGE: LazyLock<RwLock<NeoBridge>> =
+    LazyLock::new(|| RwLock::new(NeoBridge(HashMap::new())));
 
 /// This can be used to store small data for inside lua async functions,
 /// where you can't move the data inside the closure.
