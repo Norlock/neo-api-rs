@@ -132,6 +132,7 @@ impl ExecuteTask for RemoveRecentDirectory {
 }
 
 pub struct ExecStandardSearch {
+    pub cmd: &'static str,
     pub cwd: PathBuf,
     pub args: Vec<&'static str>,
     pub search_query: String,
@@ -140,7 +141,7 @@ pub struct ExecStandardSearch {
 
 impl ExecStandardSearch {
     async fn insert_fd_search_into_db(&self) {
-        let out = Command::new("fd")
+        let out = Command::new(&self.cmd)
             .current_dir(&self.cwd)
             .args(&self.args)
             .output()
