@@ -12,7 +12,10 @@ use tokio::time::Instant;
 use crate::diffuser::{Diffuse, ExecuteTask};
 use crate::web_devicons::icons_default::DevIcon;
 use crate::{
-    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, DummyTask, ExecRecentDirectories, ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer, NeoDebug, NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle, RemoveRecentDirectory, StoreRecentDirectory, TextType, VirtTextPos, RTM
+    AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, DummyTask,
+    ExtmarkOpts, FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer, NeoDebug, NeoPopup,
+    NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle,
+    RemoveRecentDirectory, StoreRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";

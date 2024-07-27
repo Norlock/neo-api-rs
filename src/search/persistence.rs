@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::{
     web_devicons::icons_default::DevIcon, ExecuteTask, FuzzySearch, LineOut, NeoApi, NeoDebug,
-    StdpathType, CONTAINER, RTM,
+    StdpathType, CONTAINER,
 };
 
 pub struct ExecRecentDirectories {
