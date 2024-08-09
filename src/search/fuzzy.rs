@@ -18,6 +18,8 @@ use crate::{
     RemoveRecentDirectory, StoreRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
+use super::BufferSearch;
+
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
@@ -867,12 +869,50 @@ async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
 
     let st = fuzzy.config.search_type();
 
-    if st == FuzzySearch::Buffer {
-        // TODO
-    } else if st == FuzzySearch::Directories && fuzzy.selected_tab_idx == 1 {
-        let task = RemoveRecentDirectory::new(lua, fuzzy.selected_idx)?;
+    let search_query = NeoApi::get_current_line(lua)?;
 
-        Diffuse::queue(vec![Box::new(task)]).await;
+    let tasks: Option<Vec<Box<dyn ExecuteTask>>> = if st == FuzzySearch::Buffer {
+        let search_lines = CONTAINER.search_lines.read().await;
+        let selected = fuzzy
+            .config
+            .cwd()
+            .join(search_lines[fuzzy.selected_idx].text.as_ref());
+
+        drop(search_lines);
+
+        NeoApi::cmd(
+            lua,
+            CmdOpts {
+                cmd: "bwipeout",
+                args: &[selected.to_string_lossy().as_ref()],
+                bang: false,
+            },
+        )?;
+
+        Some(vec![])
+    } else if st == FuzzySearch::Directories && fuzzy.selected_tab_idx == 1 {
+        let remove_recent_dir = RemoveRecentDirectory::new(lua, fuzzy.selected_idx)?;
+
+        Some(vec![Box::new(remove_recent_dir)])
+    } else {
+        None
+    };
+
+    if let Some(mut tasks) = tasks {
+        tasks.push(Box::new(ClearResultsTask));
+        tasks.push(
+            fuzzy
+                .config
+                .search_task(lua, search_query, fuzzy.selected_tab_idx),
+        );
+
+        tasks.push(
+            fuzzy
+                .config
+                .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
+        );
+
+        Diffuse::queue(tasks).await;
     }
 
     Ok(())
@@ -883,6 +923,7 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
 }
 
 async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
+    Diffuse::queue(vec![Box::new(ClearResultsTask)]).await;
     Diffuse::stop().await;
 
     NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
@@ -896,7 +937,6 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     fuzzy.pop_preview.win.close(lua, false)?;
     fuzzy.pop_tabs.win.close(lua, false)?;
 
-    RTM.spawn(CONTAINER.db.empty_lines());
 
     Ok(())
 }

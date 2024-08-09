@@ -83,9 +83,7 @@ async fn remove_recent_directory(recent_directories: &Path, index: usize) -> io:
 
     let out = lines.join("\n");
 
-    fs::write(&recent_directories, out).await?;
-
-    Ok(())
+    fs::write(&recent_directories, out).await
 }
 
 async fn is_initial_search() -> bool {
@@ -122,11 +120,8 @@ impl RemoveRecentDirectory {
 #[async_trait::async_trait]
 impl ExecuteTask for RemoveRecentDirectory {
     async fn execute(&self) {
-        if remove_recent_directory(&self.recent_directories, self.index)
-            .await
-            .is_ok()
-        {
-            insert_recent_directories_into_db(&self.recent_directories).await;
+        if let Err(e) = remove_recent_directory(&self.recent_directories, self.index).await {
+            NeoDebug::log(e).await;
         }
     }
 }
@@ -200,6 +195,8 @@ pub struct ClearResultsTask;
 impl ExecuteTask for ClearResultsTask {
     async fn execute(&self) {
         CONTAINER.db.empty_lines().await;
+        CONTAINER.search_state.write().await.db_count = 0;
+        CONTAINER.fuzzy.write().await.selected_idx = 0;
     }
 }
 

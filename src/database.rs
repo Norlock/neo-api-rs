@@ -6,7 +6,7 @@ use std::{
 };
 use tokio::fs;
 
-use crate::{LineOut, NeoDebug, CONTAINER, RTM};
+use crate::{LineOut, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
@@ -104,8 +104,6 @@ impl Database {
         if let Err(err) = sqlx::query("DELETE FROM all_lines").execute(&self.0).await {
             NeoDebug::log(err).await;
         }
-
-        CONTAINER.search_state.write().await.db_count = 0;
     }
 
     pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {

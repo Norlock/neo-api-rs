@@ -1,7 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+use mlua::{prelude::LuaResult, Lua};
 
 use crate::{
-    web_devicons::icons_default::DevIcon, BufInfo, ExecuteTask, LineOut, NeoDebug, CONTAINER,
+    web_devicons::icons_default::DevIcon, BufInfo, BufInfoOpts, ExecuteTask, LineOut, NeoApi,
+    NeoDebug, CONTAINER,
 };
 
 pub struct BufferSearch {
@@ -11,6 +14,17 @@ pub struct BufferSearch {
 }
 
 impl BufferSearch {
+    pub fn new(lua: &Lua, cwd: &Path) -> LuaResult<Self> {
+        let search_query = NeoApi::get_current_line(lua)?;
+        let buf_infos = NeoApi::get_buf_info(lua, BufInfoOpts::BufListed)?;
+
+        Ok(Self {
+            search_query,
+            cwd: cwd.to_owned(),
+            buf_infos,
+        })
+    }
+
     async fn init(&self) {
         let mut new_lines = vec![];
 
@@ -67,4 +81,13 @@ impl ExecuteTask for BufferSearch {
 
 async fn is_initial_search() -> bool {
     CONTAINER.search_state.read().await.db_count == 0
+}
+
+pub struct RemoveBuffer {
+    pub selected_line: Box<str>,
+}
+
+#[async_trait::async_trait]
+impl ExecuteTask for RemoveBuffer {
+    async fn execute(&self) {}
 }
