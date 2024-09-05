@@ -44,9 +44,9 @@ impl NeoWindow {
       • {name}   Option name
       • {value}  New option value
     */
-    pub fn set_option_value<'a, V: IntoLua<'a>>(
+    pub fn set_option_value<V: IntoLua>(
         &self,
-        lua: &'a Lua,
+        lua: &Lua,
         key: &str,
         value: V,
     ) -> LuaResult<()> {
@@ -64,7 +64,7 @@ impl NeoWindow {
     pub fn set_cursor(&self, lua: &Lua, cursor: WinCursor) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_set_cursor").eval()?;
 
-        lfn.call::<_, ()>((self.id(), cursor))
+        lfn.call((self.id(), cursor))
     }
 
     /**
@@ -91,7 +91,7 @@ impl NeoWindow {
         lfn.call((self.id(), ns_id))
     }
 
-    pub fn call<'a>(&self, lua: &'a Lua, cb: LuaFunction<'a>) -> LuaResult<()> {
+    pub fn call(&self, lua: &Lua, cb: LuaFunction) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_call").eval()?;
 
         lfn.call((self.id(), cb))
@@ -107,6 +107,6 @@ impl NeoWindow {
     pub fn close(&self, lua: &Lua, force: bool) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_win_close").eval()?;
 
-        lfn.call::<_, ()>((self.id(), force))
+        lfn.call((self.id(), force))
     }
 }

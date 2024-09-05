@@ -12,5 +12,5 @@ mlua = { git = "https://github.com/mlua-rs/mlua", features = ["luajit", "module"
 macros = { path = "crates/macros"}
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "fs", "sync", "process", "macros", "io-std", "io-util", "time"] }
 async-trait = "0.1"
-sqlx = { version = "0.7", features = [ "runtime-tokio", "sqlite" ] }
-futures = "0.3"
+sqlx = { version = "0.8", features = [ "runtime-tokio", "sqlite" ] }
+#futures = "0.3"

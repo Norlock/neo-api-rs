@@ -34,8 +34,8 @@ impl HLText {
     }
 }
 
-impl<'a> IntoLua<'a> for HLText {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for HLText {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let table = lua.create_table()?;
 
         table.push(self.text)?;
@@ -45,15 +45,15 @@ impl<'a> IntoLua<'a> for HLText {
     }
 }
 
-pub trait ParseToLua<'a> {
-    fn parse(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>>;
+pub trait ParseToLua {
+    fn parse(self, lua: &Lua) -> LuaResult<LuaValue>;
 }
 
-impl<'a, T> ParseToLua<'a> for Vec<T>
+impl<T> ParseToLua for Vec<T>
 where
-    T: IntoLua<'a>,
+    T: IntoLua,
 {
-    fn parse(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+    fn parse(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
 
         for tuple in self.into_iter() {
@@ -70,8 +70,8 @@ pub enum TextType {
     Tuples(Vec<HLText>),
 }
 
-impl<'a> IntoLua<'a> for TextType {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for TextType {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         match self {
             Self::String(str) => Ok(LuaValue::String(lua.create_string(str)?)),
             Self::Tuples(tuples) => tuples.into_lua(lua),
@@ -312,8 +312,8 @@ impl WinCursor {
     }
 }
 
-impl<'a> FromLua<'a> for WinCursor {
-    fn from_lua(value: LuaValue<'a>, _lua: &'a Lua) -> LuaResult<Self> {
+impl FromLua for WinCursor {
+    fn from_lua(value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
         match value {
             LuaValue::Table(table) => {
                 let row: u32 = table.get(1)?;
@@ -326,8 +326,8 @@ impl<'a> FromLua<'a> for WinCursor {
     }
 }
 
-impl<'a> IntoLua<'a> for WinCursor {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for WinCursor {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let table = lua.create_table()?;
         table.set(1, self.row)?;
         table.set(2, self.column)?;
@@ -684,7 +684,7 @@ pub enum AutoCmdEvent {
 }
 
 #[derive(Debug)]
-pub struct AutoCmdOpts<'a> {
+pub struct AutoCmdOpts {
     /// Autocommand group name or id to match against.
     pub group: Option<AutoCmdGroup>,
 
@@ -710,14 +710,14 @@ pub struct AutoCmdOpts<'a> {
     • file: (string) expanded value of <afile>
     • data: (any) arbitrary data passed from |nvim_exec_autocmds()|
      */
-    pub callback: LuaFunction<'a>,
+    pub callback: LuaFunction,
 
     /// defaults to false. Run the autocommand only once |autocmd-once|.
     pub once: bool,
 }
 
-impl<'a> IntoLua<'a> for AutoCmdOpts<'a> {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for AutoCmdOpts {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let table = lua.create_table()?;
 
         match self.group {
@@ -833,8 +833,8 @@ impl Default for CmdOptsMods<'_> {
     }
 }
 
-impl<'lua, 'opts> IntoLua<'lua> for CmdOpts<'opts> {
-    fn into_lua(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
+impl<'opts> IntoLua for CmdOpts<'opts> {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
         out.set("cmd", self.cmd)?;
         // TODO make IntoTable complient to this structure
@@ -868,8 +868,8 @@ pub struct FileTypeMatch {
     pub contents: Option<Vec<String>>,
 }
 
-impl<'a> IntoLua<'a> for FileTypeMatch {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for FileTypeMatch {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
 
         if let Some(buf) = self.buf {
@@ -896,8 +896,8 @@ pub enum BufInfoOpts {
     Buffer(NeoBuffer),
 }
 
-impl<'lua> IntoLua<'lua> for BufInfoOpts {
-    fn into_lua(self, lua: &'lua Lua) -> LuaResult<LuaValue<'lua>> {
+impl IntoLua for BufInfoOpts {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
 
         match self {

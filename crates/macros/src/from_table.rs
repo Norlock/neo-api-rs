@@ -1,4 +1,3 @@
-use proc_macro2::Span;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
@@ -43,58 +42,26 @@ pub fn from_table(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     let table_fields = proc_macro2::TokenStream::from_iter(table_fields);
+    let generics = &input.generics;
 
-    let generics = &input.generics.params;
-
-    let expand;
-
-    if generics.is_empty() {
-        expand = quote! {
-            impl<'a> mlua::FromLua<'a> for #struct_name {
-                fn from_lua(value: mlua::Value<'a>, lua: &'a Lua) -> mlua::Result<Self> {
-                    if let mlua::Value::Table(table) = value {
-                        Ok(Self {
-                            #table_fields
-                        })
-                    } else {
-                        Err(mlua::Error::FromLuaConversionError {
-                            from: value.type_name(),
-                            to: stringify!(#struct_name),
-                            message: None,
-                        })
-                    }
-
+    let expand = quote! {
+        impl #generics mlua::FromLua for #struct_name #generics {
+            fn from_lua(value: mlua::Value, lua: &Lua) -> mlua::Result<Self> {
+                if let mlua::Value::Table(table) = value {
+                    Ok(Self {
+                        #table_fields
+                    })
+                } else {
+                    Err(mlua::Error::FromLuaConversionError {
+                        from: value.type_name(),
+                        to: stringify!(#struct_name),
+                        message: None,
+                    })
                 }
-            }
-        };
-    } else {
-        let lt;
-        let param = generics.first().unwrap();
 
-        if let syn::GenericParam::Lifetime(ltp) = param {
-            lt = ltp.clone();
-        } else {
-            lt = syn::LifetimeParam::new(syn::Lifetime::new("'lua", Span::call_site()));
+            }
         }
-
-        expand = quote! {
-            impl<#generics> mlua::FromLua<#lt> for #struct_name {
-                fn from_lua(value: mlua::Value<#lt>, lua: &#lt Lua) -> mlua::Result<Self<#generics>> {
-                    if let mlua::Value::Table(table) = value {
-                        Ok(#struct_name {
-                            #table_fields
-                        })
-                    } else {
-                        Err(mlua::Error::FromLuaConversionError {
-                            from: value.type_name(),
-                            to: stringify!(#struct_name),
-                            message: None,
-                        })
-                    }
-                }
-            }
-        };
-    }
+    };
 
     expand.into()
 }

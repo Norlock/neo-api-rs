@@ -8,8 +8,8 @@ use mlua::FromLua;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct NeoBuffer(u32);
 
-impl<'a> FromLua<'a> for NeoBuffer {
-    fn from_lua(value: LuaValue<'a>, lua: &'a Lua) -> LuaResult<Self> {
+impl FromLua for NeoBuffer {
+    fn from_lua(value: LuaValue, lua: &Lua) -> LuaResult<Self> {
         match value {
             LuaValue::Integer(num) => Ok(NeoBuffer::from_id(num as u32)),
             _ => Err(LuaError::FromLuaConversionError {
@@ -21,8 +21,8 @@ impl<'a> FromLua<'a> for NeoBuffer {
     }
 }
 
-impl<'a> IntoLua<'a> for NeoBuffer {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for NeoBuffer {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         Ok(LuaValue::Integer(self.0 as i64))
     }
 }
@@ -47,7 +47,7 @@ impl NeoBuffer {
     */
     pub fn create(lua: &Lua, listed: bool, scratch: bool) -> LuaResult<Self> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_buf").eval()?;
-        let buf_id: u32 = lfn.call::<_, u32>((listed, scratch))?;
+        let buf_id: u32 = lfn.call((listed, scratch))?;
 
         if buf_id == 0 {
             return Err(LuaError::RuntimeError("Buffer not created".to_string()));
@@ -96,7 +96,7 @@ impl NeoBuffer {
         lua: &'a Lua,
         mode: Mode,
         lhs: &str,
-        rhs: LuaFunction<'a>,
+        rhs: LuaFunction,
     ) -> LuaResult<()> {
         NeoApi::set_keymap(lua, mode, lhs, rhs, self.keymap_opts(true))
     }
@@ -135,7 +135,7 @@ impl NeoBuffer {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_delete").eval()?;
 
         // Bug in nvim API, it won't allow opts not being passed, so create an empty table
-        lfn.call::<_, ()>((self.id(), opts))
+        lfn.call((self.id(), opts))
     }
 
     /**
@@ -147,16 +147,16 @@ impl NeoBuffer {
       • {name}   Option name
       • {value}  New option value
     */
-    pub fn set_option_value<'a, V: IntoLua<'a>>(
+    pub fn set_option_value<V: IntoLua>(
         &self,
-        lua: &'a Lua,
+        lua: &Lua,
         key: &str,
         value: V,
     ) -> LuaResult<()> {
         NeoApi::set_option_value(lua, key, value, OptValueType::Buffer(*self))
     }
 
-    pub fn get_option_value<'a, V: FromLua<'a>>(&self, lua: &'a Lua, key: &str) -> LuaResult<V> {
+    pub fn get_option_value<'a, V: FromLua>(&self, lua: &'a Lua, key: &str) -> LuaResult<V> {
         NeoApi::get_option_value(lua, key, OptValueType::Buffer(*self))
     }
 
@@ -288,7 +288,7 @@ impl NeoBuffer {
         lfn.call(self.id())
     }
 
-    pub fn call<'a>(&self, lua: &'a Lua, cb: LuaFunction<'a>) -> LuaResult<()> {
+    pub fn call(&self, lua: &Lua, cb: LuaFunction) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_call").eval()?;
 
         lfn.call((self.id(), cb))

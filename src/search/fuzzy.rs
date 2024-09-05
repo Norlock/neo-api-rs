@@ -524,7 +524,7 @@ impl NeoFuzzy {
     }
 }
 
-async fn select_tab(lua: &Lua, _: ()) -> LuaResult<()> {
+async fn select_tab(lua: Lua, _: ()) -> LuaResult<()> {
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
     if fuzzy.selected_tab_idx + 1 < fuzzy.tabs_count {
@@ -533,16 +533,16 @@ async fn select_tab(lua: &Lua, _: ()) -> LuaResult<()> {
         fuzzy.selected_tab_idx = 0;
     }
 
-    let search_query = NeoApi::get_current_line(lua)?;
+    let search_query = NeoApi::get_current_line(&lua)?;
 
     Diffuse::queue(vec![
         Box::new(ClearResultsTask),
         fuzzy
             .config
-            .search_task(lua, search_query, fuzzy.selected_tab_idx),
+            .search_task(&lua, search_query, fuzzy.selected_tab_idx),
         fuzzy
             .config
-            .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
+            .preview_task(&lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
     ])
     .await;
 
@@ -567,7 +567,7 @@ async fn exec_default_search(lua: &Lua, fuzzy: &NeoFuzzy) -> LuaResult<()> {
     Ok(())
 }
 
-async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
+async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let filtered_lines = CONTAINER.search_lines.read().await;
 
@@ -581,13 +581,13 @@ async fn open_item(lua: &Lua, open_in: OpenIn) -> LuaResult<()> {
         .join(filtered_lines[fuzzy.selected_idx].text.as_ref());
 
     if fuzzy.config.search_type() == FuzzySearch::Directories && fuzzy.selected_tab_idx != 1 {
-        let store_task = StoreRecentDirectory::new(lua, selected.clone())?;
+        let store_task = StoreRecentDirectory::new(&lua, selected.clone())?;
 
         Diffuse::queue(vec![Box::new(store_task)]).await;
     }
 
-    fuzzy.pop_cmd.win.close(lua, false)?;
-    fuzzy.config.on_enter(lua, open_in, selected);
+    fuzzy.pop_cmd.win.close(&lua, false)?;
+    fuzzy.config.on_enter(&lua, open_in, selected);
 
     Ok(())
 }
@@ -813,10 +813,10 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
     Ok(())
 }
 
-async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
+async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
-    let len = fuzzy.pop_out.buf.line_count(lua)?;
+    let len = fuzzy.pop_out.buf.line_count(&lua)?;
 
     match move_sel {
         Move::Up => {
@@ -838,7 +838,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     let selected_idx = fuzzy.selected_idx;
 
     fuzzy.pop_out.win.call(
-        lua,
+        &lua,
         lua.create_function(move |lua, _: ()| {
             NeoApi::cmd(
                 lua,
@@ -852,7 +852,7 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     )?;
 
     Diffuse::queue(vec![fuzzy.config.preview_task(
-        lua,
+        &lua,
         selected_idx,
         fuzzy.selected_tab_idx,
     )])
@@ -861,12 +861,12 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     Ok(())
 }
 
-async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
+async fn delete_entry(lua: Lua, _: ()) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
 
     let st = fuzzy.config.search_type();
 
-    let search_query = NeoApi::get_current_line(lua)?;
+    let search_query = NeoApi::get_current_line(&lua)?;
 
     let tasks: Option<Vec<Box<dyn ExecuteTask>>> = if st == FuzzySearch::Buffer {
         let search_lines = CONTAINER.search_lines.read().await;
@@ -878,7 +878,7 @@ async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
         drop(search_lines);
 
         NeoApi::cmd(
-            lua,
+            &lua,
             CmdOpts {
                 cmd: "bwipeout",
                 args: &[selected.to_string_lossy().as_ref()],
@@ -888,7 +888,7 @@ async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
 
         Some(vec![])
     } else if st == FuzzySearch::Directories && fuzzy.selected_tab_idx == 1 {
-        let remove_recent_dir = RemoveRecentDirectory::new(lua, fuzzy.selected_idx)?;
+        let remove_recent_dir = RemoveRecentDirectory::new(&lua, fuzzy.selected_idx)?;
 
         Some(vec![Box::new(remove_recent_dir)])
     } else {
@@ -900,13 +900,13 @@ async fn delete_entry(lua: &Lua, _: ()) -> LuaResult<()> {
         tasks.push(
             fuzzy
                 .config
-                .search_task(lua, search_query, fuzzy.selected_tab_idx),
+                .search_task(&lua, search_query, fuzzy.selected_tab_idx),
         );
 
         tasks.push(
             fuzzy
                 .config
-                .preview_task(lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
+                .preview_task(&lua, fuzzy.selected_idx, fuzzy.selected_tab_idx),
         );
 
         Diffuse::queue(tasks).await;
@@ -919,25 +919,25 @@ fn close_fuzzy(lua: &Lua, _: ()) -> LuaResult<()> {
     NeoWindow::CURRENT.close(lua, true)
 }
 
-async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
+async fn aucmd_close_fuzzy(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     Diffuse::queue(vec![Box::new(ClearResultsTask)]).await;
     Diffuse::stop().await;
 
-    NeoApi::del_augroup_by_name(lua, AUCMD_GRP)?;
-    NeoApi::stop_interval(lua, "fuzzy")?;
-    NeoApi::set_insert_mode(lua, false)?;
+    NeoApi::del_augroup_by_name(&lua, AUCMD_GRP)?;
+    NeoApi::stop_interval(&lua, "fuzzy")?;
+    NeoApi::set_insert_mode(&lua, false)?;
 
     let fuzzy = CONTAINER.fuzzy.read().await;
 
-    fuzzy.pop_out.win.close(lua, false)?;
-    fuzzy.pop_cmd.win.close(lua, false)?;
-    fuzzy.pop_preview.win.close(lua, false)?;
-    fuzzy.pop_tabs.win.close(lua, false)?;
+    fuzzy.pop_out.win.close(&lua, false)?;
+    fuzzy.pop_cmd.win.close(&lua, false)?;
+    fuzzy.pop_preview.win.close(&lua, false)?;
+    fuzzy.pop_tabs.win.close(&lua, false)?;
 
     Ok(())
 }
 
-async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
+async fn aucmd_text_changed(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
     fuzzy.selected_idx = 0;
@@ -945,7 +945,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let sel_idx = fuzzy.selected_idx;
 
     fuzzy.pop_out.win.call(
-        lua,
+        &lua,
         lua.create_function(move |lua, _: ()| {
             NeoApi::cmd(
                 lua,
@@ -958,7 +958,7 @@ async fn aucmd_text_changed(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
         })?,
     )?;
 
-    exec_default_search(lua, &fuzzy).await?;
+    exec_default_search(&lua, &fuzzy).await?;
 
     Ok(())
 }

@@ -35,10 +35,10 @@ impl NeoApi {
         Self::create_user_command(lua, "NeoApiClearLogs", cb, false)
     }
 
-    pub fn create_user_command<'a>(
-        lua: &'a Lua,
+    pub fn create_user_command(
+        lua: &Lua,
         name: &str,
-        callback: LuaFunction<'a>,
+        callback: LuaFunction,
         bang: bool,
     ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_user_command").eval()?;
@@ -49,16 +49,13 @@ impl NeoApi {
         lfn.call((name, callback, opts))
     }
 
-    pub fn delay<'a>(lua: &'a Lua, ms: u32, callback: LuaFunction<'a>) -> LuaResult<()> {
+    pub fn delay(lua: &Lua, ms: u32, callback: LuaFunction) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.defer_fn").eval()?;
 
         lfn.call((callback, ms))
     }
 
-    pub fn schedule_wrap<'a>(
-        lua: &'a Lua,
-        callback: LuaFunction<'a>,
-    ) -> LuaResult<LuaFunction<'a>> {
+    pub fn schedule_wrap(lua: &Lua, callback: LuaFunction) -> LuaResult<LuaFunction> {
         let lfn: LuaFunction = lua.load("vim.schedule_wrap").eval()?;
 
         lfn.call(callback)
@@ -70,7 +67,7 @@ impl NeoApi {
         lua: &Lua,
         timer_id: &str,
         ms: u32,
-        callback: LuaFunction<'_>,
+        callback: LuaFunction,
     ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.uv.new_timer").eval()?;
 
@@ -150,11 +147,11 @@ impl NeoApi {
     }
 
     /// Gets a human-readable representation of the given object.
-    pub fn inspect<'lua, V: IntoLua<'lua>>(lua: &'lua Lua, table: V) -> LuaResult<()> {
+    pub fn inspect<V: IntoLua>(lua: &Lua, table: V) -> LuaResult<()> {
         let ltb: LuaTable = lua.load("vim.inspect").eval()?;
 
         let lfn: LuaFunction = ltb.get("inspect")?;
-        let result = lfn.call::<_, String>(table)?;
+        let result: String = lfn.call(table)?;
 
         Self::notify(lua, &result)
     }
@@ -175,8 +172,8 @@ impl NeoApi {
                  • win: |window-ID|. Used for setting window local option.
                  • buf: Buffer number. Used for setting buffer local option.
     */
-    pub fn set_option_value<'a, V: IntoLua<'a>>(
-        lua: &'a mlua::Lua,
+    pub fn set_option_value<V: IntoLua>(
+        lua: &Lua,
         key: &str,
         value: V,
         opt_type: OptValueType,
@@ -193,8 +190,8 @@ impl NeoApi {
         lfn.call((key, value, opts))
     }
 
-    pub fn get_option_value<'a, V: FromLua<'a>>(
-        lua: &'a mlua::Lua,
+    pub fn get_option_value<V: FromLua>(
+        lua: &Lua,
         key: &str,
         opt_type: OptValueType,
     ) -> LuaResult<V> {
@@ -305,31 +302,31 @@ impl NeoApi {
     pub fn get_cwd(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.getcwd").eval()?;
 
-        Ok(lfn.call::<_, String>(())?.into())
+        Ok(lfn.call::<String>(())?.into())
     }
 
     pub fn get_filepath(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        Ok(lfn.call::<_, String>("%:p")?.into())
+        Ok(lfn.call::<String>("%:p")?.into())
     }
 
     pub fn get_filename(lua: &Lua) -> LuaResult<String> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        lfn.call::<_, String>("%:p:t")
+        lfn.call::<String>("%:p:t")
     }
 
     pub fn get_filedir(lua: &Lua) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.expand").eval()?;
 
-        Ok(lfn.call::<_, String>("%:p:h")?.into())
+        Ok(lfn.call::<String>("%:p:h")?.into())
     }
 
     pub fn set_cmd_file(lua: &Lua, name: impl Into<String>) -> LuaResult<()> {
         let lfn: mlua::Function = lua.load("vim.cmd.file").eval()?;
 
-        lfn.call::<_, ()>(name.into())
+        lfn.call(name.into())
     }
 
     /**
@@ -348,10 +345,10 @@ impl NeoApi {
     pub fn stdpath(lua: &Lua, stdpath: StdpathType) -> LuaResult<PathBuf> {
         let lfn: LuaFunction = lua.load("vim.fn.stdpath").eval()?;
 
-        Ok(lfn.call::<_, String>(stdpath.to_string())?.into())
+        Ok(lfn.call::<String>(stdpath.to_string())?.into())
     }
 
-    pub fn list_uis(lua: &mlua::Lua) -> LuaResult<Vec<Ui>> {
+    pub fn list_uis(lua: &Lua) -> LuaResult<Vec<Ui>> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_list_uis").eval()?;
 
         lfn.call(())
@@ -388,20 +385,20 @@ impl NeoApi {
         line: u32,
         col: u32,
         opts: ExtmarkOpts,
-    ) -> mlua::Result<()> {
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_extmark").eval()?;
         let opts: LuaValue = opts.into_lua(lua)?;
 
-        lfn.call::<_, ()>((buf_id, ns_id, line, col, opts))
+        lfn.call((buf_id, ns_id, line, col, opts))
     }
 
-    pub fn set_keymap<'a>(
-        lua: &'a mlua::Lua,
+    pub fn set_keymap(
+        lua: &Lua,
         mode: Mode,
-        lhs: &'a str,
-        rhs: mlua::Function,
+        lhs: &str,
+        rhs: LuaFunction,
         keymap_opts: KeymapOpts,
-    ) -> mlua::Result<()> {
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.keymap.set").eval()?;
 
         lfn.call((mode.get_str(), lhs, rhs, keymap_opts))
@@ -423,16 +420,16 @@ impl NeoApi {
     }
 
     /// Creates an |autocommand| event handler, defined by `callback`
-    pub fn create_autocmd<'a>(
-        lua: &'a Lua,
+    pub fn create_autocmd(
+        lua: &Lua,
         events: &[AutoCmdEvent],
-        opts: AutoCmdOpts<'a>,
+        opts: AutoCmdOpts,
     ) -> LuaResult<AutoCmd> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_autocmd").eval()?;
 
         let events: Vec<String> = events.iter().map(|e| e.to_string()).collect();
 
-        let id = lfn.call::<_, u32>((events, opts))?;
+        let id: u32 = lfn.call((events, opts))?;
 
         Ok(AutoCmd::new(id))
     }

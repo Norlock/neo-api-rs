@@ -260,8 +260,8 @@ pub struct WinOptions {
     pub split: PopupSplit,
 }
 
-impl<'a> IntoLua<'a> for WinOptions {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for WinOptions {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
 
         let uis = NeoApi::list_uis(lua)?;
@@ -356,8 +356,8 @@ pub struct NeoPopup {
     pub buf: NeoBuffer,
 }
 
-impl<'a> IntoLua<'a> for NeoPopup {
-    fn into_lua(self, lua: &'a Lua) -> LuaResult<LuaValue<'a>> {
+impl IntoLua for NeoPopup {
+    fn into_lua(self, lua: &Lua) -> LuaResult<LuaValue> {
         let out = lua.create_table()?;
         out.set("win", self.win.id())?;
         out.set("buf", self.buf.id())?;
@@ -366,8 +366,8 @@ impl<'a> IntoLua<'a> for NeoPopup {
     }
 }
 
-impl<'a> FromLua<'a> for NeoPopup {
-    fn from_lua(value: LuaValue<'a>, _lua: &'a Lua) -> LuaResult<Self> {
+impl FromLua for NeoPopup {
+    fn from_lua(value: LuaValue, _lua: &Lua) -> LuaResult<Self> {
         if let LuaValue::Table(table) = value {
             let win_id = table.get("win")?;
             let buf_id = table.get("buf")?;

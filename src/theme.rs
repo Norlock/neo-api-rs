@@ -120,6 +120,6 @@ impl NeoTheme {
     pub fn create_namespace(lua: &Lua, ns: &str) -> LuaResult<u32> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_create_namespace").eval()?;
 
-        lfn.call::<_, u32>(ns)
+        lfn.call(ns)
     }
 }

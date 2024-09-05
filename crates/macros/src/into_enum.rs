@@ -47,8 +47,8 @@ pub fn into_enum(input: proc_macro::TokenStream, casing: Option<Case>) -> proc_m
             }
         }
 
-        impl<'a> mlua::IntoLua<'a> for #enum_name {
-            fn into_lua(self, lua: &'a Lua) -> mlua::Result<mlua::Value<'a>> {
+        impl mlua::IntoLua for #enum_name {
+            fn into_lua(self, lua: &Lua) -> mlua::Result<mlua::Value> {
                 let str = lua.create_string(self.to_string())?;
 
                 Ok(mlua::Value::String(str))
@@ -59,34 +59,34 @@ pub fn into_enum(input: proc_macro::TokenStream, casing: Option<Case>) -> proc_m
     expand.into()
 }
 
-#[cfg(test)]
-mod tests {
+//#[cfg(test)]
+//mod tests {
 
-    use super::*;
+    //use super::*;
 
-    #[derive(IntoTable)]
-    pub struct SomeStruct {
-        pub name: String,
-        pub age: usize,
-        pub weight: Option<usize>,
-        pub phone: Phone,
-        pub gender: Gender,
-    }
+    //#[derive(IntoTable)]
+    //pub struct SomeStruct {
+        //pub name: String,
+        //pub age: usize,
+        //pub weight: Option<usize>,
+        //pub phone: Phone,
+        //pub gender: Gender,
+    //}
 
-    #[derive(IntoTable)]
-    pub struct Phone {
-        pub mobile: String,
-        pub home: String,
-    }
+    //#[derive(IntoTable)]
+    //pub struct Phone {
+        //pub mobile: String,
+        //pub home: String,
+    //}
 
-    #[derive(IntoEnumSC)]
-    pub enum Gender {
-        Male,
-        Female,
-    }
+    //#[derive(IntoEnumSC)]
+    //pub enum Gender {
+        //Male,
+        //Female,
+    //}
 
-    #[test]
-    fn test_macro() {
-        // TODO write test
-    }
-}
+    //#[test]
+    //fn test_macro() {
+        //// TODO write test
+    //}
+//}

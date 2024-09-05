@@ -63,8 +63,8 @@ impl NeoDebug {
         fs::write(log_file, b"").await
     }
 
-    pub async fn display(lua: &Lua) -> LuaResult<()> {
-        let buf = NeoBuffer::create(lua, false, true)?;
+    pub async fn display(lua: Lua) -> LuaResult<()> {
+        let buf = NeoBuffer::create(&lua, false, true)?;
 
         // TODO readonly
 
@@ -78,10 +78,10 @@ impl NeoDebug {
             lines.push(line);
         }
 
-        buf.set_lines(lua, 0, -1, false, &lines)?;
+        buf.set_lines(&lua, 0, -1, false, &lines)?;
 
         let popup_win = NeoPopup::open_win(
-            lua,
+            &lua,
             &buf,
             true,
             WinOptions {
@@ -100,7 +100,7 @@ impl NeoDebug {
         )?;
 
         buf.set_keymap(
-            lua,
+            &lua,
             crate::Mode::Normal,
             "<Esc>",
             lua.create_function(move |lua, ()| {
