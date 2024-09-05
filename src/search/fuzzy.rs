@@ -18,8 +18,6 @@ use crate::{
     RemoveRecentDirectory, StoreRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
-use super::BufferSearch;
-
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
 const AUCMD_GRP: &str = "neo-fuzzy";
@@ -819,47 +817,46 @@ async fn move_selection(lua: &Lua, move_sel: Move) -> LuaResult<()> {
     let mut fuzzy = CONTAINER.fuzzy.write().await;
 
     let len = fuzzy.pop_out.buf.line_count(lua)?;
-    let mut jump_line = false;
 
     match move_sel {
         Move::Up => {
             if 0 < fuzzy.selected_idx {
                 fuzzy.selected_idx -= 1;
-                jump_line = true;
+            } else {
+                fuzzy.selected_idx = len - 1;
             }
         }
         Move::Down => {
             if fuzzy.selected_idx + 1 < len {
                 fuzzy.selected_idx += 1;
-                jump_line = true;
+            } else {
+                fuzzy.selected_idx = 0;
             }
         }
     }
 
-    if jump_line {
-        let selected_idx = fuzzy.selected_idx;
+    let selected_idx = fuzzy.selected_idx;
 
-        fuzzy.pop_out.win.call(
-            lua,
-            lua.create_function(move |lua, _: ()| {
-                NeoApi::cmd(
-                    lua,
-                    CmdOpts {
-                        cmd: "normal",
-                        bang: true,
-                        args: &[&format!("{}G", selected_idx + 1)],
-                    },
-                )
-            })?,
-        )?;
+    fuzzy.pop_out.win.call(
+        lua,
+        lua.create_function(move |lua, _: ()| {
+            NeoApi::cmd(
+                lua,
+                CmdOpts {
+                    cmd: "normal",
+                    bang: true,
+                    args: &[&format!("{}G", selected_idx + 1)],
+                },
+            )
+        })?,
+    )?;
 
-        Diffuse::queue(vec![fuzzy.config.preview_task(
-            lua,
-            selected_idx,
-            fuzzy.selected_tab_idx,
-        )])
-        .await;
-    }
+    Diffuse::queue(vec![fuzzy.config.preview_task(
+        lua,
+        selected_idx,
+        fuzzy.selected_tab_idx,
+    )])
+    .await;
 
     Ok(())
 }
@@ -936,7 +933,6 @@ async fn aucmd_close_fuzzy(lua: &Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     fuzzy.pop_cmd.win.close(lua, false)?;
     fuzzy.pop_preview.win.close(lua, false)?;
     fuzzy.pop_tabs.win.close(lua, false)?;
-
 
     Ok(())
 }
