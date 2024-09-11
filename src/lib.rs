@@ -11,6 +11,7 @@ mod web_devicons;
 mod window;
 mod debug;
 mod database;
+mod utils;
 
 pub use bridge::*;
 pub use buffer::*;
@@ -23,7 +24,8 @@ pub use traits::*;
 pub use window::*;
 pub use debug::*;
 pub use database::*;
-pub use diffuser::{ExecuteTask, DummyTask};
+pub use utils::*;
+pub use diffuser::*;
 
 pub use mlua;
 pub use tokio;

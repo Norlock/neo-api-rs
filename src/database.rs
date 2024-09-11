@@ -6,7 +6,7 @@ use std::{
 };
 use tokio::fs;
 
-use crate::{LineOut, NeoDebug, RTM};
+use crate::{LineOut, NeoApi, NeoDebug, RTM};
 
 pub struct Database(sqlx::SqlitePool);
 
@@ -17,8 +17,7 @@ impl Database {
 
             if let Err(err) = result {
                 NeoDebug::log(err.to_string()).await;
-                //std::process::exit(0);
-                panic!();
+                std::process::exit(0);
             };
 
             result.unwrap()
@@ -54,11 +53,11 @@ impl Database {
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS all_lines (
-                    id          INTEGER PRIMARY KEY,
-                    text        TEXT NOT NULL,
-                    icon        TEXT NOT NULL,
-                    hl_group    TEXT NOT NULL
-                )",
+                text        TEXT PRIMARY KEY,
+                icon        TEXT NOT NULL,
+                hl_group    TEXT NOT NULL,
+                git_root    TEXT
+            )",
         )
         .execute(&pool)
         .await?;
@@ -66,7 +65,7 @@ impl Database {
         Ok(Self(pool))
     }
 
-    pub async fn select(&self, search_query: &str) -> sqlx::Result<Vec<LineOut>> {
+    pub async fn search_lines(&self, search_query: &str) -> sqlx::Result<Vec<LineOut>> {
         let mut like_query = '%'.to_string();
 
         for char in search_query.chars() {
@@ -76,19 +75,16 @@ impl Database {
 
         let out = sqlx::query_as::<_, LineOut>(
             "
-            WITH score AS (
-                SELECT id, fuzzy_score(?, text) fs FROM all_lines
-                WHERE text like ? AND fs < 4096 ORDER BY fs LIMIT 300
-            )
-
             SELECT 
-                l.* 
+                *
             FROM 
-                score s LEFT JOIN all_lines l ON l.id = s.id
+                all_lines 
+            WHERE text like ?
+            ORDER BY fuzzy_score(?, text) LIMIT 300
             ",
         )
-        .bind(search_query)
         .bind(like_query)
+        .bind(search_query)
         .fetch_all(&self.0)
         .await;
 
@@ -100,6 +96,48 @@ impl Database {
         }
     }
 
+    pub async fn search_project_lines(
+        &self,
+        search_query: &str,
+        git_root: &Option<PathBuf>,
+    ) -> sqlx::Result<Vec<LineOut>> {
+        let mut like_query = '%'.to_string();
+
+        NeoDebug::log_dbg(git_root).await;
+
+        for char in search_query.chars() {
+            like_query.push(char);
+            like_query.push('%');
+        }
+
+        let git_root = git_root.clone();
+        let git_root = git_root.map(|g| g.to_string_lossy().to_string());
+
+        let out = sqlx::query_as::<_, LineOut>(
+            "
+            SELECT 
+                *
+            FROM 
+                all_lines 
+            WHERE text like ? AND git_root like ?
+            ORDER BY fuzzy_score(?, text) LIMIT 300
+            ",
+        )
+        .bind(like_query)
+        .bind(git_root)
+        .bind(search_query)
+        .fetch_all(&self.0)
+        .await;
+
+        match out {
+            Ok(out) => Ok(out),
+            Err(err) => {
+                NeoDebug::log(&err).await;
+                Err(err)
+            }
+        }
+    }
+
     pub async fn empty_lines(&self) {
         if let Err(err) = sqlx::query("DELETE FROM all_lines").execute(&self.0).await {
             NeoDebug::log(err).await;
@@ -108,10 +146,10 @@ impl Database {
 
     pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {
         let mut tx = self.0.begin().await?;
-        let mut idx = 0;
 
         for chunks in lines.chunks(1000) {
-            let mut qry_str = "INSERT INTO all_lines (id, text, icon, hl_group) VALUES".to_string();
+            let mut qry_str =
+                "INSERT INTO all_lines (text, icon, hl_group, git_root) VALUES".to_string();
 
             for i in 0..chunks.len() {
                 if i == 0 {
@@ -125,12 +163,10 @@ impl Database {
 
             for line in chunks {
                 query = query
-                    .bind(idx)
                     .bind(&line.text)
                     .bind(&line.icon)
-                    .bind(&line.hl_group);
-
-                idx += 1;
+                    .bind(&line.hl_group)
+                    .bind(&line.git_root);
             }
 
             query.execute(&mut *tx).await?;
