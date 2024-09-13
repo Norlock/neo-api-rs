@@ -15,7 +15,7 @@ pub struct ExecFileSearch {
 
 impl ExecFileSearch {
     async fn insert_into_db(&self) -> TaskResult {
-        let out = Command::new(&self.cmd)
+        let out = Command::new(self.cmd)
             .current_dir(&self.cwd)
             .args(&self.args)
             .output()

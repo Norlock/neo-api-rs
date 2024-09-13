@@ -8,6 +8,12 @@ pub struct Database {
     file: sqlx::SqlitePool,
 }
 
+impl Default for Database {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Database {
     pub fn new() -> Self {
         RTM.block_on(async move {

@@ -96,7 +96,7 @@ pub struct ExecDirectorySearch {
 
 impl ExecDirectorySearch {
     async fn insert_into_db(&self) -> TaskResult {
-        let out = Command::new(&self.cmd)
+        let out = Command::new(self.cmd)
             .current_dir(&self.cwd)
             .args(&self.args)
             .output()
@@ -126,13 +126,9 @@ impl ExecDirectorySearch {
                             ..Default::default()
                         };
                     }
-                    Err(e) => {
-                        NeoDebug::log(e).await;
-                    }
+                    Err(e) => NeoDebug::log(e).await,
                 },
-                Err(err) => {
-                    NeoDebug::log(err).await;
-                }
+                Err(e) => NeoDebug::log(e).await,
             }
         }
 

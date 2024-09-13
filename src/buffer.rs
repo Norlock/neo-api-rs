@@ -68,7 +68,7 @@ impl NeoBuffer {
         lfn.call(path)
     }
 
-    /// This will create a buffer rust object, but not the corresponding lua object. 
+    /// This will create a buffer rust object, but not the corresponding lua object.
     /// For that use the `NeoBuffer::create` function
     pub fn from_id(id: u32) -> Self {
         Self(id)
@@ -91,13 +91,7 @@ impl NeoBuffer {
         }
     }
 
-    pub fn set_keymap<'a>(
-        &self,
-        lua: &'a Lua,
-        mode: Mode,
-        lhs: &str,
-        rhs: LuaFunction,
-    ) -> LuaResult<()> {
+    pub fn set_keymap(&self, lua: &Lua, mode: Mode, lhs: &str, rhs: LuaFunction) -> LuaResult<()> {
         NeoApi::set_keymap(lua, mode, lhs, rhs, self.keymap_opts(true))
     }
 
@@ -147,16 +141,11 @@ impl NeoBuffer {
       • {name}   Option name
       • {value}  New option value
     */
-    pub fn set_option_value<V: IntoLua>(
-        &self,
-        lua: &Lua,
-        key: &str,
-        value: V,
-    ) -> LuaResult<()> {
+    pub fn set_option_value<V: IntoLua>(&self, lua: &Lua, key: &str, value: V) -> LuaResult<()> {
         NeoApi::set_option_value(lua, key, value, OptValueType::Buffer(*self))
     }
 
-    pub fn get_option_value<'a, V: FromLua>(&self, lua: &'a Lua, key: &str) -> LuaResult<V> {
+    pub fn get_option_value<V: FromLua>(&self, lua: &Lua, key: &str) -> LuaResult<V> {
         NeoApi::get_option_value(lua, key, OptValueType::Buffer(*self))
     }
 
@@ -263,8 +252,13 @@ impl NeoBuffer {
     }
 
     pub fn set_text(
-        &self, lua: &Lua,
-        start_row: u32, start_col: u32, end_row: u32, end_col: u32) -> LuaResult<()> {
+        &self,
+        lua: &Lua,
+        start_row: u32,
+        start_col: u32,
+        end_row: u32,
+        end_col: u32,
+    ) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load("vim.api.nvim_buf_set_text").eval()?;
 
         lfn.call((self.id(), start_row, start_col, end_row, end_col))

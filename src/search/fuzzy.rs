@@ -143,10 +143,7 @@ pub enum FuzzySearch {
 impl FuzzySearch {
     /// Both Files + GitFiles
     pub fn is_file_based(&self) -> bool {
-        match self {
-            Self::Files | Self::GitFiles | Self::Buffer => true,
-            _ => false,
-        }
+        matches!(self, Self::Files | Self::GitFiles | Self::Buffer)
     }
 }
 
@@ -787,7 +784,7 @@ async fn aucmd_text_changed(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
                 CmdOpts {
                     cmd: "normal",
                     bang: true,
-                    args: &[&format!("1G")],
+                    args: &["1G"],
                 },
             )
         })?,
