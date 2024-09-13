@@ -119,7 +119,7 @@ impl BufferSearch {
 #[async_trait::async_trait]
 impl ExecuteTask for BufferSearch {
     async fn execute(&self) -> TaskResult {
-        if self.is_initial_search().await {
+        if self.all_lines_is_empty().await {
             self.init().await
         } else {
             self.search().await

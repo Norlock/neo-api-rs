@@ -75,7 +75,7 @@ impl ExecuteTask for ExecFileSearch {
     async fn execute(&self) -> TaskResult {
         let instant = Instant::now();
 
-        let result = if self.is_initial_search().await {
+        let result = if self.all_lines_is_empty().await {
             self.insert_into_db().await
         } else {
             self.db_search().await

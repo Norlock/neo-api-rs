@@ -1,4 +1,4 @@
-use std::{borrow::Cow, env, path::PathBuf, str::FromStr};
+use std::{borrow::Cow, env, path::PathBuf, str::FromStr, usize};
 use tokio::fs;
 
 use crate::{LineOut, NeoDebug, NeoUtils, RTM};
@@ -76,6 +76,19 @@ impl Database {
         NeoDebug::log("Databases initialized").await;
 
         Ok(Self { file, mem })
+    }
+
+    pub async fn all_lines_is_empty(&self) -> bool {
+        match sqlx::query_scalar::<_, u32>("SELECT COUNT(*) FROM all_lines")
+            .fetch_one(&self.mem)
+            .await
+        {
+            Ok(count) => count == 0,
+            Err(e) => {
+                NeoDebug::log(e).await;
+                true
+            }
+        }
     }
 
     pub async fn search_lines(&self, search_query: &str) -> sqlx::Result<Vec<LineOut>> {

@@ -64,8 +64,8 @@ impl TaskResult {
 pub trait ExecuteTask: Send {
     async fn execute(&self) -> TaskResult;
 
-    async fn is_initial_search(&self) -> bool {
-        CONTAINER.search_state.read().await.db_count == 0
+    async fn all_lines_is_empty(&self) -> bool {
+        CONTAINER.db.all_lines_is_empty().await
     }
 }
 

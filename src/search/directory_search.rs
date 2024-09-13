@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use tokio::{process::Command, time::Instant};
 
-use crate::{diffuser::TaskResult, ExecuteTask, FuzzyTab, LineOut, NeoDebug, CONTAINER};
+use crate::{diffuser::TaskResult, ExecuteTask, FuzzyTab, LineOut, NeoApi, NeoDebug, CONTAINER};
 
 fn tabs() -> Option<Vec<Box<dyn FuzzyTab>>> {
     Some(vec![
@@ -145,7 +145,8 @@ impl ExecuteTask for ExecDirectorySearch {
     async fn execute(&self) -> TaskResult {
         let instant = Instant::now();
 
-        let result = if self.is_initial_search().await {
+        let result = if self.all_lines_is_empty().await {
+            NeoDebug::log("is initial search").await;
             self.insert_into_db().await
         } else {
             db_search(&self.search_query).await

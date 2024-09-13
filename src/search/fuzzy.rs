@@ -297,7 +297,7 @@ impl NeoFuzzy {
         )
     }
 
-    pub async fn files_or_directories(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
+    pub async fn open(lua: &Lua, config: Box<dyn FuzzyConfig>) -> LuaResult<()> {
         Self::add_hl_groups(lua)?;
 
         let ns_id = NeoTheme::create_namespace(lua, "NeoFuzzy")?;
