@@ -4,16 +4,17 @@
 // Create Linked list with actions
 // Try to lock do something then next
 
-use std::{fmt, sync::LazyLock, time::Duration};
-use tokio::{sync::Mutex, time};
+use std::{fmt, sync::LazyLock};
+use tokio::sync::Mutex;
 
-use crate::{CONTAINER, RTM};
+use crate::{NeoDebug, CONTAINER, RTM};
 
 static DIFFUSER: LazyLock<Mutex<Diffuse>> = LazyLock::new(|| Diffuse::default().into());
 
 #[derive(Default)]
 pub struct Diffuse {
     queue: Vec<Box<dyn ExecuteTask>>,
+    is_running: bool,
 }
 
 unsafe impl Send for Diffuse {}
@@ -39,16 +40,6 @@ impl FuzzyTab for String {
         self
     }
 }
-
-//pub struct TabContainer(Box<str>);
-
-//impl TabContainer {
-//pub fn new<T: Into<Box<str>>>(val: T) -> Self {
-//TabContainer(val.into())
-//}
-//}
-
-//unsafe impl Send for TabContainer {}
 
 #[derive(Default)]
 pub struct TaskResult {
@@ -86,18 +77,20 @@ impl Diffuse {
             diffuser.queue.push(new_task);
         }
 
-        Self::start().await;
+        if !diffuser.is_running {
+            diffuser.is_running = true;
+            Self::start();
+        }
     }
 
-    pub async fn start() {
+    pub fn start() {
         RTM.spawn(async {
-            let mut interval = time::interval(Duration::from_millis(1));
-
             loop {
                 let mut diffuser = DIFFUSER.lock().await;
 
                 if diffuser.queue.is_empty() {
-                    break;
+                    diffuser.is_running = false;
+                    return;
                 }
 
                 let queue = std::mem::take(&mut diffuser.queue);
@@ -109,10 +102,6 @@ impl Diffuse {
 
                     if result.has_changes() {
                         let mut search_state = CONTAINER.search_state.write().await;
-
-                        if result.update {
-                            search_state.update = true;
-                        }
 
                         if let Some(db_count) = result.db_count {
                             search_state.db_count = db_count;
@@ -127,12 +116,15 @@ impl Diffuse {
                         }
 
                         if let Some(tabs) = result.tabs {
+                            NeoDebug::log_dbg(&tabs).await;
                             search_state.tabs = tabs;
+                        }
+
+                        if result.update {
+                            search_state.update = true;
                         }
                     }
                 }
-
-                interval.tick().await;
             }
         });
     }

@@ -37,7 +37,6 @@ impl SearchState {
         let fuzzy_c = &CONTAINER.fuzzy.read().await.config;
 
         Diffuse::queue([
-            //Box::new(ClearResultsTask),
             fuzzy_c.search_task(&lua, search_query, selected_tab),
             fuzzy_c.preview_task(&lua, selected_idx, selected_tab),
         ])

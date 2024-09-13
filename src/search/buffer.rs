@@ -78,30 +78,18 @@ impl BufferSearch {
             NeoDebug::log_dbg(e).await;
         }
 
-        match CONTAINER.db.search_project_lines("", &self.git_root).await {
-            Ok(new_lines) => {
-                NeoDebug::log_dbg(&new_lines).await;
-                let db_count = new_lines.len();
-                *CONTAINER.search_lines.write().await = new_lines;
+        let new_lines = CONTAINER.db.search_project_lines("", &self.git_root).await;
 
-                //let mut search_state = CONTAINER.search_state.write().await;
-                //search_state.db_count = db_count;
-                //search_state.tabs = tabs;
-                //search_state.selected_tab = 0;
-                //search_state.update = true;
+        NeoDebug::log_dbg(&new_lines).await;
+        let db_count = new_lines.len();
+        *CONTAINER.search_lines.write().await = new_lines;
 
-                TaskResult {
-                    db_count: Some(db_count),
-                    tabs: Some(tabs),
-                    selected_tab: Some(0),
-                    selected_idx: Some(0),
-                    update: true,
-                }
-            }
-            Err(e) => {
-                NeoDebug::log_dbg(e).await;
-                TaskResult::default()
-            }
+        TaskResult {
+            db_count: Some(db_count),
+            tabs: Some(tabs),
+            selected_tab: Some(0),
+            selected_idx: Some(0),
+            update: true,
         }
     }
 
@@ -117,13 +105,12 @@ impl BufferSearch {
             Some(tab.into())
         };
 
-        if let Ok(lines) = CONTAINER
+        let lines = CONTAINER
             .db
             .search_project_lines(&self.search_query, &tab)
-            .await
-        {
-            *CONTAINER.search_lines.write().await = lines;
-        }
+            .await;
+
+        *CONTAINER.search_lines.write().await = lines;
 
         TaskResult::default()
     }

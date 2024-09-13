@@ -1,14 +1,12 @@
-use sqlx::sqlite::SqliteJournalMode;
-use std::{
-    env,
-    path::PathBuf,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{borrow::Cow, env, path::PathBuf, str::FromStr};
 use tokio::fs;
 
-use crate::{LineOut, NeoApi, NeoDebug, RTM};
+use crate::{LineOut, NeoDebug, NeoUtils, RTM};
 
-pub struct Database(sqlx::SqlitePool);
+pub struct Database {
+    mem: sqlx::SqlitePool,
+    file: sqlx::SqlitePool,
+}
 
 impl Database {
     pub fn new() -> Self {
@@ -25,44 +23,59 @@ impl Database {
     }
 
     pub async fn init() -> sqlx::Result<Self> {
-        let crate_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        let tmp = NeoUtils::home_directory().join(".local/share/neo-api-rs");
+        let extension_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("src/extensions/fuzzy")
             .to_string_lossy()
             .to_string();
 
-        let tmp = env::temp_dir().join("neo-api-rs");
-
-        if let Ok(false) = fs::try_exists(&tmp).await {
+        if !tmp.is_dir() {
             fs::create_dir(&tmp).await?;
         }
 
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
+        let mem_options = sqlx::sqlite::SqliteConnectOptions::from_str(":memory:")
+            .unwrap()
+            .extension(extension_path.clone());
 
-        let filename = format!("fuzzy_{}.sqlite", since_the_epoch.as_secs());
-
-        let options = sqlx::sqlite::SqliteConnectOptions::new()
-            .filename(tmp.join(filename))
+        let file_options = sqlx::sqlite::SqliteConnectOptions::new()
+            .filename(tmp.join("fuzzy_search.sqlite"))
             .create_if_missing(true)
-            .journal_mode(SqliteJournalMode::Wal)
-            .extension(crate_path);
+            .extension(extension_path);
 
-        let pool = sqlx::SqlitePool::connect_with(options).await?;
+        let mem = sqlx::SqlitePool::connect_with(mem_options).await?;
+        let file = sqlx::SqlitePool::connect_with(file_options).await?;
 
         sqlx::query(
-            "CREATE TABLE IF NOT EXISTS all_lines (
+            "CREATE TABLE all_lines (
                 text        TEXT PRIMARY KEY,
                 icon        TEXT NOT NULL,
                 hl_group    TEXT NOT NULL,
                 git_root    TEXT
             )",
         )
-        .execute(&pool)
+        .execute(&mem)
         .await?;
 
-        Ok(Self(pool))
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS recent_directories (
+                id      INTEGER PRIMARY KEY,
+                path    TEXT NOT NULL
+            )",
+        )
+        .execute(&file)
+        .await?;
+
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS settings (
+                directory_tab INTEGER NOT NULL
+            )",
+        )
+        .execute(&file)
+        .await?;
+
+        NeoDebug::log("Databases initialized").await;
+
+        Ok(Self { file, mem })
     }
 
     pub async fn search_lines(&self, search_query: &str) -> sqlx::Result<Vec<LineOut>> {
@@ -85,14 +98,18 @@ impl Database {
         )
         .bind(like_query)
         .bind(search_query)
-        .fetch_all(&self.0)
+        .fetch_all(&self.mem)
         .await;
 
-        if let Err(err) = out {
-            NeoDebug::log(&err).await;
-            return Err(err);
-        } else {
-            Ok(out.unwrap())
+        match out {
+            Ok(out) => {
+                //NeoDebug::log_dbg(&out).await;
+                Ok(out)
+            }
+            Err(e) => {
+                NeoDebug::log(&e).await;
+                Err(e)
+            }
         }
     }
 
@@ -100,10 +117,8 @@ impl Database {
         &self,
         search_query: &str,
         git_root: &Option<PathBuf>,
-    ) -> sqlx::Result<Vec<LineOut>> {
+    ) -> Vec<LineOut> {
         let mut like_query = '%'.to_string();
-
-        NeoDebug::log_dbg(git_root).await;
 
         for char in search_query.chars() {
             like_query.push(char);
@@ -126,26 +141,78 @@ impl Database {
         .bind(like_query)
         .bind(git_root)
         .bind(search_query)
-        .fetch_all(&self.0)
+        .fetch_all(&self.mem)
         .await;
 
         match out {
-            Ok(out) => Ok(out),
+            Ok(out) => out,
             Err(err) => {
                 NeoDebug::log(&err).await;
-                Err(err)
+                vec![]
             }
         }
     }
 
+    pub async fn insert_recent_directory(&self, directory: Cow<'_, str>) {
+        if let Err(e) = sqlx::query("INSERT INTO recent_directories (path) VALUES (?)")
+            .bind(directory)
+            .execute(&self.file)
+            .await
+        {
+            NeoDebug::log(e).await;
+        }
+    }
+
+    pub async fn search_recent_directories(
+        &self,
+        search_query: &str,
+    ) -> sqlx::Result<Vec<LineOut>> {
+        let mut like_query = '%'.to_string();
+
+        for char in search_query.chars() {
+            like_query.push(char);
+            like_query.push('%');
+        }
+
+        let out: Vec<String> = sqlx::query_scalar(
+            "
+            SELECT 
+                path
+            FROM 
+                recent_directories 
+            WHERE path like ? 
+            ORDER BY fuzzy_score(?, path) LIMIT 300
+            ",
+        )
+        .bind(like_query)
+        .bind(search_query)
+        .fetch_all(&self.file)
+        .await?;
+
+        Ok(out.into_iter().map(|p| LineOut::directory(&p)).collect())
+    }
+
+    pub async fn delete_recent_directory(&self, path: &str) {
+        if let Err(err) = sqlx::query("DELETE FROM recent_directories WHERE path = ?")
+            .bind(path)
+            .execute(&self.file)
+            .await
+        {
+            NeoDebug::log(err).await;
+        }
+    }
+
     pub async fn empty_lines(&self) {
-        if let Err(err) = sqlx::query("DELETE FROM all_lines").execute(&self.0).await {
+        if let Err(err) = sqlx::query("DELETE FROM all_lines")
+            .execute(&self.mem)
+            .await
+        {
             NeoDebug::log(err).await;
         }
     }
 
     pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {
-        let mut tx = self.0.begin().await?;
+        let mut tx = self.mem.begin().await?;
 
         for chunks in lines.chunks(1000) {
             let mut qry_str =

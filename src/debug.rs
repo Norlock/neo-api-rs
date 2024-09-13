@@ -35,7 +35,7 @@ impl NeoDebug {
         let _ = file.write_all(&bytes).await;
     }
 
-    pub async fn log_dbg<AsStr: Debug>(message: AsStr) {
+    pub async fn log_dbg<AsDbg: Debug>(message: AsDbg) {
         let mut dir = env::temp_dir();
         dir.push("neo-api-rs");
 
@@ -48,7 +48,7 @@ impl NeoDebug {
             .open(dir.join("debug.log"))
             .await.unwrap();
 
-        let message = format!("{:?}", message);
+        let message = format!("{:?}\n", message);
         let _ = file.write_all(message.as_bytes()).await;
     }
 

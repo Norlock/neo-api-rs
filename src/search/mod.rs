@@ -1,11 +1,13 @@
 mod buffer;
-mod file_directory_search;
+mod directory_search;
+mod file_search;
 mod fuzzy;
-mod search_state;
 mod preview;
+mod search_state;
 
 pub use buffer::*;
-pub use file_directory_search::*;
+pub use directory_search::*;
+pub use file_search::*;
 pub use fuzzy::*;
-pub use search_state::*;
 pub use preview::*;
+pub use search_state::*;

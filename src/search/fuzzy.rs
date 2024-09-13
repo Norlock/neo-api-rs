@@ -8,9 +8,9 @@ use crate::diffuser::{Diffuse, ExecuteTask};
 use crate::web_devicons::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, ExtmarkOpts,
-    FileTypeMatch, HLOpts, HLText, Mode, NeoApi, NeoBuffer, NeoDebug, NeoPopup, NeoTheme,
-    NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle, RemoveRecentDirectory,
-    StoreRecentDirectory, TextType, VirtTextPos, RTM,
+    FileTypeMatch, HLOpts, HLText, InsertRecentDirectory, Mode, NeoApi, NeoBuffer, NeoDebug,
+    NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle,
+    RemoveRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
 use super::SearchState;
@@ -30,9 +30,9 @@ pub struct LineOut {
 }
 
 impl LineOut {
-    pub fn directory(text: Box<str>) -> Self {
+    pub fn directory(text: &str) -> Self {
         Self {
-            text,
+            text: text.into(),
             icon: "".into(),
             hl_group: "Directory".into(),
             git_root: None,
@@ -531,21 +531,21 @@ async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
     }
 
     let fuzzy = CONTAINER.fuzzy.read().await;
+    let fuzzy_c = &fuzzy.config;
     let search_state = CONTAINER.search_state.read().await;
 
-    let selected = fuzzy
-        .config
+    let selected = fuzzy_c
         .cwd()
         .join(filtered_lines[search_state.selected_idx].text.as_ref());
 
-    if fuzzy.config.search_type() == FuzzySearch::Directories && search_state.selected_tab != 1 {
-        let store_task = StoreRecentDirectory::new(&lua, selected.clone())?;
+    if fuzzy_c.search_type() == FuzzySearch::Directories && search_state.selected_tab == 0 {
+        let store_task = InsertRecentDirectory::new(selected.clone());
 
         Diffuse::queue([Box::new(store_task)]).await;
     }
 
     fuzzy.pop_cmd.win.close(&lua, false)?;
-    fuzzy.config.on_enter(&lua, open_in, selected);
+    fuzzy_c.on_enter(&lua, open_in, selected);
 
     Ok(())
 }
@@ -741,7 +741,9 @@ async fn delete_entry(lua: Lua, _: ()) -> LuaResult<()> {
         ])
         .await;
     } else if st == FuzzySearch::Directories && search_state.selected_tab == 1 {
-        let remove_recent_dir = RemoveRecentDirectory::new(&lua, search_state.selected_idx)?;
+        let search_lines = CONTAINER.search_lines.read().await;
+        let line = &search_lines[search_state.selected_idx];
+        let remove_recent_dir = RemoveRecentDirectory::new(&line.text);
 
         Diffuse::queue([
             Box::new(remove_recent_dir),
@@ -778,7 +780,6 @@ async fn aucmd_close_fuzzy(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
 
 async fn aucmd_text_changed(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
-    CONTAINER.search_state.write().await.selected_idx = 0;
 
     fuzzy.pop_out.win.call(
         &lua,
