@@ -2,8 +2,8 @@ use mlua::prelude::LuaResult;
 use mlua::Lua;
 use std::path::PathBuf;
 
-use crate::{diffuser::Diffuse, FuzzyTab};
 use crate::NeoApi;
+use crate::{search::Diffuse, FuzzyTab};
 
 use super::{LineOut, NeoFuzzy, CONTAINER};
 
@@ -17,15 +17,31 @@ pub struct SearchState {
     pub selected_idx: usize,
 }
 
+pub enum ChangeTab {
+    Next = 1,
+    Previous = -1,
+}
+
 impl SearchState {
     /// TODO increment or decrement
-    pub async fn change_tab(lua: Lua, _: ()) -> LuaResult<()> {
+    pub async fn change_tab(lua: Lua, tab: ChangeTab) -> LuaResult<()> {
         let mut state = CONTAINER.search_state.write().await;
 
-        if state.selected_tab + 1 < state.tabs.len() {
-            state.selected_tab += 1;
-        } else {
-            state.selected_tab = 0;
+        match tab {
+            ChangeTab::Next => {
+                if state.selected_tab + 1 < state.tabs.len() {
+                    state.selected_tab += 1;
+                } else {
+                    state.selected_tab = 0;
+                }
+            }
+            ChangeTab::Previous => {
+                if 0 < state.selected_tab  {
+                    state.selected_tab -= 1;
+                } else {
+                    state.selected_tab = state.tabs.len() - 1;
+                }
+            } 
         }
 
         let selected_tab = state.selected_tab;

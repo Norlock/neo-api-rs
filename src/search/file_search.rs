@@ -34,7 +34,7 @@ impl ExecFileSearch {
                     text: line.into(),
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
-                    git_root: None,
+                    ..Default::default()
                 });
             }
 

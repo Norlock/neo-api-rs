@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use tokio::{process::Command, time::Instant};
 
-use crate::{diffuser::TaskResult, ExecuteTask, FuzzyTab, LineOut, NeoApi, NeoDebug, CONTAINER};
+use crate::{search::TaskResult, ExecuteTask, FuzzyTab, LineOut, NeoDebug, CONTAINER};
 
 fn tabs() -> Option<Vec<Box<dyn FuzzyTab>>> {
     Some(vec![
@@ -180,13 +180,11 @@ impl ExecuteTask for ClearResultsTask {
     }
 }
 
-pub struct InsertRecentDirectory {
-    pub directory: PathBuf,
-}
+pub struct InsertRecentDirectory(PathBuf);
 
 impl InsertRecentDirectory {
     pub fn new(directory: PathBuf) -> Self {
-        Self { directory }
+        Self(directory)
     }
 }
 
@@ -195,7 +193,7 @@ impl ExecuteTask for InsertRecentDirectory {
     async fn execute(&self) -> TaskResult {
         CONTAINER
             .db
-            .insert_recent_directory(self.directory.to_string_lossy())
+            .insert_recent_directory(self.0.to_string_lossy())
             .await;
 
         TaskResult::default()

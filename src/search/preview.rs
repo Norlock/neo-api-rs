@@ -7,7 +7,7 @@ use std::{
 
 use tokio::{fs, io};
 
-use crate::{diffuser::TaskResult, ExecuteTask, NeoDebug};
+use crate::{search::TaskResult, ExecuteTask, NeoDebug};
 
 use super::CONTAINER;
 

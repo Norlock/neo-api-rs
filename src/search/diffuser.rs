@@ -4,7 +4,7 @@
 // Create Linked list with actions
 // Try to lock do something then next
 
-use std::{fmt, sync::LazyLock};
+use std::{borrow::Cow, fmt, path::PathBuf, sync::LazyLock};
 use tokio::sync::Mutex;
 
 use crate::{NeoDebug, CONTAINER, RTM};
@@ -20,24 +20,44 @@ pub struct Diffuse {
 unsafe impl Send for Diffuse {}
 
 pub trait FuzzyTab: Send + Sync {
-    fn name(&self) -> &str;
+    fn name(&self) -> Cow<'_, str>;
+
+    fn full(&self) -> Cow<'_, str>;
 }
 
 impl fmt::Debug for dyn FuzzyTab {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.name())
+        f.write_str(&self.name())
     }
 }
 
 impl FuzzyTab for &str {
-    fn name(&self) -> &str {
-        self
+    fn name(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(self.as_bytes())
+    }
+
+    fn full(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(self.as_bytes())
     }
 }
 
 impl FuzzyTab for String {
-    fn name(&self) -> &str {
-        self
+    fn name(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(self.as_bytes())
+    }
+
+    fn full(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(self.as_bytes())
+    }
+}
+
+impl FuzzyTab for PathBuf {
+    fn name(&self) -> Cow<'_, str> {
+        self.file_name().expect("Has no filename").to_string_lossy()
+    }
+
+    fn full(&self) -> Cow<'_, str> {
+        self.to_string_lossy()
     }
 }
 

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, env, path::PathBuf, str::FromStr, usize};
+use std::{borrow::Cow, path::PathBuf, str::FromStr};
 use tokio::fs;
 
 use crate::{LineOut, NeoDebug, NeoUtils, RTM};
@@ -59,7 +59,7 @@ impl Database {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS recent_directories (
                 id      INTEGER PRIMARY KEY,
-                path    TEXT NOT NULL
+                path    TEXT NOT NULL UNIQUE
             )",
         )
         .execute(&file)
@@ -129,7 +129,7 @@ impl Database {
     pub async fn search_project_lines(
         &self,
         search_query: &str,
-        git_root: &Option<PathBuf>,
+        git_root: Cow<'_, str>,
     ) -> Vec<LineOut> {
         let mut like_query = '%'.to_string();
 
@@ -138,16 +138,13 @@ impl Database {
             like_query.push('%');
         }
 
-        let git_root = git_root.clone();
-        let git_root = git_root.map(|g| g.to_string_lossy().to_string());
-
         let out = sqlx::query_as::<_, LineOut>(
             "
             SELECT 
                 *
             FROM 
                 all_lines 
-            WHERE text like ? AND git_root like ?
+            WHERE text like ? AND git_root = ?
             ORDER BY fuzzy_score(?, text) LIMIT 300
             ",
         )
@@ -167,8 +164,8 @@ impl Database {
     }
 
     pub async fn insert_recent_directory(&self, directory: Cow<'_, str>) {
-        if let Err(e) = sqlx::query("INSERT INTO recent_directories (path) VALUES (?)")
-            .bind(directory)
+        if let Err(e) = sqlx::query("INSERT OR IGNORE INTO recent_directories (path) VALUES (?)")
+            .bind(directory.trim())
             .execute(&self.file)
             .await
         {

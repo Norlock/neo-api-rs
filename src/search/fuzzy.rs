@@ -4,16 +4,16 @@ use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use crate::diffuser::{Diffuse, ExecuteTask};
+use crate::search::{Diffuse, ExecuteTask};
 use crate::web_devicons::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, ExtmarkOpts,
     FileTypeMatch, HLOpts, HLText, InsertRecentDirectory, Mode, NeoApi, NeoBuffer, NeoDebug,
-    NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle,
-    RemoveRecentDirectory, TextType, VirtTextPos, RTM,
+    NeoPopup, NeoTheme, NeoUtils, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
+    PopupStyle, RemoveRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
-use super::SearchState;
+use super::{ChangeTab, SearchState};
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
@@ -21,12 +21,12 @@ const AUCMD_GRP: &str = "neo-fuzzy";
 const TAB_BTN_SELECTED: &str = "TabButtonSelected";
 const TAB_BTN: &str = "TabButton";
 
-#[derive(Clone, Debug, sqlx::FromRow)]
+#[derive(Clone, Debug, Default, sqlx::FromRow)]
 pub struct LineOut {
     pub text: Box<str>,
     pub icon: Box<str>,
     pub hl_group: Box<str>,
-    pub git_root: Option<Box<str>>,
+    pub git_root: Box<str>,
 }
 
 impl LineOut {
@@ -35,7 +35,7 @@ impl LineOut {
             text: text.into(),
             icon: "".into(),
             hl_group: "Directory".into(),
-            git_root: None,
+            git_root: "".into(),
         }
     }
 }
@@ -156,26 +156,6 @@ enum Move {
 }
 
 impl NeoFuzzy {
-    pub fn get_buffers_tabs() -> Vec<Box<str>> {
-        let mut out = Vec::new();
-
-        if let Ok(cb) = CONTAINER.search_lines.try_read() {
-            for cache_buffer in cb
-                .iter()
-                .filter(|cb| cb.git_root.is_some())
-                .map(|cb| &cb.git_root)
-                .flatten()
-            {
-                let buffer_name = format!(" {} ", cache_buffer.to_lowercase());
-                out.push(buffer_name.into());
-            }
-        }
-
-        out.push(" other ".into());
-
-        out
-    }
-
     pub fn add_hl_groups(lua: &Lua) -> LuaResult<()> {
         NeoTheme::set_hl(
             lua,
@@ -293,7 +273,14 @@ impl NeoFuzzy {
             lua,
             Mode::Insert,
             "<Tab>",
-            lua.create_async_function(SearchState::change_tab)?,
+            lua.create_async_function(|lua, ()| SearchState::change_tab(lua, ChangeTab::Next))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<S-Tab>",
+            lua.create_async_function(|lua, ()| SearchState::change_tab(lua, ChangeTab::Previous))?,
         )
     }
 
@@ -534,18 +521,29 @@ async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy_c = &fuzzy.config;
     let search_state = CONTAINER.search_state.read().await;
 
-    let selected = fuzzy_c
-        .cwd()
-        .join(filtered_lines[search_state.selected_idx].text.as_ref());
+    let selected = filtered_lines[search_state.selected_idx].text.as_ref();
 
     if fuzzy_c.search_type() == FuzzySearch::Directories && search_state.selected_tab == 0 {
-        let store_task = InsertRecentDirectory::new(selected.clone());
+        let home = NeoUtils::home_directory();
+        let store_task = InsertRecentDirectory::new(home.join(selected));
 
         Diffuse::queue([Box::new(store_task)]).await;
-    }
 
-    fuzzy.pop_cmd.win.close(&lua, false)?;
-    fuzzy_c.on_enter(&lua, open_in, selected);
+        fuzzy.pop_cmd.win.close(&lua, false)?;
+        fuzzy_c.on_enter(&lua, open_in, home.join(selected));
+    } else if fuzzy_c.search_type() == FuzzySearch::Buffer {
+        let search_state = CONTAINER.search_state.read().await;
+        let root: PathBuf = search_state.tabs[search_state.selected_tab]
+            .full()
+            .as_ref()
+            .into();
+
+        fuzzy.pop_cmd.win.close(&lua, false)?;
+        fuzzy_c.on_enter(&lua, open_in, root.join(selected));
+    } else {
+        fuzzy.pop_cmd.win.close(&lua, false)?;
+        fuzzy_c.on_enter(&lua, open_in, selected.into());
+    }
 
     Ok(())
 }
@@ -638,9 +636,9 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
             for (i, tab) in search_state.tabs.iter().enumerate() {
                 if i == search_state.selected_tab {
-                    hl_texts.push(HLText::new(tab.name(), TAB_BTN_SELECTED));
+                    hl_texts.push(HLText::new(tab.name(), TAB_BTN_SELECTED.into()));
                 } else {
-                    hl_texts.push(HLText::new(tab.name(), TAB_BTN));
+                    hl_texts.push(HLText::new(tab.name(), TAB_BTN.into()));
                 }
 
                 hl_texts.push(HLText::new(" ", ""));
