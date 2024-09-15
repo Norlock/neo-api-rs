@@ -7,14 +7,16 @@ use crate::{search::Diffuse, FuzzyTab};
 
 use super::{LineOut, NeoFuzzy, CONTAINER};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SearchState {
-    pub file_path: String,
+    pub file_path: Box<str>,
     pub db_count: usize,
     pub update: bool,
     pub tabs: Vec<Box<dyn FuzzyTab>>,
     pub selected_tab: usize,
     pub selected_idx: usize,
+    pub line_nr: u32,
+    pub line_prefix: PathBuf,
 }
 
 pub enum ChangeTab {
@@ -36,27 +38,22 @@ impl SearchState {
                 }
             }
             ChangeTab::Previous => {
-                if 0 < state.selected_tab  {
+                if 0 < state.selected_tab {
                     state.selected_tab -= 1;
                 } else {
                     state.selected_tab = state.tabs.len() - 1;
                 }
-            } 
+            }
         }
 
         let selected_tab = state.selected_tab;
-        let selected_idx = state.selected_idx;
 
         drop(state);
 
         let search_query = NeoApi::get_current_line(&lua)?;
         let fuzzy_c = &CONTAINER.fuzzy.read().await.config;
 
-        Diffuse::queue([
-            fuzzy_c.search_task(&lua, search_query, selected_tab),
-            fuzzy_c.preview_task(&lua, selected_idx, selected_tab),
-        ])
-        .await;
+        Diffuse::queue([fuzzy_c.search_task(&lua, search_query, selected_tab)]).await;
 
         Ok(())
     }

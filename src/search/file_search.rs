@@ -4,7 +4,7 @@ use tokio::process::Command;
 
 use crate::{web_devicons::DevIcon, ExecuteTask, NeoDebug, TaskResult};
 
-use super::{LineOut, CONTAINER};
+use super::{LineOut, PreviewTask, CONTAINER};
 
 pub struct ExecFileSearch {
     pub cmd: &'static str,
@@ -40,17 +40,27 @@ impl ExecFileSearch {
 
             match CONTAINER.db.insert_all(&new_lines).await {
                 Ok(_) => {
-                    if let Ok(new_lines) = CONTAINER.db.search_lines("").await {
-                        *CONTAINER.search_lines.write().await = new_lines;
-                    }
+                    let db_count = new_lines.len();
 
-                    return TaskResult {
-                        db_count: Some(new_lines.len()),
-                        selected_idx: Some(0),
-                        selected_tab: Some(0),
-                        tabs: Some(vec![]),
-                        ..Default::default()
-                    };
+                    if let Ok(new_lines) = CONTAINER.db.search_lines("").await {
+                        let prev_result =
+                            PreviewTask::new(self.cwd.clone(), new_lines[0].text.clone())
+                                .execute()
+                                .await;
+
+                        return TaskResult {
+                            db_count: Some(db_count),
+                            selected_idx: Some(0),
+                            selected_tab: Some(0),
+                            line_prefix: Some(self.cwd.clone()),
+                            line_nr: Some(0),
+                            tabs: Some(vec![]),
+                            update: true,
+                            preview_lines: prev_result.preview_lines,
+                            file_path: prev_result.file_path,
+                            new_lines: Some(new_lines),
+                        };
+                    }
                 }
                 Err(err) => {
                     NeoDebug::log(err).await;
@@ -62,8 +72,23 @@ impl ExecFileSearch {
     }
 
     async fn db_search(&self) -> TaskResult {
-        if let Ok(lines) = CONTAINER.db.search_lines(&self.search_query).await {
-            *CONTAINER.search_lines.write().await = lines;
+        if let Ok(new_lines) = CONTAINER.db.search_lines(&self.search_query).await {
+            let prev_result = if !new_lines.is_empty() {
+                let path_prefix = self.cwd.clone();
+                let path_suffix = new_lines[0].text.clone();
+
+                PreviewTask::new(path_prefix, path_suffix).execute().await
+            } else {
+                TaskResult::default()
+            };
+
+            return TaskResult {
+                update: true,
+                preview_lines: prev_result.preview_lines,
+                file_path: prev_result.file_path,
+                new_lines: Some(new_lines),
+                ..Default::default()
+            };
         }
 
         TaskResult::default()

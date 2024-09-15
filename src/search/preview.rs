@@ -4,56 +4,51 @@ use std::{
     path::{Path, PathBuf},
     time::Instant,
 };
-
 use tokio::{fs, io};
 
 use crate::{search::TaskResult, ExecuteTask, NeoDebug};
 
-use super::CONTAINER;
-
-pub struct ExecPreview {
-    pub cwd: PathBuf,
-    pub selected_idx: usize,
+pub struct PreviewTask {
+    path_prefix: PathBuf,
+    path_suffix: Box<str>,
 }
 
-#[async_trait::async_trait]
-impl ExecuteTask for ExecPreview {
-    async fn execute(&self) -> TaskResult {
-        let now = Instant::now();
-
-        let path: PathBuf = {
-            let filtered_lines = CONTAINER.search_lines.read().await;
-
-            if filtered_lines.is_empty() {
-                CONTAINER.preview.write().await.clear();
-                //CONTAINER.search_state.write().await.update = true;
-                return TaskResult {
-                    update: true,
-                    ..Default::default()
-                };
-            }
-
-            self.cwd
-                .join(filtered_lines[self.selected_idx].text.as_ref())
-        };
-
-        if path.is_dir() && preview_directory(&path).await.is_ok()
-            || path.is_file() && preview_file(&path).await.is_ok()
-        {
-            let elapsed_ms = now.elapsed().as_millis();
-            NeoDebug::log(format!("Elapsed preview: {}", elapsed_ms)).await;
-
-            return TaskResult {
-                update: true,
-                ..Default::default()
-            };
+impl PreviewTask {
+    pub fn new(path_prefix: PathBuf, path_suffix: Box<str>) -> Self {
+        Self {
+            path_prefix,
+            path_suffix,
         }
-
-        TaskResult::default()
     }
 }
 
-async fn preview_directory(path: &Path) -> io::Result<()> {
+#[async_trait::async_trait]
+impl ExecuteTask for PreviewTask {
+    async fn execute(&self) -> TaskResult {
+        let now = Instant::now();
+
+        let path = self.path_prefix.join(self.path_suffix.as_ref());
+
+        let result = if path.is_dir() {
+            preview_directory(&path).await
+        } else if path.is_file() {
+            preview_file(&path).await
+        } else {
+            Ok(TaskResult::default())
+        };
+
+        let elapsed_ms = now.elapsed().as_millis();
+        NeoDebug::log(format!("Elapsed preview: {}", elapsed_ms)).await;
+
+        if let Ok(result) = result {
+            result
+        } else {
+            TaskResult::default()
+        }
+    }
+}
+
+async fn preview_directory(path: &Path) -> io::Result<TaskResult> {
     let mut items = Vec::new();
     let mut dir = fs::read_dir(path).await?;
 
@@ -83,44 +78,38 @@ async fn preview_directory(path: &Path) -> io::Result<()> {
         items.push("> Empty directory".into());
     }
 
-    *CONTAINER.preview.write().await = items;
-
-    Ok(())
+    Ok(TaskResult {
+        preview_lines: Some(items),
+        update: true,
+        ..Default::default()
+    })
 }
 
-async fn preview_file(path: &Path) -> io::Result<()> {
-    let file_path;
+async fn preview_file(path: &Path) -> io::Result<TaskResult> {
+    let mut result = TaskResult {
+        update: true,
+        ..Default::default()
+    };
 
-    async fn handle_binary() {
-        let mut preview = CONTAINER.preview.write().await;
-        *preview = vec!["> File is a binary".into()];
-    }
-
-    if is_binary(path) {
-        file_path = "text".to_string();
-        handle_binary().await;
-    } else {
-        // TODO check for ZIP and preview
+    if !is_binary(path) {
         if let Ok(file) = fs::read_to_string(path).await {
-            file_path = path.to_string_lossy().to_string();
-
             let mut lines = vec![];
 
             for line in file.lines() {
                 lines.push(line.into());
             }
 
-            *CONTAINER.preview.write().await = lines;
-        } else {
-            file_path = "text".to_string();
-            handle_binary().await;
+            result.preview_lines = Some(lines);
+            result.file_path = Some(path.to_string_lossy().to_string().into_boxed_str());
+
+            return Ok(result);
         }
     }
 
-    let mut search_state = CONTAINER.search_state.write().await;
-    search_state.file_path = file_path;
+    result.file_path = Some("text".into());
+    result.preview_lines = Some(vec!["> File is a binary".into()]);
 
-    Ok(())
+    Ok(result)
 }
 
 fn is_binary(file: &Path) -> bool {

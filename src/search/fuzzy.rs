@@ -13,7 +13,7 @@ use crate::{
     PopupStyle, RemoveRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
-use super::{ChangeTab, SearchState};
+use super::{ChangeTab, PreviewTask, SearchState};
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
@@ -27,6 +27,7 @@ pub struct LineOut {
     pub icon: Box<str>,
     pub hl_group: Box<str>,
     pub git_root: Box<str>,
+    pub line_nr: Option<u32>,
 }
 
 impl LineOut {
@@ -35,7 +36,7 @@ impl LineOut {
             text: text.into(),
             icon: "".into(),
             hl_group: "Directory".into(),
-            git_root: "".into(),
+            ..Default::default()
         }
     }
 }
@@ -52,7 +53,6 @@ pub trait FuzzyConfig: Send + Sync {
     fn cwd(&self) -> PathBuf;
     fn search_type(&self) -> FuzzySearch;
     fn search_task(&self, lua: &Lua, search_query: String, tab_idx: usize) -> Box<dyn ExecuteTask>;
-    fn preview_task(&self, lua: &Lua, selected_idx: usize, tab_idx: usize) -> Box<dyn ExecuteTask>;
     fn on_enter(&self, lua: &Lua, open_in: OpenIn, item: PathBuf);
 }
 
@@ -77,15 +77,6 @@ impl FuzzyConfig for DummyConfig {
     ) -> Box<dyn ExecuteTask> {
         panic!("not allowed");
     }
-
-    fn preview_task(
-        &self,
-        _lua: &Lua,
-        _selected_idx: usize,
-        _tab_idx: usize,
-    ) -> Box<dyn ExecuteTask> {
-        panic!("not allowed");
-    }
 }
 
 impl std::fmt::Debug for dyn FuzzyConfig {
@@ -97,14 +88,7 @@ impl std::fmt::Debug for dyn FuzzyConfig {
 pub static CONTAINER: LazyLock<FuzzyContainer> = LazyLock::new(|| FuzzyContainer {
     search_lines: RwLock::new(vec![]),
     fuzzy: RwLock::new(NeoFuzzy::default()),
-    search_state: RwLock::new(SearchState {
-        update: false,
-        db_count: 0,
-        file_path: "".to_string(),
-        tabs: vec![],
-        selected_tab: 0,
-        selected_idx: 0,
-    }),
+    search_state: RwLock::new(SearchState::default()),
     preview: RwLock::new(Vec::new()),
     db: Database::new(),
 });
@@ -424,7 +408,6 @@ impl NeoFuzzy {
         Diffuse::queue([
             Box::new(ClearResultsTask),
             fuzzy.config.search_task(lua, "".to_string(), 0),
-            fuzzy.config.preview_task(lua, 0, 0),
         ])
         .await;
 
@@ -663,27 +646,24 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
     let mut search_state = CONTAINER.search_state.write().await;
-
-    let len = fuzzy.pop_out.buf.line_count(&lua)?;
+    let search_lines = CONTAINER.search_lines.read().await;
 
     match move_sel {
         Move::Up => {
             if 0 < search_state.selected_idx {
                 search_state.selected_idx -= 1;
             } else {
-                search_state.selected_idx = len - 1;
+                search_state.selected_idx = search_lines.len() - 1;
             }
         }
         Move::Down => {
-            if search_state.selected_idx + 1 < len {
+            if search_state.selected_idx + 1 < search_lines.len() {
                 search_state.selected_idx += 1;
             } else {
                 search_state.selected_idx = 0;
             }
         }
     }
-
-    let selected_idx = search_state.selected_idx;
 
     fuzzy.pop_out.win.call(
         &lua,
@@ -693,15 +673,20 @@ async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
                 CmdOpts {
                     cmd: "normal",
                     bang: true,
-                    args: &[&format!("{}G", selected_idx + 1)],
+                    args: &["1G"],
                 },
             )
         })?,
     )?;
 
-    Diffuse::queue([fuzzy
-        .config
-        .preview_task(&lua, selected_idx, search_state.selected_tab)])
+    let path_prefix = search_state.line_prefix.clone();
+    let path_suffix = search_lines[search_state.selected_idx].text.clone();
+
+    drop(search_state);
+    drop(search_lines);
+    drop(fuzzy);
+
+    Diffuse::queue([Box::new(PreviewTask::new(path_prefix, path_suffix))])
     .await;
 
     Ok(())
@@ -732,7 +717,6 @@ async fn delete_entry(lua: Lua, _: ()) -> LuaResult<()> {
         Diffuse::queue([
             Box::new(ClearResultsTask),
             fuzzy_c.search_task(&lua, search_query, search_state.selected_tab),
-            fuzzy_c.preview_task(&lua, search_state.selected_idx, search_state.selected_tab),
         ])
         .await;
     } else if st == FuzzySearch::Directories && search_state.selected_tab == 1 {
@@ -744,7 +728,6 @@ async fn delete_entry(lua: Lua, _: ()) -> LuaResult<()> {
             Box::new(remove_recent_dir),
             Box::new(ClearResultsTask),
             fuzzy_c.search_task(&lua, search_query, search_state.selected_tab),
-            fuzzy_c.preview_task(&lua, search_state.selected_idx, search_state.selected_tab),
         ])
         .await;
     }
@@ -776,6 +759,7 @@ async fn aucmd_close_fuzzy(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
 async fn aucmd_text_changed(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let fuzzy = CONTAINER.fuzzy.read().await;
 
+    // Prevent cursor bugs jump back to 1.
     fuzzy.pop_out.win.call(
         &lua,
         lua.create_function(move |lua, _: ()| {
@@ -793,11 +777,7 @@ async fn aucmd_text_changed(lua: Lua, _ev: AutoCmdCbEvent) -> LuaResult<()> {
     let search_query = NeoApi::get_current_line(&lua)?;
     let selected_tab = CONTAINER.search_state.read().await.selected_tab;
 
-    Diffuse::queue([
-        fuzzy.config.search_task(&lua, search_query, selected_tab),
-        fuzzy.config.preview_task(&lua, 0, selected_tab),
-    ])
-    .await;
+    Diffuse::queue([fuzzy.config.search_task(&lua, search_query, selected_tab)]).await;
 
     Ok(())
 }

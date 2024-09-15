@@ -1,7 +1,9 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::{process::Command, time::Instant};
 
 use crate::{search::TaskResult, ExecuteTask, FuzzyTab, LineOut, NeoDebug, CONTAINER};
+
+use super::PreviewTask;
 
 fn tabs() -> Option<Vec<Box<dyn FuzzyTab>>> {
     Some(vec![
@@ -60,12 +62,33 @@ impl ExecuteTask for ExecRecentDirectories {
     }
 }
 
-async fn db_search(search_query: &str) -> TaskResult {
-    if let Ok(lines) = CONTAINER.db.search_lines(search_query).await {
-        *CONTAINER.search_lines.write().await = lines;
-    }
+async fn db_search(search_query: &str, cwd: &Path) -> TaskResult {
+    if let Ok(new_lines) = CONTAINER.db.search_lines(search_query).await {
+        if new_lines.is_empty() {
+            TaskResult {
+                new_lines: Some(vec![]),
+                selected_idx: Some(0),
+                update: true,
+                ..Default::default()
+            }
+        } else {
+            let path_prefix = cwd.to_path_buf();
+            let path_suffix = new_lines[0].text.clone();
 
-    TaskResult::default()
+            let preview = PreviewTask::new(path_prefix, path_suffix).execute().await;
+
+            TaskResult {
+                new_lines: Some(vec![]),
+                selected_idx: Some(0),
+                update: true,
+                preview_lines: preview.preview_lines,
+                file_path: preview.file_path,
+                ..Default::default()
+            }
+        }
+    } else {
+        TaskResult::default()
+    }
 }
 
 pub struct RemoveRecentDirectory {
@@ -116,13 +139,21 @@ impl ExecDirectorySearch {
             match CONTAINER.db.insert_all(&new_lines).await {
                 Ok(_) => match CONTAINER.db.search_lines("").await {
                     Ok(new_lines) => {
-                        *CONTAINER.search_lines.write().await = new_lines;
+                        let path_prefix = self.cwd.clone();
+                        let path_suffix = new_lines[0].text.clone();
+
+                        let preview = PreviewTask::new(path_prefix, path_suffix).execute().await;
 
                         return TaskResult {
                             db_count: Some(db_count),
                             selected_idx: Some(0),
                             selected_tab: Some(0),
+                            new_lines: Some(new_lines),
+                            line_prefix: Some(self.cwd.clone()),
+                            update: true,
                             tabs: tabs(),
+                            preview_lines: preview.preview_lines,
+                            file_path: preview.file_path,
                             ..Default::default()
                         };
                     }
@@ -145,7 +176,7 @@ impl ExecuteTask for ExecDirectorySearch {
             NeoDebug::log("is initial search").await;
             self.insert_into_db().await
         } else {
-            db_search(&self.search_query).await
+            db_search(&self.search_query, &self.cwd).await
         };
 
         let elapsed_ms = instant.elapsed().as_millis();

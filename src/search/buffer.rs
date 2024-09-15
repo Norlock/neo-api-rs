@@ -10,6 +10,8 @@ use crate::{
     BufInfo, BufInfoOpts, ExecuteTask, LineOut, NeoApi, NeoDebug, NeoUtils, CONTAINER,
 };
 
+use super::PreviewTask;
+
 pub struct BufferSearch {
     /// Based on current tab
     pub search_query: String,
@@ -64,6 +66,7 @@ impl BufferSearch {
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
                     git_root: git_root_str,
+                    line_nr: Some(buf_info.lnum),
                 });
 
                 if !tabs.iter().any(|t| t.full() == tab.full()) {
@@ -74,7 +77,8 @@ impl BufferSearch {
                     text: buf_path.to_string_lossy().into(),
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
-                    git_root: "".into(),
+                    line_nr: Some(buf_info.lnum),
+                    ..Default::default()
                 });
             }
         }
@@ -92,17 +96,27 @@ impl BufferSearch {
             .search_project_lines("", tabs[self.selected_tab].full())
             .await;
 
-        NeoDebug::log_dbg(&new_lines).await;
-        let db_count = new_lines.len();
-        *CONTAINER.search_lines.write().await = new_lines;
-
-        TaskResult {
-            db_count: Some(db_count),
+        let mut result = TaskResult {
+            db_count: Some(new_lines.len()),
             tabs: Some(tabs),
             selected_tab: Some(0),
             selected_idx: Some(0),
+            line_prefix: Some(new_lines[0].git_root.as_ref().into()),
             update: true,
+            ..Default::default()
+        };
+
+        if !new_lines.is_empty() {
+            let path_prefix: PathBuf = new_lines[0].git_root.as_ref().into();
+            let path_suffix = new_lines[0].text.clone();
+            let prev_result = PreviewTask::new(path_prefix, path_suffix).execute().await;
+
+            result.preview_lines = prev_result.preview_lines;
+            result.file_path = prev_result.file_path;
         }
+
+        result.new_lines = Some(new_lines);
+        result
     }
 
     async fn search(&self) -> TaskResult {
@@ -116,16 +130,32 @@ impl BufferSearch {
             search_state.tabs[search_state.selected_tab].full()
         };
 
-        let lines = CONTAINER
+        let new_lines = CONTAINER
             .db
             .search_project_lines(&self.search_query, tab)
             .await;
 
-        *CONTAINER.search_lines.write().await = lines;
+        if !new_lines.is_empty() {
+            let path_prefix: PathBuf = new_lines[0].git_root.as_ref().into();
+            let path_suffix = new_lines[0].text.clone();
+            let prev_result = PreviewTask::new(path_prefix, path_suffix).execute().await;
 
-        TaskResult {
-            update: true,
-            ..Default::default()
+            TaskResult {
+                update: true,
+                selected_idx: Some(0),
+                new_lines: Some(new_lines),
+                preview_lines: prev_result.preview_lines,
+                file_path: prev_result.file_path,
+                ..Default::default()
+            }
+        } else {
+            TaskResult {
+                update: true,
+                selected_idx: Some(0),
+                new_lines: Some(new_lines),
+                preview_lines: Some(vec![]),
+                ..Default::default()
+            }
         }
     }
 }

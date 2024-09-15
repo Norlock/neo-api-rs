@@ -1,3 +1,4 @@
+use sqlx::prelude::FromRow;
 use std::{borrow::Cow, path::PathBuf, str::FromStr};
 use tokio::fs;
 
@@ -11,6 +12,24 @@ pub struct Database {
 impl Default for Database {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(FromRow)]
+struct LineOutCompact {
+    text: Box<str>,
+    icon: Box<str>,
+    hl_group: Box<str>,
+}
+
+impl From<LineOutCompact> for LineOut {
+    fn from(value: LineOutCompact) -> Self {
+        Self {
+            text: value.text,
+            icon: value.icon,
+            hl_group: value.hl_group,
+            ..Default::default()
+        }
     }
 }
 
@@ -56,7 +75,8 @@ impl Database {
                 text        TEXT PRIMARY KEY,
                 icon        TEXT NOT NULL,
                 hl_group    TEXT NOT NULL,
-                git_root    TEXT
+                git_root    TEXT,
+                line_nr     INTEGER
             )",
         )
         .execute(&mem)
@@ -105,10 +125,10 @@ impl Database {
             like_query.push('%');
         }
 
-        let out = sqlx::query_as::<_, LineOut>(
+        let out = sqlx::query_as::<_, LineOutCompact>(
             "
             SELECT 
-                *
+                text, icon, hl_group
             FROM 
                 all_lines 
             WHERE text like ?
@@ -123,7 +143,7 @@ impl Database {
         match out {
             Ok(out) => {
                 //NeoDebug::log_dbg(&out).await;
-                Ok(out)
+                Ok(out.into_iter().map(|l| l.into()).collect())
             }
             Err(e) => {
                 NeoDebug::log(&e).await;
@@ -232,13 +252,13 @@ impl Database {
 
         for chunks in lines.chunks(1000) {
             let mut qry_str =
-                "INSERT INTO all_lines (text, icon, hl_group, git_root) VALUES".to_string();
+                "INSERT INTO all_lines (text, icon, hl_group, git_root, line_nr) VALUES".to_string();
 
             for i in 0..chunks.len() {
                 if i == 0 {
-                    qry_str.push_str("(?, ?, ?, ?)");
+                    qry_str.push_str("(?, ?, ?, ?, ?)");
                 } else {
-                    qry_str.push_str(", (?, ?, ?, ?)");
+                    qry_str.push_str(", (?, ?, ?, ?, ?)");
                 }
             }
 
@@ -249,7 +269,8 @@ impl Database {
                     .bind(&line.text)
                     .bind(&line.icon)
                     .bind(&line.hl_group)
-                    .bind(&line.git_root);
+                    .bind(&line.git_root)
+                    .bind(&line.line_nr);
             }
 
             query.execute(&mut *tx).await?;
