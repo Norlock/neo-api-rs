@@ -34,7 +34,7 @@ impl FileSearchTask {
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
                     path_prefix: self.cwd.to_string_lossy().into(),
-                    line_nr: 1,
+                    line_nr: 0,
                 });
             }
 

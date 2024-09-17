@@ -48,8 +48,15 @@ impl Database {
             .create_if_missing(true)
             .extension(extension_path);
 
-        let mem = sqlx::SqlitePool::connect_with(mem_options).await?;
-        let file = sqlx::SqlitePool::connect_with(file_options).await?;
+        let mem_db = sqlx::sqlite::SqlitePoolOptions::new()
+            .min_connections(1)
+            .max_connections(1)
+            .idle_timeout(None)
+            .max_lifetime(None)
+            .connect_with(mem_options)
+            .await?;
+
+        let file_db = sqlx::SqlitePool::connect_with(file_options).await?;
 
         sqlx::query(
             "CREATE TABLE all_lines (
@@ -60,7 +67,7 @@ impl Database {
                 line_nr     INTEGER
             )",
         )
-        .execute(&mem)
+        .execute(&mem_db)
         .await?;
 
         sqlx::query(
@@ -69,7 +76,7 @@ impl Database {
                 path_suffix    TEXT NOT NULL UNIQUE
             )",
         )
-        .execute(&file)
+        .execute(&file_db)
         .await?;
 
         sqlx::query(
@@ -77,12 +84,15 @@ impl Database {
                 directory_tab INTEGER NOT NULL
             )",
         )
-        .execute(&file)
+        .execute(&file_db)
         .await?;
 
         NeoDebug::log("Databases initialized").await;
 
-        Ok(Self { file_db: file, mem_db: mem })
+        Ok(Self {
+            file_db,
+            mem_db,
+        })
     }
 
     pub async fn all_lines_is_empty(&self) -> bool {
@@ -133,11 +143,7 @@ impl Database {
         }
     }
 
-    pub async fn search_project_lines(
-        &self,
-        search_text: &str,
-        path_prefix: &str,
-    ) -> Vec<LineOut> {
+    pub async fn search_project_lines(&self, search_text: &str, path_prefix: &str) -> Vec<LineOut> {
         let mut path_suffix_query = '%'.to_string();
 
         for char in search_text.chars() {
@@ -170,11 +176,7 @@ impl Database {
         }
     }
 
-    pub async fn insert_recent_directory(
-        &self,
-        path_prefix: &str,
-        path_suffix: &str,
-    ) {
+    pub async fn insert_recent_directory(&self, path_prefix: &str, path_suffix: &str) {
         if let Err(e) = sqlx::query(
             "INSERT OR IGNORE INTO recent_directories (path_prefix, path_suffix) 
                 VALUES (?, ?)",
@@ -214,7 +216,10 @@ impl Database {
         .fetch_all(&self.file_db)
         .await?;
 
-        Ok(out.into_iter().map(|p| LineOut::directory(&p.0, &p.1)).collect())
+        Ok(out
+            .into_iter()
+            .map(|p| LineOut::directory(&p.0, &p.1))
+            .collect())
     }
 
     pub async fn delete_recent_directory(&self, path_suffix: &str) {

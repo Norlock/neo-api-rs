@@ -11,6 +11,12 @@ pub struct GrepTask {
     cwd: PathBuf,
 }
 
+pub struct GrepLine {
+    pub file: Box<str>,
+    pub line_nr: usize,
+    pub text: Box<str>,
+}
+
 #[async_trait::async_trait]
 impl ExecuteTask for GrepTask {
     async fn execute(&self, instant: &Instant) -> TaskResult {

@@ -22,25 +22,13 @@ const AUCMD_GRP: &str = "neo-fuzzy";
 const TAB_BTN_SELECTED: &str = "TabButtonSelected";
 const TAB_BTN: &str = "TabButton";
 
-#[derive(Clone, Debug, sqlx::FromRow)]
+#[derive(Clone, Default, Debug, sqlx::FromRow)]
 pub struct LineOut {
     pub icon: Box<str>,
     pub hl_group: Box<str>,
     pub path_suffix: Box<str>,
     pub path_prefix: Box<str>,
     pub line_nr: u32,
-}
-
-impl Default for LineOut {
-    fn default() -> Self {
-        Self {
-            icon: Default::default(),
-            hl_group: Default::default(),
-            path_prefix: Default::default(),
-            path_suffix: Default::default(),
-            line_nr: 1,
-        }
-    }
 }
 
 impl LineOut {
@@ -662,7 +650,7 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                 }
 
                 let line_str = format!("{}G", selected.line_nr);
-                let line_nr = (selected.line_nr - 1) as usize;
+                let line_nr = selected.line_nr as usize;
 
                 let preview_win = fuzzy.pop_preview.win;
                 preview_win.call(
@@ -688,6 +676,8 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                             )?;
 
                             preview_win.set_option_value(lua, "cursorline", true)?;
+                        } else {
+                            preview_win.set_option_value(lua, "cursorline", false)?;
                         }
                         Ok(())
                     })?,
