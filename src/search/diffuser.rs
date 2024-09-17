@@ -5,7 +5,7 @@
 // Try to lock do something then next
 
 use std::{borrow::Cow, fmt, path::PathBuf, sync::LazyLock};
-use tokio::sync::Mutex;
+use tokio::{sync::Mutex, time::Instant};
 
 use crate::{CONTAINER, RTM};
 
@@ -13,10 +13,18 @@ use super::LineOut;
 
 static DIFFUSER: LazyLock<Mutex<Diffuse>> = LazyLock::new(|| Diffuse::default().into());
 
-#[derive(Default)]
 pub struct Diffuse {
     queue: Vec<Box<dyn ExecuteTask>>,
     is_running: bool,
+}
+
+impl Default for Diffuse {
+    fn default() -> Self {
+        Self {
+            queue: vec![],
+            is_running: false,
+        }
+    }
 }
 
 unsafe impl Send for Diffuse {}
@@ -92,8 +100,7 @@ impl TaskResult {
 
 #[async_trait::async_trait]
 pub trait ExecuteTask: Send {
-    /// TODO pass instant or detect performance outside
-    async fn execute(&self) -> TaskResult;
+    async fn execute(&self, instant: &Instant) -> TaskResult;
 
     async fn all_lines_is_empty(&self) -> bool {
         CONTAINER.db.all_lines_is_empty().await
@@ -128,16 +135,18 @@ impl Diffuse {
 
                 drop(diffuser);
 
+                let instant = Instant::now();
+
                 for current in queue {
-                    handle(current).await;
+                    handle(current, &instant).await;
                 }
             }
         });
     }
 }
 
-async fn handle(task: Box<dyn ExecuteTask>) {
-    let result = task.execute().await;
+async fn handle(task: Box<dyn ExecuteTask>, instant: &Instant) {
+    let result = task.execute(instant).await;
 
     let mut search_state = CONTAINER.search_state.write().await;
 

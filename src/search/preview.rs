@@ -2,9 +2,9 @@ use std::{
     cmp::Ordering,
     collections::HashSet,
     path::Path,
-    time::Instant,
 };
 use tokio::fs;
+use tokio::time::Instant;
 
 use crate::NeoDebug;
 
@@ -13,8 +13,8 @@ use super::LineOut;
 pub struct Preview;
 
 impl Preview {
-    pub async fn get_lines(line_out: LineOut) -> Vec<Box<str>> {
-        let now = Instant::now();
+    pub async fn get_lines(line_out: LineOut, instant: &Instant) -> Vec<Box<str>> {
+        let before_ms = instant.elapsed().as_millis();
 
         let path = line_out.full_path_buf();
 
@@ -26,8 +26,8 @@ impl Preview {
             vec![]
         };
 
-        let elapsed_ms = now.elapsed().as_millis();
-        NeoDebug::log(format!("Elapsed preview: {}", elapsed_ms)).await;
+        let after_ms = instant.elapsed().as_millis();
+        NeoDebug::log(format!("Elapsed preview: {}", after_ms - before_ms)).await;
 
         result
     }

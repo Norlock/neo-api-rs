@@ -1,4 +1,5 @@
 use mlua::{prelude::LuaResult, Lua};
+use tokio::time::Instant;
 use std::path::{Path, PathBuf};
 
 use crate::{
@@ -30,7 +31,7 @@ impl BufferSearch {
         })
     }
 
-    async fn init(&self) -> TaskResult {
+    async fn init(&self, instant: &Instant) -> TaskResult {
         let mut new_lines = vec![];
         let mut tabs: Vec<Box<dyn FuzzyTab>> = vec![];
 
@@ -95,7 +96,7 @@ impl BufferSearch {
         let preview_lines = if new_lines.is_empty() {
             vec![]
         } else {
-            Preview::get_lines(new_lines[0].clone()).await
+            Preview::get_lines(new_lines[0].clone(), instant).await
         };
 
         TaskResult {
@@ -110,7 +111,7 @@ impl BufferSearch {
         }
     }
 
-    async fn search(&self) -> TaskResult {
+    async fn search(&self, instant: &Instant) -> TaskResult {
         let search_state = CONTAINER.search_state.read().await;
         let tab = search_state.tabs[search_state.selected_tab].full();
 
@@ -122,7 +123,7 @@ impl BufferSearch {
         let preview_lines = if new_lines.is_empty() {
             vec![]
         } else {
-            Preview::get_lines(new_lines[0].clone()).await
+            Preview::get_lines(new_lines[0].clone(), instant).await
         };
 
         TaskResult {
@@ -137,11 +138,11 @@ impl BufferSearch {
 
 #[async_trait::async_trait]
 impl ExecuteTask for BufferSearch {
-    async fn execute(&self) -> TaskResult {
+    async fn execute(&self, instant: &Instant) -> TaskResult {
         if self.all_lines_is_empty().await {
-            self.init().await
+            self.init(instant).await
         } else {
-            self.search().await
+            self.search(instant).await
         }
     }
 }

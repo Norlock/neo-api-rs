@@ -1,5 +1,5 @@
-use std::{path::PathBuf, time::Instant};
-use tokio::process::Command;
+use std::path::PathBuf;
+use tokio::{process::Command, time::Instant};
 
 use crate::{web_devicons::DevIcon, ExecuteTask, NeoDebug, TaskResult};
 
@@ -13,7 +13,7 @@ pub struct FileSearchTask {
 }
 
 impl FileSearchTask {
-    async fn insert_into_db(&self) -> TaskResult {
+    async fn insert_into_db(&self, instant: &Instant) -> TaskResult {
         let out = Command::new(self.cmd)
             .current_dir(&self.cwd)
             .args(&self.args)
@@ -46,7 +46,7 @@ impl FileSearchTask {
                         let preview_lines = if new_lines.is_empty() {
                             Some(vec![])
                         } else {
-                            Some(Preview::get_lines(new_lines[0].clone()).await)
+                            Some(Preview::get_lines(new_lines[0].clone(), instant).await)
                         };
 
                         return TaskResult {
@@ -69,12 +69,12 @@ impl FileSearchTask {
         TaskResult::default()
     }
 
-    async fn db_search(&self) -> TaskResult {
+    async fn db_search(&self, instant: &Instant) -> TaskResult {
         if let Ok(new_lines) = CONTAINER.db.search_lines(&self.search_query).await {
             let preview_lines = if new_lines.is_empty() {
                 Some(vec![])
             } else {
-                Some(Preview::get_lines(new_lines[0].clone()).await)
+                Some(Preview::get_lines(new_lines[0].clone(), instant).await)
             };
 
             return TaskResult {
@@ -91,17 +91,18 @@ impl FileSearchTask {
 
 #[async_trait::async_trait]
 impl ExecuteTask for FileSearchTask {
-    async fn execute(&self) -> TaskResult {
-        let instant = Instant::now();
+    async fn execute(&self, instant: &Instant) -> TaskResult {
+        let before_ms = instant.elapsed().as_millis();
 
         let result = if self.all_lines_is_empty().await {
-            self.insert_into_db().await
+            self.insert_into_db(instant).await
         } else {
-            self.db_search().await
+            self.db_search(instant).await
         };
 
-        let elapsed_ms = instant.elapsed().as_millis();
-        NeoDebug::log(format!("Elapsed file search: {}", elapsed_ms)).await;
+        let after_ms = instant.elapsed().as_millis();
+
+        NeoDebug::log(format!("Elapsed file search: {}", after_ms - before_ms)).await;
 
         result
     }

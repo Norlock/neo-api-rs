@@ -1,5 +1,6 @@
 use mlua::prelude::{LuaError, LuaResult};
 use mlua::Lua;
+use tokio::time::Instant;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -760,7 +761,8 @@ async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
             preview.clear();
         } else {
             let line_out = search_lines[search_state.selected_idx].clone();
-            *preview = Preview::get_lines(line_out).await;
+            let instant = Instant::now();
+            *preview = Preview::get_lines(line_out, &instant).await;
         }
 
         search_state.update = true;

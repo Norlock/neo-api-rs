@@ -1,6 +1,8 @@
-use std::{path::PathBuf, time::Instant};
+use std::path::PathBuf;
 
-use tokio::process::Command;
+use tokio::{process::Command, time::Instant};
+
+use crate::NeoDebug;
 
 use super::{ExecuteTask, TaskResult};
 
@@ -11,8 +13,8 @@ pub struct GrepTask {
 
 #[async_trait::async_trait]
 impl ExecuteTask for GrepTask {
-    async fn execute(&self) -> TaskResult {
-        let instant = Instant::now();
+    async fn execute(&self, instant: &Instant) -> TaskResult {
+        let before_ms = instant.elapsed().as_millis();
 
         let out = Command::new("rg")
             .args([&self.search_query, "--no-heading"])
@@ -34,7 +36,9 @@ impl ExecuteTask for GrepTask {
             }
         }
 
-        instant.elapsed();
+        let after_ms = instant.elapsed().as_millis();
+
+        NeoDebug::log(format!("Elapsed grep search: {}", after_ms - before_ms)).await;
 
         TaskResult {
             update: true,

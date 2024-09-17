@@ -21,7 +21,7 @@ impl ExecRecentDirectories {
         Self { search_query }
     }
 
-    async fn search_recent_directories(&self) -> TaskResult {
+    async fn search_recent_directories(&self, instant: &Instant) -> TaskResult {
         match CONTAINER
             .db
             .search_recent_directories(&self.search_query)
@@ -32,7 +32,7 @@ impl ExecRecentDirectories {
                 let preview_lines = if new_lines.is_empty() {
                     Some(vec![])
                 } else {
-                    Some(Preview::get_lines(new_lines[0].clone()).await)
+                    Some(Preview::get_lines(new_lines[0].clone(), instant).await)
                 };
 
                 TaskResult {
@@ -57,24 +57,24 @@ impl ExecRecentDirectories {
 // TODO use sqlite
 #[async_trait::async_trait]
 impl ExecuteTask for ExecRecentDirectories {
-    async fn execute(&self) -> TaskResult {
-        let instant = Instant::now();
+    async fn execute(&self, instant: &Instant) -> TaskResult {
+        let before_ms = instant.elapsed().as_millis();
 
-        let result = self.search_recent_directories().await;
+        let result = self.search_recent_directories(instant).await;
 
-        let elapsed_ms = instant.elapsed().as_millis();
-        NeoDebug::log(format!("Elapsed recent search: {}", elapsed_ms)).await;
+        let after_ms = instant.elapsed().as_millis();
+        NeoDebug::log(format!("Elapsed recent search: {}", after_ms - before_ms)).await;
 
         result
     }
 }
 
-async fn db_search(search_query: &str) -> TaskResult {
+async fn db_search(search_query: &str, instant: &Instant) -> TaskResult {
     if let Ok(new_lines) = CONTAINER.db.search_lines(search_query).await {
         let preview_lines = if new_lines.is_empty() {
             Some(vec![])
         } else {
-            Some(Preview::get_lines(new_lines[0].clone()).await)
+            Some(Preview::get_lines(new_lines[0].clone(), instant).await)
         };
 
         TaskResult {
@@ -101,7 +101,7 @@ impl RemoveRecentDirectory {
 
 #[async_trait::async_trait]
 impl ExecuteTask for RemoveRecentDirectory {
-    async fn execute(&self) -> TaskResult {
+    async fn execute(&self, _instant: &Instant) -> TaskResult {
         CONTAINER.db.delete_recent_directory(&self.path).await;
 
         TaskResult::default()
@@ -116,7 +116,7 @@ pub struct ExecDirectorySearch {
 }
 
 impl ExecDirectorySearch {
-    async fn insert_into_db(&self) -> TaskResult {
+    async fn insert_into_db(&self, instant: &Instant) -> TaskResult {
         let out = Command::new(self.cmd)
             .current_dir(&self.cwd)
             .args(&self.args)
@@ -141,7 +141,7 @@ impl ExecDirectorySearch {
                         let preview_lines = if new_lines.is_empty() {
                             Some(vec![])
                         } else {
-                            Some(Preview::get_lines(new_lines[0].clone()).await)
+                            Some(Preview::get_lines(new_lines[0].clone(), instant).await)
                         };
 
                         return TaskResult {
@@ -167,17 +167,22 @@ impl ExecDirectorySearch {
 
 #[async_trait::async_trait]
 impl ExecuteTask for ExecDirectorySearch {
-    async fn execute(&self) -> TaskResult {
-        let instant = Instant::now();
+    async fn execute(&self, instant: &Instant) -> TaskResult {
+        let before_ms = instant.elapsed().as_millis();
 
         let result = if self.all_lines_is_empty().await {
-            self.insert_into_db().await
+            self.insert_into_db(instant).await
         } else {
-            db_search(&self.search_query).await
+            db_search(&self.search_query, instant).await
         };
 
-        let elapsed_ms = instant.elapsed().as_millis();
-        NeoDebug::log(format!("Elapsed directory search: {}", elapsed_ms)).await;
+        let after_ms = instant.elapsed().as_millis();
+
+        NeoDebug::log(format!(
+            "Elapsed directory search: {}",
+            after_ms - before_ms
+        ))
+        .await;
 
         result
     }
@@ -187,7 +192,7 @@ pub struct ClearResultsTask;
 
 #[async_trait::async_trait]
 impl ExecuteTask for ClearResultsTask {
-    async fn execute(&self) -> TaskResult {
+    async fn execute(&self, _instant: &Instant) -> TaskResult {
         CONTAINER.db.empty_lines().await;
 
         TaskResult {
@@ -209,7 +214,7 @@ impl InsertRecentDirectory {
 
 #[async_trait::async_trait]
 impl ExecuteTask for InsertRecentDirectory {
-    async fn execute(&self) -> TaskResult {
+    async fn execute(&self, _instant: &Instant) -> TaskResult {
         CONTAINER
             .db
             .insert_recent_directory(&self.0.path_prefix, &self.0.path_suffix)
