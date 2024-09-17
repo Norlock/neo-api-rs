@@ -1,19 +1,18 @@
 use std::{path::PathBuf, time::Instant};
-
 use tokio::process::Command;
 
 use crate::{web_devicons::DevIcon, ExecuteTask, NeoDebug, TaskResult};
 
-use super::{LineOut, PreviewTask, CONTAINER};
+use super::{LineOut, Preview, CONTAINER};
 
-pub struct ExecFileSearch {
+pub struct FileSearchTask {
     pub cmd: &'static str,
     pub cwd: PathBuf,
     pub args: Vec<&'static str>,
     pub search_query: String,
 }
 
-impl ExecFileSearch {
+impl FileSearchTask {
     async fn insert_into_db(&self) -> TaskResult {
         let out = Command::new(self.cmd)
             .current_dir(&self.cwd)
@@ -31,10 +30,11 @@ impl ExecFileSearch {
                 let dev_icon = DevIcon::get_icon(&path);
 
                 new_lines.push(LineOut {
-                    text: line.into(),
+                    path_suffix: line.into(),
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
-                    ..Default::default()
+                    path_prefix: self.cwd.to_string_lossy().into(),
+                    line_nr: 1,
                 });
             }
 
@@ -43,22 +43,20 @@ impl ExecFileSearch {
                     let db_count = new_lines.len();
 
                     if let Ok(new_lines) = CONTAINER.db.search_lines("").await {
-                        let prev_result =
-                            PreviewTask::new(self.cwd.clone(), new_lines[0].text.clone())
-                                .execute()
-                                .await;
+                        let preview_lines = if new_lines.is_empty() {
+                            Some(vec![])
+                        } else {
+                            Some(Preview::get_lines(new_lines[0].clone()).await)
+                        };
 
                         return TaskResult {
                             db_count: Some(db_count),
                             selected_idx: Some(0),
                             selected_tab: Some(0),
-                            line_prefix: Some(self.cwd.clone()),
-                            line_nr: Some(0),
                             tabs: Some(vec![]),
+                            search_lines: Some(new_lines),
+                            preview_lines,
                             update: true,
-                            preview_lines: prev_result.preview_lines,
-                            file_path: prev_result.file_path,
-                            new_lines: Some(new_lines),
                         };
                     }
                 }
@@ -73,20 +71,16 @@ impl ExecFileSearch {
 
     async fn db_search(&self) -> TaskResult {
         if let Ok(new_lines) = CONTAINER.db.search_lines(&self.search_query).await {
-            let prev_result = if !new_lines.is_empty() {
-                let path_prefix = self.cwd.clone();
-                let path_suffix = new_lines[0].text.clone();
-
-                PreviewTask::new(path_prefix, path_suffix).execute().await
+            let preview_lines = if new_lines.is_empty() {
+                Some(vec![])
             } else {
-                TaskResult::default()
+                Some(Preview::get_lines(new_lines[0].clone()).await)
             };
 
             return TaskResult {
                 update: true,
-                preview_lines: prev_result.preview_lines,
-                file_path: prev_result.file_path,
-                new_lines: Some(new_lines),
+                preview_lines,
+                search_lines: Some(new_lines),
                 ..Default::default()
             };
         }
@@ -96,7 +90,7 @@ impl ExecFileSearch {
 }
 
 #[async_trait::async_trait]
-impl ExecuteTask for ExecFileSearch {
+impl ExecuteTask for FileSearchTask {
     async fn execute(&self) -> TaskResult {
         let instant = Instant::now();
 

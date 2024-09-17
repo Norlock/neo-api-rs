@@ -287,6 +287,52 @@ impl NeoApi {
         lfn.call(opts)
     }
 
+    /**
+    nvim_feedkeys({keys}, {mode}, {escape_ks})                   *nvim_feedkeys()*
+        Sends input-keys to Nvim, subject to various quirks controlled by `mode`
+        flags. This is a blocking call, unlike |nvim_input()|.
+
+        On execution error: does not fail, but updates v:errmsg.
+
+        To input sequences like <C-o> use |nvim_replace_termcodes()| (typically
+        with escape_ks=false) to replace |keycodes|, then pass the result to
+        nvim_feedkeys().
+
+        Example: >vim
+            :let key = nvim_replace_termcodes("<C-o>", v:true, v:false, v:true)
+            :call nvim_feedkeys(key, 'n', v:false)
+    <
+
+        Parameters: ~
+          • {keys}       to be typed
+          • {mode}       behavior flags, see |feedkeys()|
+          • {escape_ks}  If true, escape K_SPECIAL bytes in `keys`. This should be
+                         false if you already used |nvim_replace_termcodes()|, and
+                         true otherwise.
+
+        See also: ~
+          • feedkeys()
+          • vim_strsave_escape_ks
+    */
+    pub fn feed_keys(lua: &Lua, keys: &str, mode: &str) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_feedkeys").eval()?;
+        let keys = Self::replace_termcodes(lua, keys)?;
+
+        lfn.call((keys, mode, false))
+    }
+
+    pub fn input(lua: &Lua, keys: &str) -> LuaResult<()> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_input").eval()?;
+
+        lfn.call((keys))
+    }
+
+    pub fn replace_termcodes(lua: &Lua, keys: &str) -> LuaResult<String> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_replace_termcodes").eval()?;
+        
+        lfn.call((keys, true, false, true))
+    }
+
     pub fn open_file(lua: &Lua, open_in: OpenIn, path: &str) -> LuaResult<()> {
         let lfn: LuaFunction = lua.load(format!("vim.cmd.{open_in}")).eval()?;
 

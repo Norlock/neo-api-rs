@@ -7,9 +7,9 @@
 use std::{borrow::Cow, fmt, path::PathBuf, sync::LazyLock};
 use tokio::sync::Mutex;
 
-use crate::{NeoDebug, CONTAINER, RTM};
+use crate::{CONTAINER, RTM};
 
-use super::{LineOut, SearchState};
+use super::LineOut;
 
 static DIFFUSER: LazyLock<Mutex<Diffuse>> = LazyLock::new(|| Diffuse::default().into());
 
@@ -17,11 +17,6 @@ static DIFFUSER: LazyLock<Mutex<Diffuse>> = LazyLock::new(|| Diffuse::default().
 pub struct Diffuse {
     queue: Vec<Box<dyn ExecuteTask>>,
     is_running: bool,
-}
-
-pub struct PreviewData {
-    path: PathBuf,
-    line_nr: usize,
 }
 
 unsafe impl Send for Diffuse {}
@@ -64,22 +59,25 @@ impl FuzzyTab for PathBuf {
     }
 
     fn full(&self) -> Cow<'_, str> {
-        self.to_string_lossy()
+        let full_name = self.to_string_lossy();
+
+        if full_name == " other " {
+            Cow::from("")
+        } else {
+            full_name
+        }
     }
 }
 
 #[derive(Default)]
 pub struct TaskResult {
     pub db_count: Option<usize>,
-    pub new_lines: Option<Vec<LineOut>>,
+    pub search_lines: Option<Vec<LineOut>>,
     pub selected_idx: Option<usize>,
     pub selected_tab: Option<usize>,
     pub tabs: Option<Vec<Box<dyn FuzzyTab>>>,
     pub preview_lines: Option<Vec<Box<str>>>,
-    pub file_path: Option<Box<str>>,
     pub update: bool,
-    pub line_prefix: Option<PathBuf>,
-    pub line_nr: Option<u32>,
 }
 
 impl TaskResult {
@@ -157,29 +155,15 @@ async fn handle(task: Box<dyn ExecuteTask>) {
         }
 
         if let Some(tabs) = result.tabs {
-            NeoDebug::log_dbg(&tabs).await;
             search_state.tabs = tabs;
         }
 
-        if let Some(new_lines) = result.new_lines {
+        if let Some(new_lines) = result.search_lines {
             *CONTAINER.search_lines.write().await = new_lines;
         }
 
         if let Some(preview_lines) = result.preview_lines {
-            // TODO preview search_lines in one lock
             *CONTAINER.preview.write().await = preview_lines;
-        }
-
-        if let Some(file_path) = result.file_path {
-            search_state.file_path = file_path;
-        }
-
-        if let Some(line_nr) = result.line_nr {
-            search_state.line_nr = line_nr;
-        }
-
-        if let Some(line_prefix) = result.line_prefix {
-            search_state.line_prefix = line_prefix;
         }
 
         search_state.update = result.update;

@@ -1,58 +1,43 @@
 use std::{
     cmp::Ordering,
     collections::HashSet,
-    path::{Path, PathBuf},
+    path::Path,
     time::Instant,
 };
-use tokio::{fs, io};
+use tokio::fs;
 
-use crate::{search::TaskResult, ExecuteTask, NeoDebug};
+use crate::NeoDebug;
 
-pub struct PreviewTask {
-    path_prefix: PathBuf,
-    path_suffix: Box<str>,
-}
+use super::LineOut;
 
-impl PreviewTask {
-    pub fn new(path_prefix: PathBuf, path_suffix: Box<str>) -> Self {
-        Self {
-            path_prefix,
-            path_suffix,
-        }
-    }
-}
+pub struct Preview;
 
-#[async_trait::async_trait]
-impl ExecuteTask for PreviewTask {
-    async fn execute(&self) -> TaskResult {
+impl Preview {
+    pub async fn get_lines(line_out: LineOut) -> Vec<Box<str>> {
         let now = Instant::now();
 
-        let path = self.path_prefix.join(self.path_suffix.as_ref());
+        let path = line_out.full_path_buf();
 
         let result = if path.is_dir() {
             preview_directory(&path).await
         } else if path.is_file() {
             preview_file(&path).await
         } else {
-            Ok(TaskResult::default())
+            vec![]
         };
 
         let elapsed_ms = now.elapsed().as_millis();
         NeoDebug::log(format!("Elapsed preview: {}", elapsed_ms)).await;
 
-        if let Ok(result) = result {
-            result
-        } else {
-            TaskResult::default()
-        }
+        result
     }
 }
 
-async fn preview_directory(path: &Path) -> io::Result<TaskResult> {
+async fn preview_directory(path: &Path) -> Vec<Box<str>> {
     let mut items = Vec::new();
-    let mut dir = fs::read_dir(path).await?;
+    let mut dir = fs::read_dir(path).await.unwrap();
 
-    while let Some(item) = dir.next_entry().await? {
+    while let Ok(Some(item)) = dir.next_entry().await {
         if let Ok(file_type) = item.file_type().await {
             let name = item.file_name().to_string_lossy().into();
 
@@ -78,19 +63,10 @@ async fn preview_directory(path: &Path) -> io::Result<TaskResult> {
         items.push("> Empty directory".into());
     }
 
-    Ok(TaskResult {
-        preview_lines: Some(items),
-        update: true,
-        ..Default::default()
-    })
+    items
 }
 
-async fn preview_file(path: &Path) -> io::Result<TaskResult> {
-    let mut result = TaskResult {
-        update: true,
-        ..Default::default()
-    };
-
+async fn preview_file(path: &Path) -> Vec<Box<str>> {
     if !is_binary(path) {
         if let Ok(file) = fs::read_to_string(path).await {
             let mut lines = vec![];
@@ -99,17 +75,13 @@ async fn preview_file(path: &Path) -> io::Result<TaskResult> {
                 lines.push(line.into());
             }
 
-            result.preview_lines = Some(lines);
-            result.file_path = Some(path.to_string_lossy().to_string().into_boxed_str());
-
-            return Ok(result);
+            lines
+        } else {
+            vec![]
         }
+    } else {
+        vec!["> File is a binary".into()]
     }
-
-    result.file_path = Some("text".into());
-    result.preview_lines = Some(vec!["> File is a binary".into()]);
-
-    Ok(result)
 }
 
 fn is_binary(file: &Path) -> bool {

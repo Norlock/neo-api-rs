@@ -9,11 +9,11 @@ use crate::web_devicons::DevIcon;
 use crate::{
     AutoCmdCbEvent, AutoCmdEvent, AutoCmdGroup, ClearResultsTask, CmdOpts, Database, ExtmarkOpts,
     FileTypeMatch, HLOpts, HLText, InsertRecentDirectory, Mode, NeoApi, NeoBuffer, NeoDebug,
-    NeoPopup, NeoTheme, NeoUtils, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize,
-    PopupStyle, RemoveRecentDirectory, TextType, VirtTextPos, RTM,
+    NeoPopup, NeoTheme, NeoWindow, OpenIn, PopupBorder, PopupRelative, PopupSize, PopupStyle,
+    RemoveRecentDirectory, TextType, VirtTextPos, RTM,
 };
 
-use super::{ChangeTab, PreviewTask, SearchState};
+use super::{ChangeTab, Preview, SearchState};
 
 const GRP_FUZZY_SELECT: &str = "NeoFuzzySelect";
 const GRP_FUZZY_LETTER: &str = "NeoFuzzyLetter";
@@ -21,23 +21,47 @@ const AUCMD_GRP: &str = "neo-fuzzy";
 const TAB_BTN_SELECTED: &str = "TabButtonSelected";
 const TAB_BTN: &str = "TabButton";
 
-#[derive(Clone, Debug, Default, sqlx::FromRow)]
+#[derive(Clone, Debug, sqlx::FromRow)]
 pub struct LineOut {
-    pub text: Box<str>,
     pub icon: Box<str>,
     pub hl_group: Box<str>,
-    pub git_root: Box<str>,
-    pub line_nr: Option<u32>,
+    pub path_suffix: Box<str>,
+    pub path_prefix: Box<str>,
+    pub line_nr: u32,
+}
+
+impl Default for LineOut {
+    fn default() -> Self {
+        Self {
+            icon: Default::default(),
+            hl_group: Default::default(),
+            path_prefix: Default::default(),
+            path_suffix: Default::default(),
+            line_nr: 1,
+        }
+    }
 }
 
 impl LineOut {
-    pub fn directory(text: &str) -> Self {
+    pub fn directory(path_prefix: &str, path_suffix: &str) -> Self {
         Self {
-            text: text.into(),
             icon: "".into(),
             hl_group: "Directory".into(),
+            path_prefix: path_prefix.into(),
+            path_suffix: path_suffix.into(),
             ..Default::default()
         }
+    }
+
+    pub fn full_path(&self) -> String {
+        let mut path = self.path_prefix.to_string();
+        path.push_str(&self.path_suffix);
+        path
+    }
+
+    pub fn full_path_buf(&self) -> PathBuf {
+        let path: PathBuf = self.path_prefix.as_ref().into();
+        path.join(&*self.path_suffix)
     }
 }
 
@@ -253,6 +277,20 @@ impl NeoFuzzy {
         buf.set_keymap(
             lua,
             Mode::Insert,
+            "<C-f>",
+            lua.create_async_function(|lua, ()| scroll_preview(lua, true))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
+            "<C-b>",
+            lua.create_async_function(|lua, ()| scroll_preview(lua, false))?,
+        )?;
+
+        buf.set_keymap(
+            lua,
+            Mode::Insert,
             "<Tab>",
             lua.create_async_function(|lua, ()| SearchState::change_tab(lua, ChangeTab::Next))?,
         )?;
@@ -337,6 +375,7 @@ impl NeoFuzzy {
                 border: crate::PopupBorder::Rounded,
                 focusable: Some(false),
                 style: Some(PopupStyle::Minimal),
+                noautocmd: true,
                 ..Default::default()
             },
         )?;
@@ -490,10 +529,39 @@ impl NeoFuzzy {
     }
 }
 
-async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
-    let filtered_lines = CONTAINER.search_lines.read().await;
+async fn scroll_preview(lua: Lua, move_down: bool) -> LuaResult<()> {
+    let fuzzy = CONTAINER.fuzzy.read().await;
 
-    if filtered_lines.is_empty() {
+    let scroll_amount = fuzzy.pop_preview.win.height(&lua)? / 2;
+
+    let args = if move_down {
+        format!("{}j", scroll_amount)
+    } else {
+        format!("{}k", scroll_amount)
+    };
+
+    fuzzy.pop_preview.win.call(
+        &lua,
+        lua.create_function(move |lua, _: ()| {
+            if let Err(e) = NeoApi::cmd(
+                lua,
+                CmdOpts {
+                    cmd: "normal",
+                    bang: true,
+                    args: &[&args],
+                },
+            ) {
+                RTM.spawn(NeoDebug::log(e));
+            }
+            Ok(())
+        })?,
+    )
+}
+
+async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
+    let search_lines = CONTAINER.search_lines.read().await;
+
+    if search_lines.is_empty() {
         return Ok(());
     }
 
@@ -501,29 +569,16 @@ async fn open_item(lua: Lua, open_in: OpenIn) -> LuaResult<()> {
     let fuzzy_c = &fuzzy.config;
     let search_state = CONTAINER.search_state.read().await;
 
-    let selected = filtered_lines[search_state.selected_idx].text.as_ref();
+    let selected = &search_lines[search_state.selected_idx];
 
     if fuzzy_c.search_type() == FuzzySearch::Directories && search_state.selected_tab == 0 {
-        let home = NeoUtils::home_directory();
-        let store_task = InsertRecentDirectory::new(home.join(selected));
+        let store_task = InsertRecentDirectory::new(selected.clone());
 
         Diffuse::queue([Box::new(store_task)]).await;
-
-        fuzzy.pop_cmd.win.close(&lua, false)?;
-        fuzzy_c.on_enter(&lua, open_in, home.join(selected));
-    } else if fuzzy_c.search_type() == FuzzySearch::Buffer {
-        let search_state = CONTAINER.search_state.read().await;
-        let root: PathBuf = search_state.tabs[search_state.selected_tab]
-            .full()
-            .as_ref()
-            .into();
-
-        fuzzy.pop_cmd.win.close(&lua, false)?;
-        fuzzy_c.on_enter(&lua, open_in, root.join(selected));
-    } else {
-        fuzzy.pop_cmd.win.close(&lua, false)?;
-        fuzzy_c.on_enter(&lua, open_in, selected.into());
     }
+
+    fuzzy.pop_cmd.win.close(&lua, false)?;
+    fuzzy_c.on_enter(&lua, open_in, selected.full_path_buf());
 
     Ok(())
 }
@@ -554,14 +609,13 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
         if search_state.update {
             search_state.update = false;
-            let file_path = search_state.file_path.to_string();
             let info_text = format!(" ({}/{}) ", search_lines.len(), search_state.db_count);
 
             let mut icon_lines = Vec::new();
             let mut hl_groups = Vec::new();
 
             for line in search_lines.iter() {
-                icon_lines.push(format!(" {} {}", line.icon, line.text));
+                icon_lines.push(format!(" {} {}", line.icon, line.path_suffix));
                 hl_groups.push(line.hl_group.as_ref());
             }
 
@@ -576,25 +630,43 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
 
             buf.set_lines(lua, 0, -1, false, &preview)?;
 
-            if fuzzy.config.search_type().is_file_based() {
+            if fuzzy.config.search_type().is_file_based() && !search_lines.is_empty() {
+                let selected = &search_lines[search_state.selected_idx];
+                let file = selected.full_path();
+
                 let ft = NeoApi::filetype_match(
                     lua,
                     FileTypeMatch {
-                        filename: Some(file_path),
+                        filename: Some(file),
                         contents: None,
                         buf: Some(buf.id()),
                     },
                 )?;
 
                 if let Some(ft) = ft {
-                    let lang = buf.get_treesitter_lang(lua, &ft)?;
-
-                    if let Some(lang) = lang {
+                    if let Some(lang) = buf.get_treesitter_lang(lua, &ft)? {
                         buf.start_treesitter(lua, &lang)?;
                     }
                 } else {
                     buf.stop_treesitter(lua)?;
                 }
+
+                //RTM.spawn(NeoDebug::log(selected.line_nr));
+                let line_str = format!("{}G", selected.line_nr);
+
+                fuzzy.pop_preview.win.call(
+                    &lua,
+                    lua.create_function(move |lua, _: ()| {
+                        NeoApi::cmd(
+                            lua,
+                            CmdOpts {
+                                cmd: "normal",
+                                bang: true,
+                                args: &[&line_str],
+                            },
+                        )
+                    })?,
+                )?;
             }
 
             fuzzy.add_preview_highlight(lua, &preview)?;
@@ -679,15 +751,20 @@ async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
         })?,
     )?;
 
-    let path_prefix = search_state.line_prefix.clone();
-    let path_suffix = search_lines[search_state.selected_idx].text.clone();
-
-    drop(search_state);
-    drop(search_lines);
     drop(fuzzy);
 
-    Diffuse::queue([Box::new(PreviewTask::new(path_prefix, path_suffix))])
-    .await;
+    RTM.spawn(async move {
+        let mut preview = CONTAINER.preview.write().await;
+
+        if search_lines.is_empty() {
+            preview.clear();
+        } else {
+            let line_out = search_lines[search_state.selected_idx].clone();
+            *preview = Preview::get_lines(line_out).await;
+        }
+
+        search_state.update = true;
+    });
 
     Ok(())
 }
@@ -722,7 +799,7 @@ async fn delete_entry(lua: Lua, _: ()) -> LuaResult<()> {
     } else if st == FuzzySearch::Directories && search_state.selected_tab == 1 {
         let search_lines = CONTAINER.search_lines.read().await;
         let line = &search_lines[search_state.selected_idx];
-        let remove_recent_dir = RemoveRecentDirectory::new(&line.text);
+        let remove_recent_dir = RemoveRecentDirectory::new(&line.path_suffix);
 
         Diffuse::queue([
             Box::new(remove_recent_dir),

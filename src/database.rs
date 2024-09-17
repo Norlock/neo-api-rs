@@ -1,35 +1,16 @@
-use sqlx::prelude::FromRow;
-use std::{borrow::Cow, path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr};
 use tokio::fs;
 
 use crate::{LineOut, NeoDebug, NeoUtils, RTM};
 
 pub struct Database {
-    mem: sqlx::SqlitePool,
-    file: sqlx::SqlitePool,
+    mem_db: sqlx::SqlitePool,
+    file_db: sqlx::SqlitePool,
 }
 
 impl Default for Database {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[derive(FromRow)]
-struct LineOutCompact {
-    text: Box<str>,
-    icon: Box<str>,
-    hl_group: Box<str>,
-}
-
-impl From<LineOutCompact> for LineOut {
-    fn from(value: LineOutCompact) -> Self {
-        Self {
-            text: value.text,
-            icon: value.icon,
-            hl_group: value.hl_group,
-            ..Default::default()
-        }
     }
 }
 
@@ -72,10 +53,10 @@ impl Database {
 
         sqlx::query(
             "CREATE TABLE all_lines (
-                text        TEXT PRIMARY KEY,
                 icon        TEXT NOT NULL,
                 hl_group    TEXT NOT NULL,
-                git_root    TEXT,
+                path_prefix TEXT NOT NULL,
+                path_suffix TEXT PRIMARY KEY,
                 line_nr     INTEGER
             )",
         )
@@ -84,8 +65,8 @@ impl Database {
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS recent_directories (
-                id      INTEGER PRIMARY KEY,
-                path    TEXT NOT NULL UNIQUE
+                path_prefix    TEXT NOT NULL,
+                path_suffix    TEXT NOT NULL UNIQUE
             )",
         )
         .execute(&file)
@@ -101,12 +82,12 @@ impl Database {
 
         NeoDebug::log("Databases initialized").await;
 
-        Ok(Self { file, mem })
+        Ok(Self { file_db: file, mem_db: mem })
     }
 
     pub async fn all_lines_is_empty(&self) -> bool {
         match sqlx::query_scalar::<_, u32>("SELECT COUNT(*) FROM all_lines")
-            .fetch_one(&self.mem)
+            .fetch_one(&self.mem_db)
             .await
         {
             Ok(count) => count == 0,
@@ -125,25 +106,25 @@ impl Database {
             like_query.push('%');
         }
 
-        let out = sqlx::query_as::<_, LineOutCompact>(
+        let out = sqlx::query_as::<_, LineOut>(
             "
             SELECT 
-                text, icon, hl_group
+                *
             FROM 
                 all_lines 
-            WHERE text like ?
-            ORDER BY fuzzy_score(?, text) LIMIT 300
+            WHERE path_suffix like ?
+            ORDER BY fuzzy_score(?, path_suffix) LIMIT 300
             ",
         )
         .bind(like_query)
         .bind(search_query)
-        .fetch_all(&self.mem)
+        .fetch_all(&self.mem_db)
         .await;
 
         match out {
             Ok(out) => {
                 //NeoDebug::log_dbg(&out).await;
-                Ok(out.into_iter().map(|l| l.into()).collect())
+                Ok(out)
             }
             Err(e) => {
                 NeoDebug::log(&e).await;
@@ -154,14 +135,14 @@ impl Database {
 
     pub async fn search_project_lines(
         &self,
-        search_query: &str,
-        git_root: Cow<'_, str>,
+        search_text: &str,
+        path_prefix: &str,
     ) -> Vec<LineOut> {
-        let mut like_query = '%'.to_string();
+        let mut path_suffix_query = '%'.to_string();
 
-        for char in search_query.chars() {
-            like_query.push(char);
-            like_query.push('%');
+        for char in search_text.chars() {
+            path_suffix_query.push(char);
+            path_suffix_query.push('%');
         }
 
         let out = sqlx::query_as::<_, LineOut>(
@@ -170,14 +151,14 @@ impl Database {
                 *
             FROM 
                 all_lines 
-            WHERE text like ? AND git_root = ?
-            ORDER BY fuzzy_score(?, text) LIMIT 300
+            WHERE path_prefix = ? AND path_suffix like ? 
+            ORDER BY fuzzy_score(?, path_suffix) LIMIT 300
             ",
         )
-        .bind(like_query)
-        .bind(git_root)
-        .bind(search_query)
-        .fetch_all(&self.mem)
+        .bind(path_prefix)
+        .bind(path_suffix_query)
+        .bind(search_text)
+        .fetch_all(&self.mem_db)
         .await;
 
         match out {
@@ -189,11 +170,19 @@ impl Database {
         }
     }
 
-    pub async fn insert_recent_directory(&self, directory: Cow<'_, str>) {
-        if let Err(e) = sqlx::query("INSERT OR IGNORE INTO recent_directories (path) VALUES (?)")
-            .bind(directory.trim())
-            .execute(&self.file)
-            .await
+    pub async fn insert_recent_directory(
+        &self,
+        path_prefix: &str,
+        path_suffix: &str,
+    ) {
+        if let Err(e) = sqlx::query(
+            "INSERT OR IGNORE INTO recent_directories (path_prefix, path_suffix) 
+                VALUES (?, ?)",
+        )
+        .bind(path_prefix.trim())
+        .bind(path_suffix.trim())
+        .execute(&self.file_db)
+        .await
         {
             NeoDebug::log(e).await;
         }
@@ -210,28 +199,28 @@ impl Database {
             like_query.push('%');
         }
 
-        let out: Vec<String> = sqlx::query_scalar(
+        let out: Vec<(Box<str>, Box<str>)> = sqlx::query_as(
             "
             SELECT 
-                path
+                *
             FROM 
                 recent_directories 
-            WHERE path like ? 
-            ORDER BY fuzzy_score(?, path) LIMIT 300
+            WHERE path_suffix like ? 
+            ORDER BY fuzzy_score(?, path_suffix) LIMIT 300
             ",
         )
         .bind(like_query)
         .bind(search_query)
-        .fetch_all(&self.file)
+        .fetch_all(&self.file_db)
         .await?;
 
-        Ok(out.into_iter().map(|p| LineOut::directory(&p)).collect())
+        Ok(out.into_iter().map(|p| LineOut::directory(&p.0, &p.1)).collect())
     }
 
-    pub async fn delete_recent_directory(&self, path: &str) {
-        if let Err(err) = sqlx::query("DELETE FROM recent_directories WHERE path = ?")
-            .bind(path)
-            .execute(&self.file)
+    pub async fn delete_recent_directory(&self, path_suffix: &str) {
+        if let Err(err) = sqlx::query("DELETE FROM recent_directories WHERE path_suffix = ?")
+            .bind(path_suffix)
+            .execute(&self.file_db)
             .await
         {
             NeoDebug::log(err).await;
@@ -240,7 +229,7 @@ impl Database {
 
     pub async fn empty_lines(&self) {
         if let Err(err) = sqlx::query("DELETE FROM all_lines")
-            .execute(&self.mem)
+            .execute(&self.mem_db)
             .await
         {
             NeoDebug::log(err).await;
@@ -248,11 +237,12 @@ impl Database {
     }
 
     pub async fn insert_all(&self, lines: &[LineOut]) -> sqlx::Result<()> {
-        let mut tx = self.mem.begin().await?;
+        let mut tx = self.mem_db.begin().await?;
 
         for chunks in lines.chunks(1000) {
             let mut qry_str =
-                "INSERT INTO all_lines (text, icon, hl_group, git_root, line_nr) VALUES".to_string();
+                "INSERT INTO all_lines (icon, hl_group, path_prefix, path_suffix, line_nr) VALUES"
+                    .to_string();
 
             for i in 0..chunks.len() {
                 if i == 0 {
@@ -266,10 +256,10 @@ impl Database {
 
             for line in chunks {
                 query = query
-                    .bind(&line.text)
                     .bind(&line.icon)
                     .bind(&line.hl_group)
-                    .bind(&line.git_root)
+                    .bind(&line.path_prefix)
+                    .bind(&line.path_suffix)
                     .bind(&line.line_nr);
             }
 

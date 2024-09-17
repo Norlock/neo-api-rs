@@ -9,14 +9,11 @@ use super::{LineOut, NeoFuzzy, CONTAINER};
 
 #[derive(Debug, Default)]
 pub struct SearchState {
-    pub file_path: Box<str>,
-    pub db_count: usize,
     pub update: bool,
+    pub db_count: usize,
     pub tabs: Vec<Box<dyn FuzzyTab>>,
     pub selected_tab: usize,
     pub selected_idx: usize,
-    pub line_nr: u32,
-    pub line_prefix: PathBuf,
 }
 
 pub enum ChangeTab {
@@ -66,6 +63,6 @@ impl SearchState {
         fuzzy
             .config
             .cwd()
-            .join(search_lines[selected_idx].text.as_ref())
+            .join(search_lines[selected_idx].path_suffix.as_ref())
     }
 }

@@ -1,8 +1,5 @@
 use mlua::{prelude::LuaResult, Lua};
-use std::{
-    borrow::Cow,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use crate::{
     search::{FuzzyTab, TaskResult},
@@ -10,7 +7,7 @@ use crate::{
     BufInfo, BufInfoOpts, ExecuteTask, LineOut, NeoApi, NeoDebug, NeoUtils, CONTAINER,
 };
 
-use super::PreviewTask;
+use super::Preview;
 
 pub struct BufferSearch {
     /// Based on current tab
@@ -58,15 +55,15 @@ impl BufferSearch {
                     .to_string_lossy()
                     .into();
 
-                let git_root_str: Box<str> = git_root.to_string_lossy().into();
+                let path_prefix: Box<str> = git_root.to_string_lossy().into();
                 let tab = Box::new(git_root);
 
                 new_lines.push(LineOut {
-                    text: path_suffix,
+                    path_prefix,
+                    path_suffix,
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
-                    git_root: git_root_str,
-                    line_nr: Some(buf_info.lnum),
+                    line_nr: buf_info.lnum,
                 });
 
                 if !tabs.iter().any(|t| t.full() == tab.full()) {
@@ -74,11 +71,11 @@ impl BufferSearch {
                 }
             } else {
                 new_lines.push(LineOut {
-                    text: buf_path.to_string_lossy().into(),
+                    path_prefix: "".into(),
+                    path_suffix: buf_path.to_string_lossy().into(),
                     icon: dev_icon.icon.into(),
                     hl_group: dev_icon.highlight.into(),
-                    line_nr: Some(buf_info.lnum),
-                    ..Default::default()
+                    line_nr: buf_info.lnum,
                 });
             }
         }
@@ -87,75 +84,53 @@ impl BufferSearch {
             tabs.push(Box::new(" other ".to_string()));
         }
 
+        let db_count = new_lines.len();
+
         if let Err(e) = CONTAINER.db.insert_all(&new_lines).await {
             NeoDebug::log_dbg(e).await;
         }
 
-        let new_lines = CONTAINER
-            .db
-            .search_project_lines("", tabs[self.selected_tab].full())
-            .await;
+        let new_lines = CONTAINER.db.search_project_lines("", &tabs[0].full()).await;
 
-        let mut result = TaskResult {
-            db_count: Some(new_lines.len()),
+        let preview_lines = if new_lines.is_empty() {
+            vec![]
+        } else {
+            Preview::get_lines(new_lines[0].clone()).await
+        };
+
+        TaskResult {
+            db_count: Some(db_count),
             tabs: Some(tabs),
             selected_tab: Some(0),
             selected_idx: Some(0),
-            line_prefix: Some(new_lines[0].git_root.as_ref().into()),
+            search_lines: Some(new_lines),
+            preview_lines: Some(preview_lines),
             update: true,
             ..Default::default()
-        };
-
-        if !new_lines.is_empty() {
-            let path_prefix: PathBuf = new_lines[0].git_root.as_ref().into();
-            let path_suffix = new_lines[0].text.clone();
-            let prev_result = PreviewTask::new(path_prefix, path_suffix).execute().await;
-
-            result.preview_lines = prev_result.preview_lines;
-            result.file_path = prev_result.file_path;
         }
-
-        result.new_lines = Some(new_lines);
-        result
     }
 
     async fn search(&self) -> TaskResult {
         let search_state = CONTAINER.search_state.read().await;
-
-        let other_tab = search_state.tabs.len() - 1 == search_state.selected_tab;
-
-        let tab = if other_tab {
-            Cow::from("")
-        } else {
-            search_state.tabs[search_state.selected_tab].full()
-        };
+        let tab = search_state.tabs[search_state.selected_tab].full();
 
         let new_lines = CONTAINER
             .db
-            .search_project_lines(&self.search_query, tab)
+            .search_project_lines(&self.search_query, &tab)
             .await;
 
-        if !new_lines.is_empty() {
-            let path_prefix: PathBuf = new_lines[0].git_root.as_ref().into();
-            let path_suffix = new_lines[0].text.clone();
-            let prev_result = PreviewTask::new(path_prefix, path_suffix).execute().await;
-
-            TaskResult {
-                update: true,
-                selected_idx: Some(0),
-                new_lines: Some(new_lines),
-                preview_lines: prev_result.preview_lines,
-                file_path: prev_result.file_path,
-                ..Default::default()
-            }
+        let preview_lines = if new_lines.is_empty() {
+            vec![]
         } else {
-            TaskResult {
-                update: true,
-                selected_idx: Some(0),
-                new_lines: Some(new_lines),
-                preview_lines: Some(vec![]),
-                ..Default::default()
-            }
+            Preview::get_lines(new_lines[0].clone()).await
+        };
+
+        TaskResult {
+            update: true,
+            selected_idx: Some(0),
+            search_lines: Some(new_lines),
+            preview_lines: Some(preview_lines),
+            ..Default::default()
         }
     }
 }
@@ -170,12 +145,3 @@ impl ExecuteTask for BufferSearch {
         }
     }
 }
-
-pub struct RemoveBuffer {
-    pub selected_line: Box<str>,
-}
-
-//#[async_trait::async_trait]
-//impl ExecuteTask for RemoveBuffer {
-//async fn execute(&self) -> TaskResult {}
-//}

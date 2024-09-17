@@ -97,6 +97,18 @@ impl NeoWindow {
         lfn.call((self.id(), cb))
     }
 
+    pub fn width(&self, lua: &Lua) -> LuaResult<u32> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_win_get_width").eval()?;
+
+        lfn.call((self.id()))
+    }
+
+    pub fn height(&self, lua: &Lua) -> LuaResult<u32> {
+        let lfn: LuaFunction = lua.load("vim.api.nvim_win_get_height").eval()?;
+
+        lfn.call((self.id()))
+    }
+
     /**
     nvim_win_close({window}, {force})                           *nvim_win_close()*
     Closes the window (like |:close| with a |window-ID|).
