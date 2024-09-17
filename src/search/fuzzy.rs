@@ -622,37 +622,36 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                 .buf
                 .set_lines(lua, 0, -1, false, &icon_lines)?;
 
+            let preview_buf = fuzzy.pop_preview.buf;
+
             fuzzy.add_out_highlight(lua, hl_groups, search_state.selected_idx)?;
-
-            let buf = &fuzzy.pop_preview.buf;
-
-            buf.set_lines(lua, 0, -1, false, &preview)?;
+            preview_buf.set_lines(lua, 0, -1, false, &preview)?;
 
             if fuzzy.config.search_type().is_file_based() && !search_lines.is_empty() {
                 let selected = &search_lines[search_state.selected_idx];
-                let file = selected.full_path();
 
                 let ft = NeoApi::filetype_match(
                     lua,
                     FileTypeMatch {
-                        filename: Some(file),
+                        filename: Some(selected.full_path()),
                         contents: None,
-                        buf: Some(buf.id()),
+                        buf: Some(preview_buf.id()),
                     },
                 )?;
 
                 if let Some(ft) = ft {
-                    if let Some(lang) = buf.get_treesitter_lang(lua, &ft)? {
-                        buf.start_treesitter(lua, &lang)?;
+                    if let Some(lang) = preview_buf.get_treesitter_lang(lua, &ft)? {
+                        preview_buf.start_treesitter(lua, &lang)?;
                     }
                 } else {
-                    buf.stop_treesitter(lua)?;
+                    preview_buf.stop_treesitter(lua)?;
                 }
 
                 let line_str = format!("{}G", selected.line_nr);
                 let line_nr = selected.line_nr as usize;
 
                 let preview_win = fuzzy.pop_preview.win;
+
                 preview_win.call(
                     &lua,
                     lua.create_function(move |lua, _: ()| {
@@ -752,6 +751,8 @@ async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
         }
     }
 
+    let move_cursor = format!("{}G", search_state.selected_idx + 1);
+
     fuzzy.pop_out.win.call(
         &lua,
         lua.create_function(move |lua, _: ()| {
@@ -760,7 +761,7 @@ async fn move_selection(lua: Lua, move_sel: Move) -> LuaResult<()> {
                 CmdOpts {
                     cmd: "normal",
                     bang: true,
-                    args: &["1G"],
+                    args: &[&move_cursor],
                 },
             )
         })?,
