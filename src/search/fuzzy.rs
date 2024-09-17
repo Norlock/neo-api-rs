@@ -1,9 +1,9 @@
 use mlua::prelude::{LuaError, LuaResult};
 use mlua::Lua;
-use tokio::time::Instant;
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use tokio::time::Instant;
 
 use crate::search::{Diffuse, ExecuteTask};
 use crate::web_devicons::DevIcon;
@@ -541,7 +541,8 @@ async fn scroll_preview(lua: Lua, move_down: bool) -> LuaResult<()> {
         format!("{}k", scroll_amount)
     };
 
-    fuzzy.pop_preview.win.call(
+    let preview_win = fuzzy.pop_preview.win;
+    preview_win.call(
         &lua,
         lua.create_function(move |lua, _: ()| {
             if let Err(e) = NeoApi::cmd(
@@ -554,7 +555,15 @@ async fn scroll_preview(lua: Lua, move_down: bool) -> LuaResult<()> {
             ) {
                 RTM.spawn(NeoDebug::log(e));
             }
-            Ok(())
+
+            NeoApi::cmd(
+                lua,
+                CmdOpts {
+                    cmd: "normal",
+                    bang: true,
+                    args: &["zz"],
+                },
+            )
         })?,
     )
 }
@@ -652,20 +661,35 @@ fn interval_write_out(lua: &Lua, _: ()) -> LuaResult<()> {
                     buf.stop_treesitter(lua)?;
                 }
 
-                //RTM.spawn(NeoDebug::log(selected.line_nr));
                 let line_str = format!("{}G", selected.line_nr);
+                let line_nr = (selected.line_nr - 1) as usize;
 
-                fuzzy.pop_preview.win.call(
+                let preview_win = fuzzy.pop_preview.win;
+                preview_win.call(
                     &lua,
                     lua.create_function(move |lua, _: ()| {
-                        NeoApi::cmd(
-                            lua,
-                            CmdOpts {
-                                cmd: "normal",
-                                bang: true,
-                                args: &[&line_str],
-                            },
-                        )
+                        if line_nr != 0 {
+                            NeoApi::cmd(
+                                lua,
+                                CmdOpts {
+                                    cmd: "normal",
+                                    bang: true,
+                                    args: &[&line_str],
+                                },
+                            )?;
+
+                            NeoApi::cmd(
+                                lua,
+                                CmdOpts {
+                                    cmd: "normal",
+                                    bang: true,
+                                    args: &["zz"],
+                                },
+                            )?;
+
+                            preview_win.set_option_value(lua, "cursorline", true)?;
+                        }
+                        Ok(())
                     })?,
                 )?;
             }
